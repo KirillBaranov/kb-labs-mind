@@ -11,7 +11,7 @@ import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-c
 /**
  * Initialize Mind structure with empty JSON artifacts
  */
-export async function initMindStructure(opts: InitOptions): Promise<void> {
+export async function initMindStructure(opts: InitOptions): Promise<string> {
   const { cwd, log } = opts;
   
   try {
@@ -66,6 +66,7 @@ export async function initMindStructure(opts: InitOptions): Promise<void> {
     ]);
 
     log?.({ level: 'info', msg: 'Initialized Mind structure with empty artifacts' });
+    return mindDir;
   } catch (error: any) {
     log?.({ level: 'error', msg: 'Failed to initialize Mind structure', error: error.message });
     throw error;
