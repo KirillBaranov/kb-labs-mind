@@ -14,13 +14,33 @@ export async function createIndexerContext(
   log: (e: object) => void
 ): Promise<IndexerContext> {
   const root = await findWorkspaceRoot(cwd);
+  const { getGenerator } = await import('@kb-labs/mind-core');
+  
+  const generator = getGenerator();
   
   return {
     cwd,
     root,
     timeBudgetMs,
     startTime: Date.now(),
-    log
+    log,
+    apiIndex: {
+      schemaVersion: "1.0",
+      generator,
+      files: {}
+    },
+    depsGraph: {
+      schemaVersion: "1.0",
+      generator,
+      packages: {},
+      edges: []
+    },
+    recentDiff: {
+      schemaVersion: "1.0",
+      generator,
+      since: "",
+      files: []
+    }
   };
 }
 

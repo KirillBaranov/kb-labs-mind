@@ -48,8 +48,8 @@ export async function indexApiFiles(
         sha256: sha
       };
 
-      // TODO: Update API index with this file
-      // For now, just count as updated
+      // Update API index with this file
+      ctx.apiIndex.files[filePath] = apiFile;
       updated++;
 
     } catch (error: any) {
@@ -62,6 +62,18 @@ export async function indexApiFiles(
       });
     }
   }
+
+  // Save API index to file
+  const { writeJson } = await import('../fs/json.js');
+  const { getGenerator } = await import('@kb-labs/mind-core');
+  
+  const generator = getGenerator();
+  const apiIndex = {
+    schemaVersion: "1.0",
+    generator,
+    files: ctx.apiIndex.files
+  };
+  await writeJson(`${ctx.cwd}/.kb/mind/api-index.json`, apiIndex);
 
   return { added, updated, removed };
 }

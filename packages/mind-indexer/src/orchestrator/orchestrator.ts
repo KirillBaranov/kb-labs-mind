@@ -86,6 +86,9 @@ export async function orchestrateIndexing(
       });
     }
 
+    // Note: Results are saved by individual indexers
+    // This orchestrator only coordinates the process
+
     return {
       api: apiResult,
       deps: depsResult,

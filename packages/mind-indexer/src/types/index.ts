@@ -38,6 +38,9 @@ export interface IndexerContext {
   timeBudgetMs: number;
   startTime: number;
   log: (e: object) => void;
+  apiIndex: ApiIndex;
+  depsGraph: DepsGraph;
+  recentDiff: RecentDiff;
 }
 
 // Adapter interface for TS parsing
