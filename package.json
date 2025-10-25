@@ -1,79 +1,17 @@
 {
-  "name": "@kb-labs/mind",
-  "version": "0.1.0",
-  "private": true,
-  "description": "KB Labs Mind — headless context layer for AI-ready context packs.",
+  "name": "sample-project",
+  "version": "1.0.0",
   "type": "module",
-  "author": {
-    "name": "Kirill Baranov",
-    "url": "https://github.com/kirill-baranov"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-mind.git"
-  },
-  "bugs": {
-    "url": "https://github.com/kirill-baranov/kb-labs-mind/issues"
-  },
-  "homepage": "https://github.com/kirill-baranov/kb-labs-mind#readme",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "main": "src/index.ts",
   "scripts": {
-    "devkit:sync": "node scripts/devkit-sync.mjs",
-    "devkit:sync:ci": "node scripts/devkit-sync.mjs --ci-only",
-    "devkit:check": "node scripts/devkit-sync.mjs --check",
-    "devkit:force": "node scripts/devkit-sync.mjs --force",
-    "devkit:help": "node scripts/devkit-sync.mjs --help",
-    "postinstall": "pnpm -s devkit:sync || true",
-    "// ——— core": "────────────────────────────────────────",
-    "build": "pnpm -r run build",
-    "build:clean": "pnpm -r run clean && pnpm -r run build",
-    "dev": "pnpm -r --parallel run dev",
-    "// ——— quality": "────────────────────────────────────────",
-    "lint": "pnpm -r exec eslint .",
-    "lint:fix": "pnpm -r exec eslint . --fix",
-    "test": "pnpm -r --if-present run test",
-    "test:coverage": "pnpm -r --if-present run test --coverage",
-    "test:watch": "pnpm -r --parallel --if-present run test:watch",
-    "type-check": "pnpm -r run type-check",
-    "format": "prettier -w .",
-    "format:check": "prettier -c .",
-    "// ——— ci/qa": "────────────────────────────────────────",
-    "check": "pnpm lint && pnpm type-check && pnpm test",
-    "ci": "pnpm clean && pnpm build && pnpm check",
-    "// ——— cleanup": "────────────────────────────────────────",
-    "clean": "pnpm -r run clean",
-    "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist"
+    "build": "tsc",
+    "test": "vitest"
   },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
-      "prettier -w"
-    ],
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
-    ]
+  "dependencies": {
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "github:KirillBaranov/kb-labs-devkit#main",
-    "@types/node": "^24.9.1",
-    "@typescript-eslint/eslint-plugin": "^8",
-    "@typescript-eslint/parser": "^8",
-    "@vitest/coverage-v8": "^3",
-    "@vue/eslint-config-typescript": "^14.6.0",
-    "eslint": "^9",
-    "eslint-plugin-vue": "^10.5.0",
-    "prettier": "^3",
-    "rimraf": "^6",
-    "tsup": "^8",
-    "typescript": "^5",
-    "vitest": "^3.2.4"
-  },
-  "engines": {
-    "node": ">=18.18.0",
-    "pnpm": ">=9.0.0"
-  },
-  "packageManager": "pnpm@9.11.0"
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
 }
