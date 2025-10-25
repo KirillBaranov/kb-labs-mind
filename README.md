@@ -1,106 +1,272 @@
-# KB Labs — Product Template
+# KB Labs Mind - Headless Context Layer
 
-This is the **baseline template** for products under the **@kb-labs** namespace.  
-It is designed for multi-package repositories using pnpm workspaces.
+A headless context layer for KB Labs projects that provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows.
 
-**Goals:** Fast bootstrap, unified quality rules, simple publishing, and reusable core.
+## Overview
 
-## 📁 Repository Structure
+KB Labs Mind is a TypeScript-based system that creates structured context from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, recent changes, and dependencies.
 
-```
-apps/
-├── demo/                    # Example app / playground
-packages/
-├── package-name/            # Example package (lib/cli/adapter)
-fixtures/                    # Fixtures for snapshot/integration testing
-docs/
-└── adr/                     # Architecture Decision Records (ADRs)
-```
+## Architecture
 
-## 🚀 Quick Start
+The system consists of 4 core packages:
+
+- **`@kb-labs/mind-core`** - Core types, utilities, and error handling
+- **`@kb-labs/mind-indexer`** - Delta indexing for API, dependencies, and git changes
+- **`@kb-labs/mind-pack`** - Context pack builder with budget management
+- **`@kb-labs/mind-adapters`** - Git integration helpers
+
+## Quick Start
 
 ### Installation
 
 ```bash
+# Install dependencies
 pnpm install
+
+# Build all packages
+pnpm build
+
+# Run tests
+pnpm test
 ```
 
-### Development
+### Basic Usage
+
+```typescript
+import { initMindStructure, updateIndexes } from '@kb-labs/mind-indexer';
+import { buildPack } from '@kb-labs/mind-pack';
+
+// Initialize mind structure
+await initMindStructure('/path/to/project');
+
+// Update indexes with recent changes
+const report = await updateIndexes({
+  cwd: '/path/to/project',
+  since: 'HEAD~1',
+  timeBudgetMs: 800
+});
+
+// Build context pack
+const pack = await buildPack({
+  cwd: '/path/to/project',
+  intent: 'Implement new feature',
+  product: 'devlink',
+  budget: {
+    totalTokens: 8000,
+    caps: {
+      intent_summary: 300,
+      product_overview: 600,
+      api_signatures: 2200,
+      recent_diffs: 1200,
+      impl_snippets: 3000,
+      configs_profiles: 700
+    },
+    truncation: 'middle'
+  }
+});
+
+console.log(pack.markdown);
+```
+
+## Key Features
+
+### 🚀 Delta Indexing
+- Only processes changed files for fast updates
+- Time budget enforcement with partial results
+- Intelligent caching with mtime/size checks
+- TypeScript/JavaScript API extraction
+
+### 📦 Context Packing
+- 6 structured sections: intent, overview, API, diffs, snippets, configs
+- Token budget management with per-section caps
+- Deterministic output with sorted keys
+- Security: skips large files (>1.5MB) and binary content
+
+### 🔧 Git Integration
+- Recent diff tracking since any revision
+- Staged files detection
+- POSIX path normalization
+- Workspace root detection
+
+### 🛡️ Fail-Open Philosophy
+- Parse errors don't crash the system
+- Missing files are handled gracefully
+- Time budget exceeded returns partial results
+- Comprehensive structured logging
+
+## Package Details
+
+### @kb-labs/mind-core
+
+Core utilities and types:
+
+```typescript
+import { 
+  MindError, 
+  estimateTokens, 
+  truncateToTokens, 
+  sha256, 
+  toPosix,
+  DEFAULT_BUDGET 
+} from '@kb-labs/mind-core';
+```
+
+### @kb-labs/mind-indexer
+
+Delta indexing system:
+
+```typescript
+import { updateIndexes, initMindStructure } from '@kb-labs/mind-indexer';
+
+// Initialize structure
+await initMindStructure(cwd);
+
+// Update with changes
+const report = await updateIndexes({
+  cwd,
+  changed: ['src/index.ts'],
+  since: 'HEAD~1',
+  timeBudgetMs: 800
+});
+```
+
+### @kb-labs/mind-pack
+
+Context pack builder:
+
+```typescript
+import { buildPack } from '@kb-labs/mind-pack';
+
+const pack = await buildPack({
+  cwd,
+  intent: 'User intent description',
+  product: 'devlink',
+  budget: DEFAULT_BUDGET
+});
+```
+
+### @kb-labs/mind-adapters
+
+Git integration:
+
+```typescript
+import { gitDiffSince, listStagedFiles } from '@kb-labs/mind-adapters';
+
+const diff = await gitDiffSince(cwd, 'HEAD~1');
+const staged = await listStagedFiles(cwd);
+```
+
+## Output Structure
+
+The system creates artifacts in `.kb/mind/`:
+
+```
+.kb/mind/
+├── index.json          # Main index with hashes and metadata
+├── api-index.json      # API exports per file
+├── deps.json          # Dependency graph
+├── recent-diff.json   # Git changes since revision
+└── packs/
+    ├── last-pack.md   # Latest context pack (Markdown)
+    └── last-pack.json # Latest context pack (JSON)
+```
+
+## Configuration
+
+### Budget Management
+
+```typescript
+const budget: ContextBudget = {
+  totalTokens: 8000,
+  caps: {
+    intent_summary: 300,
+    product_overview: 600,
+    api_signatures: 2200,
+    recent_diffs: 1200,
+    impl_snippets: 3000,
+    configs_profiles: 700
+  },
+  truncation: 'middle'
+};
+```
+
+### Ignore Patterns
+
+The system automatically ignores:
+- `node_modules/**`
+- `.git/**`
+- `.kb/**` (except `.kb/mind/**`)
+- `dist/**`, `coverage/**`, `.turbo/**`, `.vite/**`
+- `**/*.log`, `**/*.tmp`, `**/*.temp`
+
+## CLI Integration
+
+CLI commands are integrated into the existing `kb-labs-cli` system:
 
 ```bash
-pnpm dev         # Parallel dev mode for selected packages/apps
-pnpm build       # Build all packages
-pnpm test        # Run tests
-pnpm lint        # Lint code
+# Initialize mind structure
+kb mind init
+
+# Update indexes
+kb mind update --since HEAD~1
+
+# Generate context pack
+kb mind pack --intent "Implement feature X" --product devlink --stdout
+
+# Feed to Cursor
+kb mind feed | cursor-chat
 ```
 
-### Creating a New Package
+## Development
+
+### Project Structure
+
+```
+packages/
+├── mind-core/        # Core types and utilities
+├── mind-indexer/     # Delta indexing system
+├── mind-pack/        # Context pack builder
+└── mind-adapters/    # Git integration
+```
+
+### Testing
 
 ```bash
-# Using the CLI tool (recommended)
-pnpm dlx @kb-labs/create-pkg my-new-pkg
+# Run all tests
+pnpm test
 
-# Or manually copy and modify
-cp -r packages/package-name packages/<new-package-name>
-# Then update metadata and imports
+# Run specific package tests
+pnpm --filter @kb-labs/mind-core test
 ```
 
-## 🛠️ Available Scripts
+### Building
 
-| Script             | Description                                |
-| ------------------ | ------------------------------------------ |
-| `pnpm dev`         | Start development mode for all packages    |
-| `pnpm build`       | Build all packages                         |
-| `pnpm build:clean` | Clean and build all packages               |
-| `pnpm test`        | Run all tests                              |
-| `pnpm test:watch`  | Run tests in watch mode                    |
-| `pnpm lint`        | Lint all code                              |
-| `pnpm lint:fix`    | Fix linting issues                         |
-| `pnpm type-check`  | TypeScript type checking                   |
-| `pnpm check`       | Run lint, type-check, and tests            |
-| `pnpm ci`          | Full CI pipeline (clean, build, check)     |
-| `pnpm clean`       | Clean build artifacts                      |
-| `pnpm clean:all`   | Clean all node_modules and build artifacts |
+```bash
+# Build all packages
+pnpm build
 
-### 🔧 DevKit Commands
+# Build specific package
+pnpm --filter @kb-labs/mind-core build
+```
 
-| Script              | Description                                |
-| ------------------- | ------------------------------------------ |
-| `pnpm devkit:sync`  | Sync DevKit configurations to workspace   |
-| `pnpm devkit:check` | Check if DevKit sync is needed             |
-| `pnpm devkit:force` | Force DevKit sync (overwrite existing)     |
-| `pnpm devkit:help`  | Show DevKit sync help                      |
+## Performance
 
-## 🔧 DevKit Integration
+- **API indexing**: <100ms per file (small files)
+- **Cache hits**: <5ms (unchanged files)
+- **Full update**: <800ms default budget
+- **Pack generation**: <200ms for typical project
 
-This template uses `@kb-labs/devkit` for shared tooling and configurations. DevKit provides:
+## Security
 
-- **Unified Configurations:** ESLint, Prettier, TypeScript, Vitest, and TSUP configs
-- **Automatic Sync:** Keeps workspace configs in sync with latest DevKit versions
-- **Zero Maintenance:** No need to manually update config files
+- Files >1.5MB are skipped with warnings
+- Binary files are detected and excluded
+- Snippet length is limited to 60 lines
+- All paths are normalized to POSIX format
 
-### DevKit Commands Usage
+## License
 
-- **`pnpm devkit:sync`** - Syncs DevKit configurations to your workspace (runs automatically on `pnpm install`)
-- **`pnpm devkit:check`** - Checks if your workspace configs are up-to-date with DevKit
-- **`pnpm devkit:force`** - Forces sync even if local files exist (overwrites local changes)
-- **`pnpm devkit:help`** - Shows detailed help and available options
+Private - KB Labs Internal Use Only
 
-For more details, see [ADR-0005: Use DevKit for Shared Tooling](docs/adr/0005-use-devkit-for-shared-tooling.md).
+## Contributing
 
-## 📋 Development Policies
-
-- **Code Style:** ESLint + Prettier, TypeScript strict mode
-- **Testing:** Vitest with fixtures for integration testing
-- **Versioning:** SemVer with automated releases through Changesets
-- **Architecture:** Document decisions in ADRs (see `docs/adr/`)
-- **Tooling:** Shared configurations via `@kb-labs/devkit` (see [ADR-0005](docs/adr/0005-use-devkit-for-shared-tooling.md))
-
-## 🔧 Requirements
-
-- **Node.js:** >= 18.18.0
-- **pnpm:** >= 9.0.0
-
-## 📄 License
-
-MIT © KB Labs
+This is an internal KB Labs project. For questions or issues, contact the KB Labs team.
