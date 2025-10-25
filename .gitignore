@@ -65,5 +65,10 @@ analytics/
 *.sqlite
 *.db
 
+# ───────────────
+# KB Labs Mind artifacts
+# ───────────────
+.kb/mind/
+
 # DevKit provenance
 kb-labs/DEVKIT_SYNC.json
