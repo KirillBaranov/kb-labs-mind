@@ -34,13 +34,13 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Initialize mind workspace',
     longDescription: 'Set up mind workspace with initial configuration',
-    requires: ['@kb-labs/mind-core'],
+    requires: ['@kb-labs/mind-indexer'],
     flags: [
       {
         name: 'cwd',
         type: 'string',
         description: 'Working directory',
-        default: process.cwd(),
+        default: undefined,
       },
       {
         name: 'force',
@@ -53,7 +53,7 @@ export const commands: CommandManifest[] = [
       'kb mind init',
       'kb mind init --force',
     ],
-    loader: async () => import('./cli/init.js'),
+    loader: async () => import('./cli/init'),
   },
   {
     manifestVersion: '1.0',
@@ -68,7 +68,7 @@ export const commands: CommandManifest[] = [
         name: 'cwd',
         type: 'string',
         description: 'Working directory',
-        default: process.cwd(),
+        default: undefined,
       },
       {
         name: 'dry-run',
@@ -80,7 +80,7 @@ export const commands: CommandManifest[] = [
       'kb mind update',
       'kb mind update --dry-run',
     ],
-    loader: async () => import('./cli/update.js'),
+    loader: async () => import('./cli/update'),
   },
   {
     manifestVersion: '1.0',
@@ -89,13 +89,13 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Pack mind workspace',
     longDescription: 'Create a packed version of the mind workspace',
-    requires: ['@kb-labs/mind-core'],
+    requires: ['@kb-labs/mind-pack', '@kb-labs/mind-core'],
     flags: [
       {
         name: 'cwd',
         type: 'string',
         description: 'Working directory',
-        default: process.cwd(),
+        default: undefined,
       },
       {
         name: 'output',
@@ -123,7 +123,7 @@ export const commands: CommandManifest[] = [
         name: 'cwd',
         type: 'string',
         description: 'Working directory',
-        default: process.cwd(),
+        default: undefined,
       },
       {
         name: 'source',
@@ -137,6 +137,6 @@ export const commands: CommandManifest[] = [
       'kb mind feed --source ./data',
       'kb mind feed -s ./docs',
     ],
-    loader: async () => import('./cli/feed.js'),
+    loader: async () => import('./cli/feed'),
   },
 ];

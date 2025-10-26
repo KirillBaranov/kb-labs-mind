@@ -10,7 +10,11 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./dist/*": "./dist/*"
+  },
+  "kb": {
+    "commandsManifest": "./dist/cli.manifest.js"
   },
   "files": [
     "dist",
