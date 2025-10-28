@@ -1,0 +1,25 @@
+{
+  "name": "big-project",
+  "version": "1.0.0",
+  "description": "Large TypeScript project for testing mind indexing",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "lodash": "^4.17.21",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/lodash": "^4.14.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
+
