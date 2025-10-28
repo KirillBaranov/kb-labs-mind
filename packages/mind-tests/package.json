@@ -1,0 +1,40 @@
+{
+  "name": "@kb-labs/mind-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Test suite for KB Labs Mind",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:fixtures": "vitest run --reporter=verbose fixtures",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kb-labs/mind-core": "workspace:*",
+    "@kb-labs/mind-indexer": "workspace:*",
+    "@kb-labs/mind-query": "workspace:*",
+    "@kb-labs/mind-cli": "workspace:*",
+    "@kb-labs/mind-types": "workspace:*",
+    "@kb-labs/mind-pack": "workspace:*",
+    "@kb-labs/mind-adapters": "workspace:*",
+    "vitest": "^3.2.4"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "link:../../kb-labs-devkit",
+    "@vitest/coverage-v8": "^3",
+    "rimraf": "^6",
+    "tsup": "^8",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.18.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0"
+}

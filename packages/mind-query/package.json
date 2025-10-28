@@ -1,0 +1,31 @@
+{
+  "name": "@kb-labs/mind-query",
+  "version": "0.1.0",
+  "description": "KB Labs Mind Query is a library for querying the KB Labs Mind index.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@kb-labs/mind-core": "link:../mind-core",
+    "@kb-labs/mind-types": "link:../mind-types",
+    "@kb-labs/mind-indexer": "link:../mind-indexer"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^3"
+  }
+}
