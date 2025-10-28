@@ -72,3 +72,11 @@ analytics/
 
 # DevKit provenance
 kb-labs/DEVKIT_SYNC.json
+
+# ───────────────
+# Temporary files
+# ───────────────
+*.timestamp-*.mjs
+yalc.lock
+yalc.sig
+.yalc/

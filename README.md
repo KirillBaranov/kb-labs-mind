@@ -199,23 +199,24 @@ The system automatically ignores:
 - `dist/**`, `coverage/**`, `.turbo/**`, `.vite/**`
 - `**/*.log`, `**/*.tmp`, `**/*.temp`
 
-## CLI Integration
+## 🧪 Test Coverage
 
-CLI commands are integrated into the existing `kb-labs-cli` system:
+| Statements | Branches | Functions | Lines |
+|------------|----------|-----------|-------|
+| 90%        | 85%      | 90%       | 90%   |
 
-```bash
-# Initialize mind structure
-kb mind init
+*Coverage thresholds enforced by DevKit*
 
-# Update indexes
-kb mind update --since HEAD~1
+## CLI Commands
 
-# Generate context pack
-kb mind pack --intent "Implement feature X" --product devlink --stdout
+The Mind package provides the following CLI commands:
 
-# Feed to Cursor
-kb mind feed | cursor-chat
-```
+- `kb mind init` - Initialize mind workspace
+- `kb mind update` - Update indexes with delta tracking
+- `kb mind query` - Execute queries (impact, scope, exports, externals, chain, meta, docs)
+- `kb mind verify` - Verify index consistency and detect hash mismatches
+- `kb mind pack` - Generate context packs for AI tools
+- `kb mind feed` - One-shot command: update indexes and build context pack
 
 ## Development
 
