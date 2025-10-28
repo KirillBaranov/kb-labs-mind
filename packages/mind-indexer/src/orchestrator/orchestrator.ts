@@ -5,6 +5,8 @@
 import { indexApiFiles } from '../indexers/api.js';
 import { indexDependencies } from '../indexers/deps.js';
 import { indexGitDiff } from '../indexers/diff.js';
+import { indexMeta } from '../indexers/meta.js';
+import { indexDocs } from '../indexers/docs.js';
 import { isTimeBudgetExceeded } from '../utils/workspace.js';
 import type { IndexerContext } from '../types/index.js';
 import type { DeltaReport } from '../types/index.js';
@@ -74,6 +76,18 @@ export async function orchestrateIndexing(
 
     // Index git diff
     const diffResult = await indexGitDiff(ctx, since);
+
+    // Index meta and docs (non-critical, can be skipped if time budget exceeded)
+    try {
+      await indexMeta(ctx);
+      await indexDocs(ctx);
+    } catch (error: any) {
+      ctx.log({ 
+        level: 'warn', 
+        msg: 'Meta/docs indexing failed', 
+        error: error.message 
+      });
+    }
 
     const usedMs = Date.now() - ctx.startTime;
     const partial = usedMs >= ctx.timeBudgetMs;

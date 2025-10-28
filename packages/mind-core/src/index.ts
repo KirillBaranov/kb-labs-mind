@@ -1,11 +1,10 @@
 /**
  * @kb-labs/mind-core
- * Core contracts, errors, and utilities for KB Labs Mind
+ * Core utilities, errors, and constants for KB Labs Mind
  */
 
-// Types
-export * from './types/index.js';
-export * from './types/pack.js';
+// Re-export types from mind-types for backward compatibility
+export * from '@kb-labs/mind-types';
 
 // Errors
 export * from './error/mind-error.js';

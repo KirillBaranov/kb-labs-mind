@@ -13,9 +13,6 @@
     },
     "./dist/*": "./dist/*"
   },
-  "kb": {
-    "commandsManifest": "./dist/cli.manifest.js"
-  },
   "files": [
     "dist",
     "README.md",
@@ -34,13 +31,14 @@
   },
   "devDependencies": {
     "@kb-labs/devkit": "github:KirillBaranov/kb-labs-devkit#main",
+    "@types/node": "^24.7.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@kb-labs/shared-cli-ui": "workspace:*"
+    "@kb-labs/mind-types": "workspace:*"
   },
   "engines": {
     "node": ">=20.0.0",

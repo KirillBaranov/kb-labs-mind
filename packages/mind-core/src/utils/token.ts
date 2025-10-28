@@ -14,7 +14,7 @@ export class DefaultTokenEstimator implements ITokenEstimator {
   private readonly punctuationWeight: number = 0.8;
 
   estimate(text: string): number {
-    if (!text || text.length === 0) return 0;
+    if (!text || text.length === 0) {return 0;}
 
     // Count words, punctuation, and whitespace
     const words = text.match(/\b\w+\b/g) || [];
@@ -53,7 +53,7 @@ export class DefaultTokenEstimator implements ITokenEstimator {
     const ratio = maxTokens / estimatedTokens;
     const targetLines = Math.max(1, Math.floor(lines.length * ratio));
     
-    if (targetLines >= lines.length) return text;
+    if (targetLines >= lines.length) {return text;}
 
     switch (mode) {
       case 'start':

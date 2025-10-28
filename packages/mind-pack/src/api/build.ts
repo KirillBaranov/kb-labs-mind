@@ -7,13 +7,13 @@ import { join } from 'node:path';
 import { 
   DEFAULT_BUDGET, 
   DEFAULT_PRESET, 
-  getGenerator, 
+  getGenerator as _getGenerator, 
   estimateTokens,
   truncateToTokens 
 } from '@kb-labs/mind-core';
 import { orchestratePackBuilding } from '../builder/orchestrator.js';
 import type { PackOptions, PackResult } from '../types/index.js';
-import type { MindIndex, ApiIndex, DepsGraph, RecentDiff, ContextPackJson } from '@kb-labs/mind-core';
+import type { MindIndex, ApiIndex, DepsGraph, RecentDiff, ContextPackJson as _ContextPackJson } from '@kb-labs/mind-core';
 
 /**
  * Build context pack from Mind indexes
@@ -26,6 +26,7 @@ export async function buildPack(opts: PackOptions): Promise<PackResult> {
     preset = DEFAULT_PRESET, 
     budget = DEFAULT_BUDGET, 
     withBundle = false, 
+    seed,
     log 
   } = opts;
 
@@ -36,6 +37,7 @@ export async function buildPack(opts: PackOptions): Promise<PackResult> {
     budget,
     preset,
     withBundle,
+    seed,
     log: log || (() => {})
   };
 

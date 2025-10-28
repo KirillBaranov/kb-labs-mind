@@ -4,9 +4,10 @@
 
 import { ensureMindStructure } from "../fs/ensure.js";
 import { writeJson } from "../fs/json.js";
-import { getGenerator } from "@kb-labs/mind-core";
+import { getGenerator, toPosix } from "@kb-labs/mind-core";
+import { promises as fsp } from "node:fs";
 import type { InitOptions } from "../types/index.js";
-import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-core";
+import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
 
 /**
  * Initialize Mind structure with empty JSON artifacts
@@ -18,6 +19,16 @@ export async function initMindStructure(opts: InitOptions): Promise<string> {
     // Ensure directory structure
     const mindDir = await ensureMindStructure(cwd);
     log?.({ level: 'info', msg: 'Created .kb/mind directory structure', path: mindDir });
+
+    // Check if index.json already exists
+    const indexPath = `${mindDir}/index.json`;
+    try {
+      await fsp.access(indexPath);
+      log?.({ level: 'info', msg: 'Mind structure already exists', path: mindDir });
+      return mindDir;
+    } catch {
+      // Index doesn't exist, continue with initialization
+    }
 
     const generator = getGenerator();
     const now = new Date().toISOString();
@@ -31,7 +42,8 @@ export async function initMindStructure(opts: InitOptions): Promise<string> {
       filesIndexed: 0,
       apiIndexHash: "",
       depsHash: "",
-      recentDiffHash: ""
+      recentDiffHash: "",
+      indexChecksum: ""
     };
 
     // Create empty api-index.json
@@ -45,6 +57,7 @@ export async function initMindStructure(opts: InitOptions): Promise<string> {
     const depsGraph: DepsGraph = {
       schemaVersion: "1.0",
       generator,
+      root: toPosix(cwd),
       packages: {},
       edges: []
     };

@@ -2,7 +2,7 @@
  * Types for KB Labs Mind Pack
  */
 
-import type { ContextBudget, ContextPreset, ContextPackJson, ContextSection } from "@kb-labs/mind-core";
+import type { ContextBudget, ContextPreset, ContextPackJson, ContextSection } from "@kb-labs/mind-types";
 
 export interface PackOptions {
   cwd: string;
@@ -11,6 +11,7 @@ export interface PackOptions {
   preset?: ContextPreset;           // weights
   budget: ContextBudget;            // caps + truncation
   withBundle?: boolean;             // if true, try spawn "kb bundle print --product <id> --json"
+  seed?: number;                    // random seed for deterministic output
   log?: (e: object) => void;
 }
 
@@ -35,5 +36,6 @@ export interface PackContext {
   budget: ContextBudget;
   preset?: ContextPreset;
   withBundle?: boolean;
+  seed?: number;                    // random seed for deterministic output
   log: (e: object) => void;
 }

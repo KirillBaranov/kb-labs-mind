@@ -4,7 +4,7 @@
 
 import * as ts from "typescript";
 import type { IExportExtractor } from "../types/index.js";
-import type { ApiExport } from "@kb-labs/mind-core";
+import type { ApiExport } from "@kb-labs/mind-types";
 
 /**
  * TypeScript export extractor implementation
@@ -51,7 +51,7 @@ export class TSExtractor implements IExportExtractor {
 
       visit(sourceFile);
       return exports;
-    } catch (error) {
+      } catch {
       // Fail-open: return empty array on parse errors
       return [];
     }
@@ -164,7 +164,7 @@ export class TSExtractor implements IExportExtractor {
       
       // Truncate to first line and limit length
       const firstLine = signature.split('\n')[0];
-      if (!firstLine) return '';
+      if (!firstLine) {return '';}
       return firstLine.length > 100 ? firstLine.slice(0, 97) + '...' : firstLine;
     } catch {
       return '';

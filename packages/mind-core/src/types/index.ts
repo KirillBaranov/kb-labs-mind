@@ -46,8 +46,9 @@ export interface ApiExport {
 export interface DepsGraph {
   schemaVersion: SchemaVersion;
   generator: string;
-  packages: Record<string, PackageNode>;
-  edges: Array<{ from: string; to: string; type: "runtime" | "dev" | "peer" }>;
+  root: string;                   // POSIX workspace root
+  packages: Record<string, PackageNode>;  // Optional package-level info
+  edges: Array<{ from: string; to: string; type: "runtime" | "dev" | "peer" | "type" }>;  // File-based edges (POSIX paths relative to workspace root)
 }
 
 export interface PackageNode {

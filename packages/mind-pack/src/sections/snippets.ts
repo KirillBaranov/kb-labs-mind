@@ -3,6 +3,7 @@
  */
 
 import { estimateTokens, truncateToTokens, MAX_SNIPPET_LINES } from '@kb-labs/mind-core';
+import { sortEntriesDeterministically } from '../utils/deterministic';
 import type { PackContext } from '../types/index.js';
 import type { ApiIndex } from '@kb-labs/mind-core';
 
@@ -17,13 +18,18 @@ export async function buildSnippetsSection(
   let content = '# Implementation Snippets\n\n';
   
   const files = Object.entries(apiIndex.files);
-  for (const [filePath, file] of files.slice(0, 5)) { // Limit to 5 files
+  const sortedFiles = sortEntriesDeterministically(files, context.seed);
+  for (const [filePath, file] of sortedFiles.slice(0, 5)) { // Limit to 5 files
     content += `## ${filePath}\n`;
     content += `Size: ${file.size} bytes\n`;
     content += `Exports: ${file.exports.length}\n\n`;
     
-    // Add some sample exports
-    for (const export_ of file.exports.slice(0, 3)) {
+    // Add some sample exports with deterministic sorting
+    const sortedExports = sortEntriesDeterministically(
+      file.exports.map(exp => [exp.name, exp] as [string, any]), 
+      context.seed
+    );
+    for (const [, export_] of sortedExports.slice(0, 3)) {
       content += `### ${export_.name}\n`;
       if (export_.jsdoc) {
         content += `${export_.jsdoc}\n\n`;

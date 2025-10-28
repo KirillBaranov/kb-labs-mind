@@ -2,7 +2,7 @@
  * Types for KB Labs Mind Indexer
  */
 
-import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-core";
+import type { MindIndex as _MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
 
 export interface UpdateOptions {
   cwd: string;
@@ -23,6 +23,7 @@ export interface DeltaReport {
 
 export interface InitOptions {
   cwd: string;
+  force?: boolean;
   log?: (e: object) => void;
 }
 
@@ -43,7 +44,9 @@ export interface IndexerContext {
   recentDiff: RecentDiff;
 }
 
+import type { ApiExport } from "@kb-labs/mind-core";
+
 // Adapter interface for TS parsing
 export interface IExportExtractor {
-  extractExports(filePath: string, content: string): Promise<import("@kb-labs/mind-core").ApiExport[]>;
+  extractExports(filePath: string, content: string): Promise<ApiExport[]>;
 }

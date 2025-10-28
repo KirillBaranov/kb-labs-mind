@@ -3,6 +3,7 @@
  */
 
 import { estimateTokens, truncateToTokens } from '@kb-labs/mind-core';
+import { sortDeterministically } from '../utils/deterministic';
 import type { PackContext } from '../types/index.js';
 import type { RecentDiff } from '@kb-labs/mind-core';
 
@@ -20,7 +21,8 @@ export async function buildDiffsSection(
     content += 'No recent changes detected.\n';
   } else {
     content += `Since: ${recentDiff.since}\n\n`;
-    for (const file of recentDiff.files.slice(0, 20)) { // Limit to 20 files
+    const sortedFiles = sortDeterministically(recentDiff.files, context.seed);
+    for (const file of sortedFiles.slice(0, 20)) { // Limit to 20 files
       content += `- ${file.status} ${file.path}\n`;
     }
   }

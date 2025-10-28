@@ -2,7 +2,7 @@
  * Workspace utilities for KB Labs Mind Indexer
  */
 
-import { findWorkspaceRoot } from "@kb-labs/mind-core";
+import { findWorkspaceRoot, toPosix } from "@kb-labs/mind-core";
 import type { IndexerContext } from "../types/index.js";
 
 /**
@@ -32,6 +32,7 @@ export async function createIndexerContext(
     depsGraph: {
       schemaVersion: "1.0",
       generator,
+      root: toPosix(root),
       packages: {},
       edges: []
     },

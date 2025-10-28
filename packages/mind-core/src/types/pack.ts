@@ -30,6 +30,8 @@ export interface ContextPackJson {
   sections: Record<ContextSection, string>;  // text per section
   tokensEstimate: number;
   sectionUsage: Record<ContextSection, number>; // per-section token usage
+  seed?: number;                    // random seed used for deterministic output
+  deterministic: boolean;           // whether output is deterministic
 }
 
 // ITokenEstimator strategy (pluggable)

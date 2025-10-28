@@ -29,14 +29,16 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/mind-core": "workspace:*",
-    "@kb-labs/mind-adapters": "workspace:*"
+    "@kb-labs/mind-types": "link:../mind-types",
+    "@kb-labs/mind-core": "link:../mind-core",
+    "@kb-labs/mind-adapters": "link:../mind-adapters",
+    "typescript": "^5.6.3"
   },
   "devDependencies": {
     "@kb-labs/devkit": "github:KirillBaranov/kb-labs-devkit#main",
+    "@types/node": "^24.7.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
-    "typescript": "^5.6.3",
     "vitest": "^3.2.4"
   },
   "engines": {

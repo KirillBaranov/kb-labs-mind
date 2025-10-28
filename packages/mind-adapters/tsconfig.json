@@ -1,9 +1,9 @@
 {
-  "extends": "@kb-labs/devkit/tsconfig/lib.json",
+  "extends": "@kb-labs/devkit/tsconfig/node.json",
+  "include": [
+    "src"
+  ],
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules"]
+    "noEmit": true
+  }
 }

@@ -79,7 +79,8 @@ export async function orchestratePackBuilding(
     context.product,
     context.budget,
     sections,
-    sectionUsage
+    sectionUsage,
+    context.seed
   );
 
   // Generate Markdown

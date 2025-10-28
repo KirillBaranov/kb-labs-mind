@@ -19,11 +19,11 @@ export async function getBundleInfo(
       execAsync('kb', ['bundle', 'print', '--product', product, '--json'], { 
         stdio: 'pipe',
         timeout: timeoutMs 
-      }),
+      }) as Promise<{ stdout: string }>,
       new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout')), timeoutMs)
       )
-    ]);
+    ]) as { stdout: string };
 
     const bundleData = JSON.parse(stdout.toString());
     

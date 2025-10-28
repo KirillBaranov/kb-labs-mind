@@ -14,8 +14,8 @@ export async function listStagedFiles(cwd: string): Promise<string[]> {
     const checkResult = spawn('git', ['rev-parse', '--git-dir'], { cwd, stdio: 'pipe' });
     await new Promise((resolve, reject) => {
       checkResult.on('close', (code) => {
-        if (code === 0) resolve(code);
-        else reject(new Error('Not in git repository'));
+        if (code === 0) {resolve(code);}
+        else {reject(new Error('Not in git repository'));}
       });
     });
   } catch {
@@ -36,8 +36,8 @@ export async function listStagedFiles(cwd: string): Promise<string[]> {
         stdout += data.toString();
       });
       result.on('close', (code) => {
-        if (code === 0) resolve(stdout);
-        else reject(new Error(`Git command failed with code ${code}`));
+        if (code === 0) {resolve(stdout);}
+        else {reject(new Error(`Git command failed with code ${code}`));}
       });
     });
 

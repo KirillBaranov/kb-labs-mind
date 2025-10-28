@@ -3,7 +3,7 @@
  */
 
 import { promises as fsp } from "node:fs";
-import path from "node:path";
+import { dirname } from "node:path";
 import { sha256 } from "@kb-labs/mind-core";
 
 /**
@@ -51,6 +51,9 @@ export async function writeJson<T>(filePath: string, data: T): Promise<void> {
   const sorted = sortKeysRecursively(data);
   const content = JSON.stringify(sorted, null, 2) + '\n';
 
+  // Ensure directory exists
+  await fsp.mkdir(dirname(filePath), { recursive: true });
+
   // Write to temp file
   await fsp.writeFile(tmp, content, 'utf8');
 
@@ -59,7 +62,7 @@ export async function writeJson<T>(filePath: string, data: T): Promise<void> {
     try {
       await fsp.unlink(filePath);
     } catch (err: any) {
-      if (err.code !== "ENOENT") throw err;
+      if (err.code !== "ENOENT") {throw err;}
     }
   }
 

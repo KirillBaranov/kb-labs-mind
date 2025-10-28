@@ -5,6 +5,7 @@ import { initMindStructure } from '../../../mind-indexer/src/api/init';
 import { updateIndexes } from '../../../mind-indexer/src/api/update';
 import { buildPack } from '../api/build.js';
 import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
+import type { ContextSection } from '@kb-labs/mind-types';
 
 describe('E2E Mind Pack', () => {
   const fixtureDir = '/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/sample-project';
@@ -88,8 +89,8 @@ describe('E2E Mind Pack', () => {
     ];
     
     for (const section of expectedSections) {
-      expect(result.json.sections[section]).toBeDefined();
-      expect(typeof result.json.sections[section]).toBe('string');
+      expect(result.json.sections[section as ContextSection]).toBeDefined();
+      expect(typeof result.json.sections[section as ContextSection]).toBe('string');
     }
 
     // Verify markdown content

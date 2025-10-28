@@ -2,7 +2,7 @@
  * JSON formatter for KB Labs Mind Pack
  */
 
-import type { ContextPackJson } from '@kb-labs/mind-core';
+import type { ContextPackJson } from '@kb-labs/mind-types';
 import { getGenerator } from '@kb-labs/mind-core';
 
 /**
@@ -13,7 +13,8 @@ export function createContextPackJson(
   product: string | undefined,
   budget: any,
   sections: Record<string, string>,
-  sectionUsage: Record<string, number>
+  sectionUsage: Record<string, number>,
+  seed?: number
 ): ContextPackJson {
   return {
     schemaVersion: "1.0",
@@ -23,6 +24,8 @@ export function createContextPackJson(
     budgetApplied: budget,
     sections,
     tokensEstimate: Object.values(sectionUsage).reduce((sum, tokens) => sum + tokens, 0),
-    sectionUsage
+    sectionUsage,
+    seed,
+    deterministic: true
   };
 }

@@ -4,10 +4,11 @@
 
 import { createIndexerContext, isTimeBudgetExceeded } from "../utils/workspace.js";
 import { readJson, writeJson, computeJsonHash } from "../fs/json.js";
+import { ensureMindStructure } from "../fs/ensure.js";
 import { orchestrateIndexing } from "../orchestrator/orchestrator.js";
-import { DEFAULT_TIME_BUDGET_MS } from "@kb-labs/mind-core";
+import { DEFAULT_TIME_BUDGET_MS, toPosix, sha256 } from "@kb-labs/mind-core";
 import type { UpdateOptions, DeltaReport } from "../types/index.js";
-import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-core";
+import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
 
 /**
  * Update Mind indexes with delta indexing
@@ -15,16 +16,21 @@ import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-c
 export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
   const { cwd, changed, since, timeBudgetMs = DEFAULT_TIME_BUDGET_MS, log } = opts;
   
+  // Ensure mind structure exists
+  await ensureMindStructure(cwd);
+  
   const startTime = Date.now();
   const ctx = await createIndexerContext(cwd, timeBudgetMs, log || (() => {}));
   
   try {
     // Load existing indexes
-    const [index, apiIndex, depsGraph, recentDiff] = await Promise.all([
+    const [index, apiIndex, depsGraph, recentDiff, meta, docs] = await Promise.all([
       readJson<MindIndex>(`${cwd}/.kb/mind/index.json`),
       readJson<ApiIndex>(`${cwd}/.kb/mind/api-index.json`),
       readJson<DepsGraph>(`${cwd}/.kb/mind/deps.json`),
-      readJson<RecentDiff>(`${cwd}/.kb/mind/recent-diff.json`)
+      readJson<RecentDiff>(`${cwd}/.kb/mind/recent-diff.json`),
+      readJson<any>(`${cwd}/.kb/mind/meta.json`),
+      readJson<any>(`${cwd}/.kb/mind/docs.json`)
     ]);
 
     // Initialize if not exists
@@ -42,7 +48,8 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
         filesIndexed: 0,
         apiIndexHash: "",
         depsHash: "",
-        recentDiffHash: ""
+        recentDiffHash: "",
+        indexChecksum: ""
       };
       
       const newApiIndex: ApiIndex = {
@@ -54,6 +61,7 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
       const newDepsGraph: DepsGraph = {
         schemaVersion: "1.0",
         generator,
+        root: toPosix(cwd),
         packages: {},
         edges: []
       };
@@ -95,12 +103,37 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
 
     // Update index with new hashes
     const now = new Date().toISOString();
+    
+    // Compute combined checksum with conditional recentDiff to avoid volatility
+    interface ChecksumInput {
+      apiIndex: ApiIndex;
+      deps: DepsGraph;
+      meta: any;
+      docs: any;
+      recentDiff?: RecentDiff;
+    }
+
+    const hashInputs: ChecksumInput = {
+      apiIndex: apiIndex,
+      deps: depsGraph,
+      meta: meta || {},
+      docs: docs || {}
+    };
+
+    // Only include recentDiff if present (avoids checksum changes on empty diffs)
+    if (recentDiff?.files?.length > 0) {
+      hashInputs.recentDiff = recentDiff;
+    }
+
+    const indexChecksum = sha256(JSON.stringify(hashInputs));
+    
     const updatedIndex: MindIndex = {
       ...index,
       updatedAt: now,
       apiIndexHash: computeJsonHash(apiIndex),
       depsHash: computeJsonHash(depsGraph),
-      recentDiffHash: computeJsonHash(recentDiff)
+      recentDiffHash: computeJsonHash(recentDiff),
+      indexChecksum
     };
 
     await writeJson(`${cwd}/.kb/mind/index.json`, updatedIndex);
