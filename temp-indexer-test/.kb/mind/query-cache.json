@@ -1,0 +1,268 @@
+{
+  "Q-417834e92c20": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.659Z",
+    "depsHash": "",
+    "queryId": "Q-417834e92c20",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 1
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {
+        "path": "src"
+      },
+      "paths": {},
+      "query": "scope",
+      "result": {
+        "count": 0,
+        "edges": []
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-6ac706b15ea9": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.662Z",
+    "depsHash": "",
+    "queryId": "Q-6ac706b15ea9",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 1,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 0
+        },
+        "tokensEstimate": 76,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "meta",
+      "result": {
+        "generatedAt": "2025-10-28T12:17:27.629Z",
+        "products": [
+          {
+            "description": "",
+            "docs": [],
+            "id": "sample-project",
+            "maintainers": [
+              "unknown"
+            ],
+            "name": "sample-project"
+          }
+        ],
+        "project": "sample-project"
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-8a6c2c6dbcff": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.661Z",
+    "depsHash": "",
+    "queryId": "Q-8a6c2c6dbcff",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 0
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "externals",
+      "result": {
+        "count": 0,
+        "externals": {}
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-99e6b71d4aa6": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.663Z",
+    "depsHash": "",
+    "queryId": "Q-99e6b71d4aa6",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 1
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "docs",
+      "result": {
+        "count": 0,
+        "docs": []
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-a7cdd40d0dc8": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.660Z",
+    "depsHash": "",
+    "queryId": "Q-a7cdd40d0dc8",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 1,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 1,
+          "total": 1
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {
+        "file": "src/index.ts"
+      },
+      "paths": {},
+      "query": "exports",
+      "result": {
+        "count": 0,
+        "exports": []
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-c026c1f8c6b7": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.658Z",
+    "depsHash": "",
+    "queryId": "Q-c026c1f8c6b7",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 1
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {
+        "file": "src/index.ts"
+      },
+      "paths": {},
+      "query": "impact",
+      "result": {
+        "count": 0,
+        "importers": []
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-e05f1729e1ad": {
+    "apiHash": "",
+    "createdAt": "2025-10-28T12:17:27.661Z",
+    "depsHash": "",
+    "queryId": "Q-e05f1729e1ad",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 0
+        },
+        "tokensEstimate": 33,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {
+        "file": "src/index.ts"
+      },
+      "paths": {
+        "f1": "src/index.ts"
+      },
+      "query": "chain",
+      "result": {
+        "levels": [
+          {
+            "depth": 0,
+            "files": [
+              "src/index.ts"
+            ]
+          }
+        ],
+        "visited": 1
+      },
+      "schemaVersion": "1.0"
+    }
+  }
+}

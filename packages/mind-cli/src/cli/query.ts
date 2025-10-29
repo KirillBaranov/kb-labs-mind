@@ -8,16 +8,14 @@ import type { QueryName } from '@kb-labs/mind-types';
 import { TimingTracker, formatTiming, box, keyValue } from '@kb-labs/shared-cli-ui';
 import { resolve, join } from 'node:path';
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { toToxQueryResult } from '@kb-labs/tox-adapters';
-import { TOX_JSON_CONTENT_TYPE } from '@kb-labs/tox-codec-json';
+import { encode } from '@byjohann/toon';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags) => {
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
   const compact = !!flags.compact;
-  const toxMode = !!flags.tox;
-  const toxSidecar = !!flags['tox-sidecar'];
-  const toxPreset = typeof flags['tox-preset'] === 'string' ? flags['tox-preset'] : undefined;
+  const toonMode = !!flags.toon;
+  const toonSidecar = !!flags['toon-sidecar'];
   
   const cwd = typeof flags.cwd === 'string' ? flags.cwd : ctx.cwd;
   const queryName = flags.query;
@@ -79,57 +77,41 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       aiMode: !!flags['ai-mode']
     });
     
-    // Handle TOX output
-    if (toxMode || toxSidecar) {
-      const toxResult = toToxQueryResult(result, {
-        preset: toxPreset || 'mind-v1',
-        compact: compact,
-        strict: false,
-      });
-
-      if (!toxResult.ok || !toxResult.result) {
-        if (jsonMode) {
-          ctx.presenter.json({
-            ok: false,
-            code: toxResult.code || 'TOX_ENCODE_ERROR',
-            message: toxResult.message || 'TOX encoding failed',
-          });
-        } else {
-          ctx.presenter.error(toxResult.message || 'TOX encoding failed');
-        }
-        return 1;
-      }
+    // Handle TOON output (token-efficient LLM format)
+    if (toonMode || toonSidecar) {
+      const toonOutput = encode(result);
 
       // Write sidecar file if requested
-      if (toxSidecar) {
+      if (toonSidecar) {
         const sidecarDir = join(cwd, '.kb', 'mind', 'query');
         mkdirSync(sidecarDir, { recursive: true });
-        const sidecarPath = join(sidecarDir, `${result.meta.queryId || 'query'}.tox.json`);
-        writeFileSync(sidecarPath, JSON.stringify(toxResult.result, null, 2), 'utf-8');
+        const sidecarPath = join(sidecarDir, `${result.meta.queryId || 'query'}.toon`);
+        writeFileSync(sidecarPath, toonOutput, 'utf-8');
         
         if (!quiet && !jsonMode) {
-          ctx.presenter.info(`Sidecar written: ${sidecarPath}`);
+          ctx.presenter.info(`TOON sidecar written: ${sidecarPath}`);
         }
       }
 
-      // Output TOX JSON
-      if (toxMode) {
+      // Output TOON format
+      if (toonMode) {
         if (jsonMode) {
-          // Output Content-Type header hint for TOX
-          ctx.presenter.write(`// Content-Type: ${TOX_JSON_CONTENT_TYPE}\n`);
-          const output = compact ? JSON.stringify(toxResult.result) : JSON.stringify(toxResult.result, null, 2);
-          ctx.presenter.write(output);
+          // Output as JSON with toon content
+          ctx.presenter.json({
+            ok: true,
+            format: 'toon',
+            content: toonOutput
+          });
         } else {
           if (!quiet) {
             const lines = keyValue({
               'Query': queryName,
-              'Format': 'TOX JSON',
-              'Content-Type': TOX_JSON_CONTENT_TYPE,
+              'Format': 'TOON',
               'Time': formatTiming(tracker.total())
             });
-            ctx.presenter.write(box('Mind Query (TOX)', lines));
+            ctx.presenter.write(box('Mind Query (TOON)', lines));
           }
-          ctx.presenter.write(JSON.stringify(toxResult.result, null, 2));
+          ctx.presenter.write(toonOutput);
         }
         return 0;
       }
