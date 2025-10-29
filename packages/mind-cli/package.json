@@ -39,8 +39,7 @@
     "@kb-labs/mind-query": "link:../mind-query",
     "@kb-labs/mind-types": "link:../mind-types",
     "@kb-labs/shared-cli-ui": "link:../../../kb-labs-shared/packages/cli-ui",
-    "@kb-labs/tox-adapters": "link:../../../kb-labs-tox/packages/tox-adapters",
-    "@kb-labs/tox-codec-json": "link:../../../kb-labs-tox/packages/tox-codec-json"
+    "@byjohann/toon": "0.4.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "github:KirillBaranov/kb-labs-devkit#main",
