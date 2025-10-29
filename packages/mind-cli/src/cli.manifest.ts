@@ -402,6 +402,21 @@ export const commands: CommandManifest[] = [
         type: 'string',
         description: 'Scope path (for externals query)',
       },
+      {
+        name: 'tox',
+        type: 'boolean',
+        description: 'Output in TOX format (application/tox+json;v=1)',
+      },
+      {
+        name: 'tox-sidecar',
+        type: 'boolean',
+        description: 'Write TOX sidecar file (.kb/mind/query/<queryId>.tox.json)',
+      },
+      {
+        name: 'tox-preset',
+        type: 'string',
+        description: 'TOX preset file path (default: mind-v1)',
+      },
     ],
     examples: [
       'kb mind query impact --file src/index.ts',
@@ -409,6 +424,9 @@ export const commands: CommandManifest[] = [
       'kb mind query exports --file src/index.ts --cache-mode ci',
       'kb mind query docs --type adr --limit 10',
       'kb mind query scope --path packages/core --depth 3',
+      'kb mind query externals --tox',
+      'kb mind query externals --tox --tox-sidecar',
+      'kb mind query externals --tox --tox-preset presets/custom.json',
     ],
     loader: async () => import('./cli/query'),
   },
