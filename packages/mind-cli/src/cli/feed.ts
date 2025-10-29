@@ -79,7 +79,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       });
     } else {
       ctx.presenter.error(error.message);
-      if (!quiet) {
+      if (!quiet && error.hint) {
         ctx.presenter.info(error.hint);
       }
     }
