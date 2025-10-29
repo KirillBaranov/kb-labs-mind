@@ -20,11 +20,11 @@ export async function loadIndexes(cwd: string): Promise<LoadedIndexes> {
   const mindDir = join(cwd, '.kb', 'mind');
   
   const [index, api, deps, meta, docs] = await Promise.all([
-    readJson<MindIndex>(join(mindDir, 'index.json')),
-    readJson<ApiIndex>(join(mindDir, 'api-index.json')),
-    readJson<DepsGraph>(join(mindDir, 'deps.json')),
-    readJson<ProjectMeta>(join(mindDir, 'meta.json')),
-    readJson<DocsIndex>(join(mindDir, 'docs-index.json'))
+    readJson(join(mindDir, 'index.json')) as Promise<MindIndex | null>,
+    readJson(join(mindDir, 'api-index.json')) as Promise<ApiIndex | null>,
+    readJson(join(mindDir, 'deps.json')) as Promise<DepsGraph | null>,
+    readJson(join(mindDir, 'meta.json')) as Promise<ProjectMeta | null>,
+    readJson(join(mindDir, 'docs-index.json')) as Promise<DocsIndex | null>
   ]);
   
   if (!index || !api || !deps) {
