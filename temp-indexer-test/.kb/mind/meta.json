@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "generator": "kb-labs-mind@0.1.0",
+  "project": "sample-project",
+  "products": [
+    {
+      "id": "sample-project",
+      "name": "sample-project",
+      "description": "",
+      "maintainers": [
+        "unknown"
+      ],
+      "docs": []
+    }
+  ],
+  "generatedAt": "2025-10-28T12:17:27.629Z"
+}
