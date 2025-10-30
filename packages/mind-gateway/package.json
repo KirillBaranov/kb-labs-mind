@@ -12,14 +12,14 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/mind-query": "workspace:*",
-    "@kb-labs/mind-types": "workspace:*",
     "@kb-labs/mind-cli": "workspace:*",
+    "@kb-labs/mind-core": "workspace:*",
     "@kb-labs/mind-indexer": "workspace:*",
-    "@kb-labs/mind-core": "workspace:*"
+    "@kb-labs/mind-query": "workspace:*",
+    "@kb-labs/mind-types": "workspace:*"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "link:../../kb-labs-devkit",
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^20.0.0",
     "rimraf": "^6",
     "tsup": "^8",

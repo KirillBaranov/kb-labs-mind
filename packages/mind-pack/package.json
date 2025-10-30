@@ -29,11 +29,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/mind-types": "workspace:*",
-    "@kb-labs/mind-core": "workspace:*"
+    "@kb-labs/mind-core": "workspace:*",
+    "@kb-labs/mind-types": "workspace:*"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "github:KirillBaranov/kb-labs-devkit#main",
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.7.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",

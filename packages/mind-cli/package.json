@@ -33,16 +33,16 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/mind-core": "link:../mind-core",
-    "@kb-labs/mind-indexer": "link:../mind-indexer",
-    "@kb-labs/mind-pack": "link:../mind-pack",
-    "@kb-labs/mind-query": "link:../mind-query",
-    "@kb-labs/mind-types": "link:../mind-types",
-    "@kb-labs/shared-cli-ui": "link:../../../kb-labs-shared/packages/cli-ui",
-    "@byjohann/toon": "0.4.0"
+    "@byjohann/toon": "0.4.0",
+    "@kb-labs/mind-core": "workspace:*",
+    "@kb-labs/mind-indexer": "workspace:*",
+    "@kb-labs/mind-pack": "workspace:*",
+    "@kb-labs/mind-query": "workspace:*",
+    "@kb-labs/mind-types": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:*"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "github:KirillBaranov/kb-labs-devkit#main",
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.7.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
