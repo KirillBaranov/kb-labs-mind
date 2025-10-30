@@ -34,7 +34,7 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Initialize mind workspace',
     longDescription: 'Set up mind workspace with initial configuration',
-    requires: ['@kb-labs/mind-indexer'],
+    requires: ['@kb-labs/mind-indexer@^0.1.0'],
     flags: [
       {
         name: 'cwd',
@@ -78,7 +78,7 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Update mind workspace',
     longDescription: 'Update mind workspace indexes with delta tracking',
-    requires: ['@kb-labs/mind-indexer'],
+    requires: ['@kb-labs/mind-indexer@^0.1.0'],
     flags: [
       {
         name: 'cwd',
@@ -126,7 +126,7 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Pack mind workspace',
     longDescription: 'Create a context pack from mind workspace',
-    requires: ['@kb-labs/mind-pack'],
+    requires: ['@kb-labs/mind-pack@^0.1.0'],
     flags: [
       {
         name: 'cwd',
@@ -204,7 +204,7 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Feed mind workspace',
     longDescription: 'One-shot command: update indexes and build context pack for AI tools',
-    requires: ['@kb-labs/mind-indexer', '@kb-labs/mind-pack'],
+    requires: ['@kb-labs/mind-indexer@^0.1.0', '@kb-labs/mind-pack@^0.1.0'],
     flags: [
       {
         name: 'cwd',
@@ -296,7 +296,7 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Query mind indexes',
     longDescription: 'Execute queries on indexed codebase (impact, scope, exports, externals, chain, meta, docs)',
-    requires: ['@kb-labs/mind-query'],
+    requires: ['@kb-labs/mind-query@^0.1.0'],
     flags: [
       {
         name: 'cwd',
@@ -431,7 +431,7 @@ export const commands: CommandManifest[] = [
     group: 'mind',
     describe: 'Verify mind workspace consistency',
     longDescription: 'Check index file consistency and detect hash mismatches',
-    requires: ['@kb-labs/mind-indexer'],
+    requires: ['@kb-labs/mind-indexer@^0.1.0'],
     flags: [
       {
         name: 'cwd',
