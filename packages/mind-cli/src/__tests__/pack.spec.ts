@@ -560,5 +560,3 @@ describe('Mind Pack Command', () => {
 
     expect(result).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('String error');
-  });
-});

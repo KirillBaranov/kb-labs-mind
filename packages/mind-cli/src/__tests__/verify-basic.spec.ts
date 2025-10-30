@@ -66,9 +66,9 @@ describe('Mind Verify Command - Basic Tests', () => {
 
     // Mock checksum computation to return consistent hashes
     vi.mocked(sha256).mockImplementation((input: string) => {
-      if (input.includes('api-index')) return 'api123';
-      if (input.includes('deps')) return 'deps456';
-      if (input.includes('checksum')) return 'checksum789';
+      if (input.includes('api-index')) {return 'api123';}
+      if (input.includes('deps')) {return 'deps456';}
+      if (input.includes('checksum')) {return 'checksum789';}
       return 'hash123';
     });
 
@@ -153,9 +153,9 @@ describe('Mind Verify Command - Basic Tests', () => {
 
     // Mock checksum computation to return consistent hashes
     vi.mocked(sha256).mockImplementation((input: string) => {
-      if (input.includes('api-index')) return 'api123';
-      if (input.includes('deps')) return 'deps456';
-      if (input.includes('checksum')) return 'checksum789';
+      if (input.includes('api-index')) {return 'api123';}
+      if (input.includes('deps')) {return 'deps456';}
+      if (input.includes('checksum')) {return 'checksum789';}
       return 'hash123';
     });
 
@@ -199,9 +199,9 @@ describe('Mind Verify Command - Basic Tests', () => {
 
     // Mock checksum computation to return consistent hashes
     vi.mocked(sha256).mockImplementation((input: string) => {
-      if (input.includes('api-index')) return 'api123';
-      if (input.includes('deps')) return 'deps456';
-      if (input.includes('checksum')) return 'checksum789';
+      if (input.includes('api-index')) {return 'api123';}
+      if (input.includes('deps')) {return 'deps456';}
+      if (input.includes('checksum')) {return 'checksum789';}
       return 'hash123';
     });
 
