@@ -71,7 +71,7 @@ analytics/
 .kb/mind/
 
 # DevKit provenance
-kb-labs/DEVKIT_SYNC.json
+.kb/devkit/tmp/
 
 # ───────────────
 # Temporary files
