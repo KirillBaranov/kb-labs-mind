@@ -1,21 +1,20 @@
-# KB Labs Mind - Headless Context Layer
+# KB Labs Mind (@kb-labs/mind)
 
-A headless context layer for KB Labs projects that provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows.
+> **Headless context layer for KB Labs projects.** Provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows.
 
-## Overview
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
 
-KB Labs Mind is a TypeScript-based system that creates structured context from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, recent changes, and dependencies.
+## 🎯 Vision
 
-## Architecture
+KB Labs Mind is a headless context layer for KB Labs projects that provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows. It creates structured context from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, recent changes, and dependencies.
 
-The system consists of 4 core packages:
+The project solves the problem of providing AI tools with relevant, structured context about a codebase by implementing delta indexing (only processes changed files), intelligent caching, and budget-aware context packing. Instead of feeding AI tools with raw code dumps, Mind creates curated, token-budgeted context packs that include only the most relevant information.
 
-- **`@kb-labs/mind-core`** - Core types, utilities, and error handling
-- **`@kb-labs/mind-indexer`** - Delta indexing for API, dependencies, and git changes
-- **`@kb-labs/mind-pack`** - Context pack builder with budget management
-- **`@kb-labs/mind-adapters`** - Git integration helpers
+This project is part of the **@kb-labs** ecosystem and integrates seamlessly with all KB Labs products, providing them with intelligent context generation capabilities for AI-powered workflows.
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Installation
 
@@ -28,6 +27,22 @@ pnpm build
 
 # Run tests
 pnpm test
+```
+
+### Development
+
+```bash
+# Start development mode
+pnpm dev
+
+# Build all packages
+pnpm build
+
+# Run tests
+pnpm test
+
+# Lint code
+pnpm lint
 ```
 
 ### Basic Usage
@@ -68,110 +83,164 @@ const pack = await buildPack({
 console.log(pack.markdown);
 ```
 
-## Key Features
+### CLI Commands
 
-### 🚀 Delta Indexing
-- Only processes changed files for fast updates
-- Time budget enforcement with partial results
+```bash
+# Initialize mind workspace
+kb mind init
+
+# Update indexes with delta tracking
+kb mind update
+
+# Execute queries (impact, scope, exports, externals, chain, meta, docs)
+kb mind query
+
+# Verify index consistency and detect hash mismatches
+kb mind verify
+
+# Generate context packs for AI tools
+kb mind pack
+
+# One-shot command: update indexes and build context pack
+kb mind feed
+```
+
+## ✨ Features
+
+- **Delta Indexing**: Only processes changed files for fast updates
+- **Time Budget Enforcement**: Partial results when budget is exceeded
+- **Intelligent Caching**: Uses mtime/size checks for efficient cache invalidation
+- **API Extraction**: TypeScript/JavaScript API signature extraction
+- **Context Packing**: 6 structured sections with token budget management
+- **Git Integration**: Recent diff tracking, staged files detection, POSIX path normalization
+- **Fail-Open Philosophy**: Parse errors don't crash, missing files handled gracefully
+- **Token Budget Management**: Per-section caps with configurable truncation
+- **Security**: Skips large files (>1.5MB) and binary content
+
+## 📁 Repository Structure
+
+```
+kb-labs-mind/
+├── packages/                # Core packages
+│   ├── mind-core/           # Core types and utilities
+│   ├── mind-indexer/        # Delta indexing system
+│   ├── mind-pack/            # Context pack builder
+│   ├── mind-adapters/        # Git integration helpers
+│   ├── mind-cli/             # CLI commands
+│   ├── mind-query/           # Query system for indexes
+│   ├── mind-gateway/         # Gateway for external integrations
+│   ├── mind-types/           # Type definitions
+│   └── mind-tests/           # Test utilities and helpers
+├── docs/                    # Documentation
+│   ├── DOCUMENTATION.md      # Documentation standard
+│   └── adr/                  # Architecture Decision Records
+├── fixtures/                 # Test fixtures
+└── scripts/                  # Utility scripts
+```
+
+### Directory Descriptions
+
+- **`packages/`** - Individual packages with their own package.json, each serving a specific purpose in the Mind architecture
+- **`docs/`** - Comprehensive documentation including ADRs and guides
+- **`fixtures/`** - Test fixtures for integration testing
+- **`scripts/`** - Utility scripts for development and maintenance
+
+## 📦 Packages
+
+| Package | Description |
+|---------|-------------|
+| [@kb-labs/mind-core](./packages/mind-core/) | Core types, utilities, and error handling |
+| [@kb-labs/mind-indexer](./packages/mind-indexer/) | Delta indexing for API, dependencies, and git changes |
+| [@kb-labs/mind-pack](./packages/mind-pack/) | Context pack builder with budget management |
+| [@kb-labs/mind-adapters](./packages/mind-adapters/) | Git integration helpers |
+| [@kb-labs/mind-cli](./packages/mind-cli/) | CLI commands for mind operations |
+| [@kb-labs/mind-query](./packages/mind-query/) | Query system for indexes |
+| [@kb-labs/mind-gateway](./packages/mind-gateway/) | Gateway for external integrations |
+| [@kb-labs/mind-types](./packages/mind-types/) | Shared TypeScript types |
+| [@kb-labs/mind-tests](./packages/mind-tests/) | Test utilities and helpers |
+
+### Package Details
+
+**@kb-labs/mind-core** provides core utilities and types:
+- Token estimation and truncation utilities
+- Hash utilities (SHA256)
+- Path normalization (POSIX)
+- Error handling (MindError)
+- Default budget configurations
+
+**@kb-labs/mind-indexer** implements delta indexing:
+- Initializes mind structure (`.kb/mind/`)
+- Updates indexes with only changed files
+- Time budget enforcement for partial results
 - Intelligent caching with mtime/size checks
-- TypeScript/JavaScript API extraction
+- API extraction from TypeScript/JavaScript files
+- Dependency graph building
 
-### 📦 Context Packing
+**@kb-labs/mind-pack** builds context packs:
 - 6 structured sections: intent, overview, API, diffs, snippets, configs
 - Token budget management with per-section caps
 - Deterministic output with sorted keys
-- Security: skips large files (>1.5MB) and binary content
+- Security: skips large files and binary content
 
-### 🔧 Git Integration
-- Recent diff tracking since any revision
+**@kb-labs/mind-adapters** provides Git integration:
+- Git diff since any revision
 - Staged files detection
 - POSIX path normalization
 - Workspace root detection
 
-### 🛡️ Fail-Open Philosophy
-- Parse errors don't crash the system
-- Missing files are handled gracefully
-- Time budget exceeded returns partial results
-- Comprehensive structured logging
+**@kb-labs/mind-cli** provides CLI commands:
+- `init` - Initialize mind workspace
+- `update` - Update indexes with delta tracking
+- `query` - Execute queries on indexes
+- `verify` - Verify index consistency
+- `pack` - Generate context packs
+- `feed` - One-shot update and pack generation
 
-## Package Details
+**@kb-labs/mind-query** provides query system:
+- Impact analysis queries
+- Scope queries
+- Export/external queries
+- Dependency chain queries
+- Metadata queries
+- Documentation queries
 
-### @kb-labs/mind-core
+## 🛠️ Available Scripts
 
-Core utilities and types:
+| Script | Description |
+|--------|-------------|
+| `pnpm dev` | Start development mode for all packages |
+| `pnpm build` | Build all packages |
+| `pnpm build:clean` | Clean and build all packages |
+| `pnpm test` | Run all tests |
+| `pnpm test:coverage` | Run tests with coverage reporting |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm test:fixtures` | Run fixture tests |
+| `pnpm test:cli-smoke` | Run CLI smoke tests |
+| `pnpm lint` | Lint all code |
+| `pnpm lint:fix` | Fix linting issues |
+| `pnpm format` | Format code with Prettier |
+| `pnpm type-check` | TypeScript type checking |
+| `pnpm check` | Run lint, type-check, and tests |
+| `pnpm ci` | Full CI pipeline (clean, build, check) |
+| `pnpm clean` | Clean build artifacts and mind cache |
+| `pnpm clean:cache` | Clean mind cache and coverage |
+| `pnpm clean:all` | Clean all node_modules and build artifacts |
 
-```typescript
-import { 
-  MindError, 
-  estimateTokens, 
-  truncateToTokens, 
-  sha256, 
-  toPosix,
-  DEFAULT_BUDGET 
-} from '@kb-labs/mind-core';
-```
+## 📋 Development Policies
 
-### @kb-labs/mind-indexer
+- **Code Style**: ESLint + Prettier, TypeScript strict mode
+- **Testing**: Vitest with comprehensive test coverage (90%+ required)
+- **Versioning**: SemVer with automated releases through Changesets
+- **Architecture**: Document decisions in ADRs (see `docs/adr/`)
+- **Performance**: Optimized for fast indexing and pack generation
+- **Fail-Open**: System handles errors gracefully without crashing
 
-Delta indexing system:
+## 🔧 Requirements
 
-```typescript
-import { updateIndexes, initMindStructure } from '@kb-labs/mind-indexer';
+- **Node.js**: >= 18.18.0
+- **pnpm**: >= 9.0.0
 
-// Initialize structure
-await initMindStructure(cwd);
-
-// Update with changes
-const report = await updateIndexes({
-  cwd,
-  changed: ['src/index.ts'],
-  since: 'HEAD~1',
-  timeBudgetMs: 800
-});
-```
-
-### @kb-labs/mind-pack
-
-Context pack builder:
-
-```typescript
-import { buildPack } from '@kb-labs/mind-pack';
-
-const pack = await buildPack({
-  cwd,
-  intent: 'User intent description',
-  product: 'devlink',
-  budget: DEFAULT_BUDGET
-});
-```
-
-### @kb-labs/mind-adapters
-
-Git integration:
-
-```typescript
-import { gitDiffSince, listStagedFiles } from '@kb-labs/mind-adapters';
-
-const diff = await gitDiffSince(cwd, 'HEAD~1');
-const staged = await listStagedFiles(cwd);
-```
-
-## Output Structure
-
-The system creates artifacts in `.kb/mind/`:
-
-```
-.kb/mind/
-├── index.json          # Main index with hashes and metadata
-├── api-index.json      # API exports per file
-├── deps.json          # Dependency graph
-├── recent-diff.json   # Git changes since revision
-└── packs/
-    ├── last-pack.md   # Latest context pack (Markdown)
-    └── last-pack.json # Latest context pack (JSON)
-```
-
-## Configuration
+## ⚙️ Configuration
 
 ### Budget Management
 
@@ -199,6 +268,35 @@ The system automatically ignores:
 - `dist/**`, `coverage/**`, `.turbo/**`, `.vite/**`
 - `**/*.log`, `**/*.tmp`, `**/*.temp`
 
+### Output Structure
+
+The system creates artifacts in `.kb/mind/`:
+
+```
+.kb/mind/
+├── index.json          # Main index with hashes and metadata
+├── api-index.json      # API exports per file
+├── deps.json          # Dependency graph
+├── recent-diff.json   # Git changes since revision
+└── packs/
+    ├── last-pack.md   # Latest context pack (Markdown)
+    └── last-pack.json # Latest context pack (JSON)
+```
+
+## 📊 Performance
+
+- **API indexing**: <100ms per file (small files)
+- **Cache hits**: <5ms (unchanged files)
+- **Full update**: <800ms default budget
+- **Pack generation**: <200ms for typical project
+
+## 🔒 Security
+
+- Files >1.5MB are skipped with warnings
+- Binary files are detected and excluded
+- Snippet length is limited to 60 lines
+- All paths are normalized to POSIX format
+
 ## 🧪 Test Coverage
 
 | Statements | Branches | Functions | Lines |
@@ -207,67 +305,36 @@ The system automatically ignores:
 
 *Coverage thresholds enforced by DevKit*
 
-## CLI Commands
+## 📚 Documentation
 
-The Mind package provides the following CLI commands:
+- [Documentation Standard](./docs/DOCUMENTATION.md) - Full documentation guidelines
+- [Contributing Guide](./CONTRIBUTING.md) - How to contribute
+- [Architecture Decisions](./docs/adr/) - ADRs for this project
 
-- `kb mind init` - Initialize mind workspace
-- `kb mind update` - Update indexes with delta tracking
-- `kb mind query` - Execute queries (impact, scope, exports, externals, chain, meta, docs)
-- `kb mind verify` - Verify index consistency and detect hash mismatches
-- `kb mind pack` - Generate context packs for AI tools
-- `kb mind feed` - One-shot command: update indexes and build context pack
+## 🔗 Related Packages
 
-## Development
+### Dependencies
 
-### Project Structure
+- [@kb-labs/core](https://github.com/KirillBaranov/kb-labs-core) - Core utilities
 
-```
-packages/
-├── mind-core/        # Core types and utilities
-├── mind-indexer/     # Delta indexing system
-├── mind-pack/        # Context pack builder
-└── mind-adapters/    # Git integration
-```
+### Used By
 
-### Testing
+- All KB Labs projects for context generation
+- AI tools (Cursor, etc.)
+- [@kb-labs/cli](https://github.com/KirillBaranov/kb-labs-cli) - CLI integration
 
-```bash
-# Run all tests
-pnpm test
+### Ecosystem
 
-# Run specific package tests
-pnpm --filter @kb-labs/mind-core test
-```
+- [KB Labs](https://github.com/KirillBaranov/kb-labs) - Main ecosystem repository
 
-### Building
+## 🤝 Contributing
 
-```bash
-# Build all packages
-pnpm build
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.
 
-# Build specific package
-pnpm --filter @kb-labs/mind-core build
-```
+## 📄 License
 
-## Performance
+MIT © KB Labs
 
-- **API indexing**: <100ms per file (small files)
-- **Cache hits**: <5ms (unchanged files)
-- **Full update**: <800ms default budget
-- **Pack generation**: <200ms for typical project
+---
 
-## Security
-
-- Files >1.5MB are skipped with warnings
-- Binary files are detected and excluded
-- Snippet length is limited to 60 lines
-- All paths are normalized to POSIX format
-
-## License
-
-Private - KB Labs Internal Use Only
-
-## Contributing
-
-This is an internal KB Labs project. For questions or issues, contact the KB Labs team.
+**See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.**
