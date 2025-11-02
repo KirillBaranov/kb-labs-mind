@@ -1,9 +1,10 @@
 # ADR-0013: AI-Oriented Query API Architecture
 
-**Status**: Accepted  
-**Date**: 2025-10-27  
-**Context**: KB Labs Mind Query System
+**Date:** 2025-10-27
+**Status:** Accepted
 **Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [architecture, api, data]
 
 ## Summary
 

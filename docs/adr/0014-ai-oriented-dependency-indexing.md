@@ -1,8 +1,10 @@
 # ADR-0014: AI-Oriented Dependency Indexing and Query Optimization
 
-## Status
-
-Accepted
+**Date:** 2025-10-27
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [architecture, data, performance]
 
 ## Context
 
