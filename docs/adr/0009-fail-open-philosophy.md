@@ -157,6 +157,6 @@ interface DeltaReport {
 
 ## References
 
-- [ADR-0001: Architecture and Repository Layout](./0001-architecture-and-reposity-layout.md)
+- [ADR-0001: Architecture and Repository Layout](./0001-architecture-and-repository-layout.md)
 - [ADR-0003: Package and Module Boundaries](./0003-package-and-module-boundaries.md)
 - [KB Labs Mind MVP Plan](../kb-labs-mind-mvp.plan.md)
