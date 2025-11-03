@@ -1,7 +1,25 @@
 {
   "edges": [],
   "generator": "kb-labs-mind@0.1.0",
-  "packages": {},
-  "root": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-  "schemaVersion": "1.0"
+  "packages": {
+    "sample-project": {
+      "deps": [
+        "lodash"
+      ],
+      "dir": ".",
+      "name": "sample-project",
+      "private": false,
+      "version": "1.0.0"
+    }
+  },
+  "root": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind",
+  "schemaVersion": "1.0",
+  "summary": {
+    "externalDeps": [],
+    "hotspots": [],
+    "internalEdges": 0,
+    "maxDepth": 0,
+    "packageGraph": {},
+    "totalEdges": 0
+  }
 }

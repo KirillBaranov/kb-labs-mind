@@ -30,7 +30,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/devkit": "link:../../../kb-labs-devkit",
     "@types/node": "^24.7.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
@@ -38,7 +38,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@kb-labs/mind-types": "workspace:*"
+    "@kb-labs/mind-types": "link:../mind-types"
   },
   "engines": {
     "node": ">=20.0.0",

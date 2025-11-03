@@ -18,9 +18,9 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@kb-labs/mind-core": "workspace:*",
-    "@kb-labs/mind-indexer": "workspace:*",
-    "@kb-labs/mind-types": "workspace:*"
+    "@kb-labs/mind-core": "link:../mind-core",
+    "@kb-labs/mind-indexer": "link:../mind-indexer",
+    "@kb-labs/mind-types": "link:../mind-types"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -30,7 +30,7 @@
     "test:watch": "echo 'Types package - no tests needed'"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/devkit": "link:../../../kb-labs-devkit",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",

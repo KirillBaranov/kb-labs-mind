@@ -1,11 +1,11 @@
 {
-  "apiIndexHash": "",
-  "depsHash": "",
+  "apiIndexHash": "24e5b980af1f7b00987da8d960a3c5b595a4707750ea8d53a553d1dc0c2ec351",
+  "depsHash": "4344c4db3e74d11194cbea3750645cbd014ab8169dd2c0b95ecc165b862685ec",
   "filesIndexed": 0,
   "generator": "kb-labs-mind@0.1.0",
-  "indexChecksum": "",
-  "recentDiffHash": "",
-  "root": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind",
+  "indexChecksum": "abe8642bba267de30602a99be694fe3fa36266fac6ec12e002d9b9d6ad8d2846",
+  "recentDiffHash": "a3e187f722868c6a0e57f158f47e599e818b80b11323dd392b9387310d39ed9e",
+  "root": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
   "schemaVersion": "1.0",
-  "updatedAt": "2025-10-28T12:17:27.656Z"
+  "updatedAt": "2025-11-02T22:34:05.642Z"
 }
