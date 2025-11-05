@@ -4,4 +4,14 @@
 
 export * from './handlers/query.js';
 export * from './handlers/verify.js';
+export { verifyIndexes } from './handlers/verify-utils.js';
 export * from './types/request.js';
+
+// Re-export types for convenience
+export type {
+  QueryRequest,
+  QueryResponse,
+  VerifyRequest,
+  VerifyResponse,
+  GatewayError,
+} from './types/request.js';
