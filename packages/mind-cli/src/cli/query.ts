@@ -104,7 +104,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         if (toonMode || toonSidecar) {
       const toonOutput = encode(result);
 
-          // Write sidecar file if requested
+          // Prepare data for artifacts (if using --toon-sidecar)
+          // If --toon-sidecar is specified, also write via artifacts system
+          const artifactData = toonSidecar ? {
+            'query-output': toonOutput,
+          } : undefined;
+
+          // Write sidecar file if requested (manual write for backward compatibility)
           if (toonSidecar) {
             const sidecarDir = join(cwd, '.kb', 'mind', 'query');
             mkdirSync(sidecarDir, { recursive: true });
@@ -151,6 +157,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
               },
             });
             
+            // Return data for artifacts if using --toon-sidecar
+            if (artifactData) {
+              return { exitCode: 0, ...artifactData } as any;
+            }
             return 0;
           }
 
@@ -176,9 +186,9 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             
             if (result.suggestNextQueries && result.suggestNextQueries.length > 0) {
               lines.push('', 'Suggestions:');
-              result.suggestNextQueries.forEach((suggestion: string) => {
+              for (const suggestion of result.suggestNextQueries) {
                 lines.push(`  • ${suggestion}`);
-              });
+              }
             }
             
             ctx.presenter.write(box('Mind Query', lines));
@@ -205,6 +215,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           },
         });
         
+        // Return exit code (0 for success)
         return 0;
       } catch (error: any) {
         const totalTime = Date.now() - startTime;

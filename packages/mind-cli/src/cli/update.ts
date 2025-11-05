@@ -8,7 +8,7 @@ import { createSpinner, box, keyValue, safeColors, TimingTracker, formatTiming }
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
-export const run: CommandModule['run'] = async (ctx, argv, flags) => {
+export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
@@ -20,12 +20,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
   // Default to 5000ms for full indexing (instead of 800ms)
   const timeBudget = Number.isFinite(flags['time-budget']) ? Number(flags['time-budget']) : 5000;
 
-  return await runScope(
+      return (await runScope(
     {
       actor: ANALYTICS_ACTOR,
       ctx: { workspace: cwd },
     },
     async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
+      // Create loader and timing tracker outside try block for use in catch
+      const loader = createSpinner('Indexing project', jsonMode);
+      const tracker = new TimingTracker();
+      
       try {
         // Track command start
         await emit({
@@ -36,10 +40,6 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             timeBudget,
           },
         });
-        
-        // Create loader and timing tracker
-        const loader = createSpinner('Indexing project', jsonMode);
-        const tracker = new TimingTracker();
         
         loader.start();
         tracker.checkpoint('start');
@@ -151,5 +151,5 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         return 1;
       }
     }
-  );
+  )) as number;
 };

@@ -10,7 +10,7 @@ import { join, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
-export const run: CommandModule['run'] = async (ctx, argv, flags) => {
+export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
@@ -25,7 +25,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
   const outFile = typeof flags.out === 'string' && flags.out ? flags.out : undefined;
   const seed = Number.isFinite(flags.seed) ? Number(flags.seed) : undefined;
 
-  return await runScope(
+  return (await runScope(
     {
       actor: ANALYTICS_ACTOR,
       ctx: { workspace: cwd },
@@ -123,6 +123,12 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         
         const totalTime = Date.now() - startTime;
         
+        // Prepare data for artifacts (if not using --out flag)
+        // If --out is specified, user wants explicit file location, so don't use artifacts
+        const artifactData = !outFile ? {
+          'pack-output': result.markdown,
+        } : undefined;
+        
         if (jsonMode) {
           ctx.presenter.json({
             ok: true,
@@ -132,7 +138,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             sectionUsage: result.json?.sectionUsage || {},
             withBundle,
             seed,
-            deterministic: !!seed
+            deterministic: !!seed,
+            ...(artifactData || {}),
           });
         } else {
           // Handle output to file or stdout
@@ -179,8 +186,15 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             }
           } else {
             // Default: stream Markdown to stdout
+            // Also return data for artifacts
             ctx.presenter.write(result.markdown);
           }
+        }
+        
+        // Return data for artifacts (will be wrapped in ExecuteResult by runner)
+        // Return object with exit code and artifact data
+        if (artifactData) {
+          return { exitCode: 0, ...artifactData } as any;
         }
 
         // Track command completion
@@ -199,6 +213,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           },
         });
         
+        // Return exit code (0 for success)
+        // If artifactData was set, it will be returned above
         return 0;
       } catch (e: unknown) {
         const errorMessage = e instanceof Error ? e.message : String(e);
@@ -236,5 +252,5 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         return 1;
       }
     }
-  );
+  )) as number;
 };
