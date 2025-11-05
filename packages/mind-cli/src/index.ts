@@ -2,5 +2,5 @@
  * KB Labs Mind CLI
  */
 
-// Re-export CLI manifest for discovery
-export { commands as manifest, commands, type CommandManifest, type FlagDefinition } from './cli.manifest.js';
+// Export Manifest v2
+export { manifest as manifestV2 } from './manifest.v2.js';
