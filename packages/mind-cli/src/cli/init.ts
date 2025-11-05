@@ -7,7 +7,7 @@ import { initMindStructure } from '@kb-labs/mind-indexer';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
-export const run: CommandModule['run'] = async (ctx, argv, flags) => {
+export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
@@ -16,7 +16,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
   const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
   const force = !!flags.force;
 
-  return await runScope(
+  return (await runScope(
     {
       actor: ANALYTICS_ACTOR,
       ctx: { workspace: cwd },
@@ -95,5 +95,5 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         return 1;
       }
     }
-  );
+  )) as number;
 };

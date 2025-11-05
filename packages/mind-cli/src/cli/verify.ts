@@ -2,6 +2,7 @@
  * Mind verify command
  */
 
+import type { CommandModule } from './types';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { sha256 } from '@kb-labs/mind-core';
@@ -49,11 +50,13 @@ function computeJsonHash(obj: any): string {
 /**
  * Verify mind workspace consistency
  */
-export async function run(ctx: any, argv: string[], flags: Record<string, any>): Promise<number> {
+export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const startTime = Date.now();
-  const { cwd = ctx.cwd, json = flags.json || false, quiet = flags.quiet || false } = flags;
+  const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
+  const json = !!flags.json;
+  const quiet = !!flags.quiet;
 
-  return await runScope(
+  return (await runScope(
     {
       actor: ANALYTICS_ACTOR,
       ctx: { workspace: cwd },
@@ -292,5 +295,5 @@ export async function run(ctx: any, argv: string[], flags: Record<string, any>):
         return 1;
       }
     }
-  );
-}
+  )) as number | void;
+};
