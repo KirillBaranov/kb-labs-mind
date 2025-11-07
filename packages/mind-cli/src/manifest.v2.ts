@@ -518,7 +518,7 @@ export const manifest: ManifestV2 = {
     widgets: [
       {
         id: 'mind.query',
-        kind: 'table',
+        kind: 'infopanel',
         title: 'Mind Query Results',
         description: 'Query results from mind indexes',
         data: {
@@ -527,13 +527,6 @@ export const manifest: ManifestV2 = {
             routeId: 'query',
             method: 'POST',
           },
-          schema: {
-            $ref: 'kb.v1.studio.FindingsTableRow',
-          },
-        },
-        options: {
-          columns: ['id', 'file', 'rule', 'message'],
-          pageSize: 20,
         },
         layoutHint: {
           w: 6,
@@ -544,7 +537,7 @@ export const manifest: ManifestV2 = {
       },
       {
         id: 'mind.verify',
-        kind: 'status',
+        kind: 'cardlist',
         title: 'Mind Verify Status',
         description: 'Mind workspace verification status',
         data: {
@@ -553,13 +546,9 @@ export const manifest: ManifestV2 = {
             routeId: 'verify',
             method: 'GET',
           },
-          schema: {
-            $ref: 'kb.v1.studio.StatusBadge',
-          },
         },
         options: {
           layout: 'list',
-          showCount: true,
         },
         layoutHint: {
           w: 3,

@@ -5,13 +5,13 @@
 import type { CommandModule } from './types';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
+import { TimingTracker, box, keyValue, formatTiming, safeColors, parseNumberFlag } from '@kb-labs/shared-cli-ui';
 import { promises as fs } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
   
@@ -20,10 +20,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
   const intent = typeof flags.intent === 'string' && flags.intent ? flags.intent : undefined;
   const product = typeof flags.product === 'string' ? flags.product : undefined;
   const preset = typeof flags.preset === 'string' ? flags.preset : undefined;
-  const budget = Number.isFinite(flags.budget) ? Number(flags.budget) : DEFAULT_BUDGET.totalTokens;
+  const budget = parseNumberFlag(flags.budget) ?? DEFAULT_BUDGET.totalTokens;
   const withBundle = !!flags['with-bundle'];
   const outFile = typeof flags.out === 'string' && flags.out ? flags.out : undefined;
-  const seed = Number.isFinite(flags.seed) ? Number(flags.seed) : undefined;
+  const seed = parseNumberFlag(flags.seed);
 
   return (await runScope(
     {
@@ -31,21 +31,25 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
       ctx: { workspace: cwd },
     },
     async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
+      const tracker = new TimingTracker();
+      
       try {
+        tracker.checkpoint('start');
+        
         // Input validation
         if (!intent) {
           const errorData = {
             ok: false,
             code: 'MIND_BAD_FLAGS',
             message: 'Intent is required',
-            hint: 'Use --intent flag to specify the context intent'
+            hint: 'Use --intent flag to specify the context intent',
+            timing: tracker.total()
           };
           
-          const totalTime = Date.now() - startTime;
           await emit({
             type: ANALYTICS_EVENTS.PACK_FINISHED,
             payload: {
-              durationMs: totalTime,
+              durationMs: tracker.total(),
               result: 'failed',
               error: errorData.message,
             },
@@ -67,14 +71,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             ok: false,
             code: 'MIND_BAD_FLAGS',
             message: 'Budget must be greater than 0',
-            hint: 'Use --budget flag with a positive number'
+            hint: 'Use --budget flag with a positive number',
+            timing: tracker.total()
           };
           
-          const totalTime = Date.now() - startTime;
           await emit({
             type: ANALYTICS_EVENTS.PACK_FINISHED,
             payload: {
-              durationMs: totalTime,
+              durationMs: tracker.total(),
               result: 'failed',
               error: errorData.message,
             },
@@ -103,13 +107,15 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             seed: !!seed,
           },
         });
+        
+        tracker.checkpoint('pack-start');
         const packOptions: any = {
           cwd,
           intent,
           budget: { totalTokens: budget, caps: {}, truncation: 'end' as const },
           log: (entry: any) => {
             if (!quiet && !jsonMode) {
-              console.log('Pack:', entry);
+              ctx.presenter.info(`Pack: ${entry.msg || entry}`);
             }
           }
         };
@@ -120,8 +126,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         if (seed) {packOptions.seed = seed;}
         
         const result = await buildPack(packOptions);
-        
-        const totalTime = Date.now() - startTime;
+        tracker.checkpoint('pack-complete');
+        const duration = tracker.total();
         
         // Prepare data for artifacts (if not using --out flag)
         // If --out is specified, user wants explicit file location, so don't use artifacts
@@ -139,6 +145,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             withBundle,
             seed,
             deterministic: !!seed,
+            timing: duration,
             ...(artifactData || {}),
           });
         } else {
@@ -149,7 +156,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
               await fs.writeFile(absPath, result.markdown, 'utf8');
               
               if (!quiet) {
-                console.log(`✓ Pack saved: ${absPath}`);
+                const summaryLines = keyValue({
+                  'Status': safeColors.success('✓ Pack saved'),
+                  'File': absPath,
+                  'Intent': intent,
+                  'Product': product || 'none',
+                  'Tokens': String(result.tokensEstimate),
+                });
+                
+                summaryLines.push('', `Time: ${formatTiming(duration)}`);
+                ctx.presenter.write(box('Mind Pack', summaryLines));
               }
             } catch (writeError: any) {
               const errorMessage = writeError instanceof Error ? writeError.message : String(writeError);
@@ -161,7 +177,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
                   intent,
                   product,
                   budget,
-                  durationMs: totalTime,
+                  durationMs: duration,
                   result: 'error',
                   error: errorMessage,
                 },
@@ -171,7 +187,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
                 ok: false,
                 code: errorCode,
                 message: errorMessage,
-                hint: 'Check file permissions and path'
+                hint: 'Check file permissions and path',
+                timing: duration
               };
               
               if (jsonMode) {
@@ -186,6 +203,17 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             }
           } else {
             // Default: stream Markdown to stdout
+            // Show summary if not quiet
+            if (!quiet) {
+              const summaryLines = keyValue({
+                'Intent': intent,
+                'Product': product || 'none',
+                'Tokens': String(result.tokensEstimate),
+              });
+              
+              summaryLines.push('', `Time: ${formatTiming(duration)}`);
+              ctx.presenter.write(box('Mind Pack', summaryLines));
+            }
             // Also return data for artifacts
             ctx.presenter.write(result.markdown);
           }
@@ -208,7 +236,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             tokensEstimate: result.tokensEstimate,
             withBundle,
             deterministic: !!seed,
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'success',
           },
         });
@@ -219,7 +247,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
       } catch (e: unknown) {
         const errorMessage = e instanceof Error ? e.message : String(e);
         const errorCode = e instanceof Error && 'code' in e ? (e as any).code : 'MIND_PACK_ERROR';
-        const totalTime = Date.now() - startTime;
+        const duration = tracker.total();
 
         // Track command failure
         await emit({
@@ -228,7 +256,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             intent,
             product,
             budget,
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'error',
             error: errorMessage,
           },
@@ -238,7 +266,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           ok: false,
           code: errorCode,
           message: errorMessage,
-          hint: 'Check your workspace and indexes'
+          hint: 'Check your workspace and indexes',
+          timing: duration
         };
         
         if (jsonMode) {

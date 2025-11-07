@@ -31,6 +31,7 @@
   ],
   "sideEffects": false,
   "scripts": {
+    "pretype-check": "pnpm --filter @kb-labs/shared-cli-ui build && pnpm --filter @kb-labs/mind-gateway build",
     "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
     "dev": "tsup --config tsup.config.ts --watch",
@@ -43,6 +44,7 @@
   "dependencies": {
     "@byjohann/toon": "0.4.0",
     "@kb-labs/analytics-sdk-node": "link:../../../kb-labs-analytics/packages/analytics-sdk-node",
+    "@kb-labs/core": "link:../../../kb-labs-core",
     "@kb-labs/plugin-manifest": "link:../../../kb-labs-plugin/packages/manifest",
     "@kb-labs/plugin-adapter-studio": "link:../../../kb-labs-plugin/packages/adapters/studio",
     "@kb-labs/mind-gateway": "link:../mind-gateway",

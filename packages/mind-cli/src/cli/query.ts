@@ -5,7 +5,7 @@
 import type { CommandModule } from './types.js';
 import { executeQuery } from '@kb-labs/mind-query';
 import type { QueryName } from '@kb-labs/mind-types';
-import { TimingTracker, formatTiming, box, keyValue } from '@kb-labs/shared-cli-ui';
+import { TimingTracker, formatTiming, box, keyValue, discoverArtifacts } from '@kb-labs/shared-cli-ui';
 import { resolve, join } from 'node:path';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { encode } from '@byjohann/toon';
@@ -13,7 +13,6 @@ import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analy
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags) => {
-  const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
   const compact = !!flags.compact;
@@ -29,6 +28,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       ctx: { workspace: cwd },
     },
     async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>): Promise<number | void> => {
+      const tracker = new TimingTracker();
       try {
   
         if (!queryName || !['impact', 'scope', 'exports', 'externals', 'chain', 'meta', 'docs'].includes(queryName)) {
@@ -55,6 +55,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             compact,
           },
         });
+        
+        tracker.checkpoint('start');
         
         // Parse params based on query type
         const params: Record<string, any> = {};
@@ -84,21 +86,18 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           if (flags.filter) {params.search = flags.filter;}
         }
         
-        const tracker = new TimingTracker();
-        tracker.checkpoint('start');
-        
+        tracker.checkpoint('query-start');
         const result = await executeQuery(queryName as QueryName, params, {
-      cwd,
-      limit: Number(flags.limit) || 500,
-      depth: Number(flags.depth) || 5,
-      cacheTtl: Number(flags['cache-ttl']) || 60,
-      cacheMode: (flags['cache-mode'] as 'ci' | 'local') || 'local',
-      noCache: !!flags['no-cache'],
+          cwd,
+          limit: Number(flags.limit) || 500,
+          depth: Number(flags.depth) || 5,
+          cacheTtl: Number(flags['cache-ttl']) || 60,
+          cacheMode: (flags['cache-mode'] as 'ci' | 'local') || 'local',
+          noCache: !!flags['no-cache'],
           pathMode: (flags.paths as 'id' | 'absolute') || 'id',
           aiMode: !!flags['ai-mode']
         });
-        
-        const totalTime = Date.now() - startTime;
+        tracker.checkpoint('query-complete');
         
         // Handle TOON output (token-efficient LLM format)
         if (toonMode || toonSidecar) {
@@ -111,15 +110,12 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           } : undefined;
 
           // Write sidecar file if requested (manual write for backward compatibility)
+          let sidecarPath: string | undefined;
           if (toonSidecar) {
             const sidecarDir = join(cwd, '.kb', 'mind', 'query');
             mkdirSync(sidecarDir, { recursive: true });
-            const sidecarPath = join(sidecarDir, `${result.meta.queryId || 'query'}.toon`);
+            sidecarPath = join(sidecarDir, `${result.meta.queryId || 'query'}.toon`);
             writeFileSync(sidecarPath, toonOutput, 'utf-8');
-            
-            if (!quiet && !jsonMode) {
-              ctx.presenter.info(`TOON sidecar written: ${sidecarPath}`);
-            }
           }
 
           // Output TOON format
@@ -152,7 +148,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
                 toonSidecar,
                 cached: result.meta.cached,
                 tokensEstimate: result.meta.tokensEstimate,
-                durationMs: totalTime,
+                durationMs: tracker.total(),
                 result: 'success',
               },
             });
@@ -210,7 +206,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             cached: result.meta.cached,
             tokensEstimate: result.meta.tokensEstimate,
             resultsCount: (result.result as any)?.count || 0,
-            durationMs: totalTime,
+            durationMs: tracker.total(),
             result: 'success',
           },
         });
@@ -218,7 +214,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         // Return exit code (0 for success)
         return 0;
       } catch (error: any) {
-        const totalTime = Date.now() - startTime;
+        const duration = tracker.total();
 
         // Track command failure
         await emit({
@@ -227,7 +223,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             queryName: flags.query as string,
             toonMode,
             toonSidecar,
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'error',
             error: error.message,
           },
@@ -237,7 +233,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           ctx.presenter.json({
             ok: false,
             code: 'MIND_QUERY_ERROR',
-            message: error.message
+            message: error.message,
+            timing: duration
           });
         } else {
           ctx.presenter.error(error.message);

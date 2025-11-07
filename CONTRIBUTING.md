@@ -11,6 +11,8 @@ pnpm i
 pnpm dev
 ```
 
+> Keep generated type declarations fresh: run `pnpm --filter @kb-labs/shared-cli-ui build` and `pnpm --filter @kb-labs/mind-gateway build` (or `pnpm build`) whenever you modify those packages so dependent workspaces pick up their `dist/*.d.ts` files.
+
 ## 📋 Development Guidelines
 
 ### Code Style

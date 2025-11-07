@@ -45,6 +45,8 @@ pnpm test
 pnpm lint
 ```
 
+> **Note:** Packages like `@kb-labs/mind-cli` import generated typings from `@kb-labs/shared-cli-ui` and `@kb-labs/mind-gateway`. Run `pnpm --filter @kb-labs/shared-cli-ui build` and `pnpm --filter @kb-labs/mind-gateway build` (or simply `pnpm build`) after pulling changes or modifying those packages to keep their `dist/*.d.ts` files up to date.
+
 ### Basic Usage
 
 ```typescript

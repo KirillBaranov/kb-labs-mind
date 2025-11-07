@@ -2,98 +2,91 @@
  * Mind init command
  */
 
-import type { CommandModule } from './types';
+import type { CommandModule, CommandContext as MindCommandContext } from './types';
 import { initMindStructure } from '@kb-labs/mind-indexer';
-import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
+import { 
+  createCommandRunner, 
+  discoverArtifacts, 
+  safeColors,
+  type CommandContext as SharedCommandContext 
+} from '@kb-labs/shared-cli-ui';
+import { TimingTracker } from '@kb-labs/shared-cli-ui';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
-export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const startTime = Date.now();
-  const jsonMode = !!flags.json;
-  const quiet = !!flags.quiet;
-  
-  // Parse flags with defaults
-  const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
-  const force = !!flags.force;
+// Create command runner
+const commandRunner = createCommandRunner({
+  title: 'Mind Init',
+  analytics: {
+    actor: ANALYTICS_ACTOR.id,
+    started: ANALYTICS_EVENTS.INIT_STARTED,
+    finished: ANALYTICS_EVENTS.INIT_FINISHED,
+    getPayload: (flags: Record<string, unknown>) => ({
+      force: !!flags.force,
+    }),
+  },
+  async execute(ctx: SharedCommandContext, flags: Record<string, unknown>, tracker: TimingTracker) {
+    // Parse flags with defaults
+    const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
+    const force = !!flags.force;
 
-  return (await runScope(
-    {
-      actor: ANALYTICS_ACTOR,
-      ctx: { workspace: cwd },
-    },
-    async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
-      try {
-        // Track command start
-        await emit({
-          type: ANALYTICS_EVENTS.INIT_STARTED,
-          payload: {
-            force,
-          },
-        });
-        const mindDir = await initMindStructure({ cwd, force, log: (entry: any) => {
-          if (!quiet && !jsonMode) {
-            console.log('Init:', entry);
-          }
-        }});
-        
-        const totalTime = Date.now() - startTime;
-        
-        if (jsonMode) {
-          ctx.presenter.json({
-            ok: true,
-            mindDir,
-            cwd
-          });
-        } else {
-          if (!quiet) {
-            console.log(`✓ Mind workspace initialized: ${mindDir}`);
-          }
-        }
+    tracker.checkpoint('start');
 
-        // Track command completion
-        await emit({
-          type: ANALYTICS_EVENTS.INIT_FINISHED,
-          payload: {
-            force,
-            durationMs: totalTime,
-            result: 'success',
-          },
-        });
-        
-        return 0;
-      } catch (e: unknown) {
-        const errorMessage = e instanceof Error ? e.message : String(e);
-        const errorCode = e instanceof Error && 'code' in e ? (e as any).code : 'MIND_INIT_ERROR';
-        const totalTime = Date.now() - startTime;
+    // Initialize Mind structure
+    const mindDir = await initMindStructure({
+      cwd,
+      force,
+      log: (entry: any) => {
+        // Log entries are collected but not displayed here
+        // They will be shown via artifacts discovery
+      },
+    });
 
-        // Track command failure
-        await emit({
-          type: ANALYTICS_EVENTS.INIT_FINISHED,
-          payload: {
-            force,
-            durationMs: totalTime,
-            result: 'error',
-            error: errorMessage,
-          },
-        });
-        
-        const errorData = {
-          ok: false,
-          code: errorCode,
-          message: errorMessage,
-          hint: 'Check your workspace permissions and try again'
-        };
-        
-        if (jsonMode) {
-          ctx.presenter.json(errorData);
-        } else {
-          ctx.presenter.error(errorMessage);
-          if (!quiet) {
-            ctx.presenter.info(`Code: ${errorCode}`);
-          }
-        }
-        return 1;
-      }
-    }
-  )) as number;
+    tracker.checkpoint('init-complete');
+
+    // Discover created artifacts
+    const artifacts = await discoverArtifacts(mindDir, [
+      {
+        name: 'Index',
+        pattern: 'index.json',
+        description: 'Main Mind index',
+      },
+      {
+        name: 'API Index',
+        pattern: 'api-index.json',
+        description: 'API index',
+      },
+      {
+        name: 'Dependencies',
+        pattern: 'deps.json',
+        description: 'Dependencies graph',
+      },
+      {
+        name: 'Recent Diff',
+        pattern: 'recent-diff.json',
+        description: 'Recent changes diff',
+      },
+    ]);
+
+    return {
+      summary: {
+        Workspace: mindDir,
+        Status: safeColors.success('✓ Initialized'),
+      },
+      artifacts,
+      data: {
+        mindDir,
+        cwd,
+      },
+    };
+  },
+});
+
+// Adapt mind CommandContext to shared CommandContext and call runner
+export const run: CommandModule['run'] = async (ctx: MindCommandContext, argv: string[], flags: Record<string, unknown>) => {
+  const sharedCtx: SharedCommandContext = {
+    cwd: ctx.cwd,
+    presenter: ctx.presenter,
+  };
+
+  return commandRunner(sharedCtx, argv, flags);
 };

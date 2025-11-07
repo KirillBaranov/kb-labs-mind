@@ -4,12 +4,11 @@
 
 import type { CommandModule } from './types';
 import { updateIndexes } from '@kb-labs/mind-indexer';
-import { createSpinner, box, keyValue, safeColors, TimingTracker, formatTiming } from '@kb-labs/shared-cli-ui';
+import { createSpinner, box, keyValue, safeColors, TimingTracker, formatTiming, parseNumberFlag } from '@kb-labs/shared-cli-ui';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
   
@@ -18,9 +17,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
   const since = typeof flags.since === 'string' ? flags.since : undefined;
   const noCache = !!flags['no-cache'];
   // Default to 5000ms for full indexing (instead of 800ms)
-  const timeBudget = Number.isFinite(flags['time-budget']) ? Number(flags['time-budget']) : 5000;
+  const parsedTimeBudget = parseNumberFlag(flags['time-budget']);
+  const timeBudget = parsedTimeBudget ?? 5000;
 
-      return (await runScope(
+  return (await runScope(
     {
       actor: ANALYTICS_ACTOR,
       ctx: { workspace: cwd },
@@ -41,8 +41,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           },
         });
         
-        loader.start();
         tracker.checkpoint('start');
+        if (!jsonMode && !quiet) {
+          loader.start();
+        }
         
         const updateOptions: any = {
           cwd,
@@ -57,11 +59,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         if (timeBudget) {updateOptions.timeBudgetMs = timeBudget;}
         if (noCache) {updateOptions.noCache = noCache;}
         
+        tracker.checkpoint('update-start');
         const result = await updateIndexes(updateOptions);
+        tracker.checkpoint('update-complete');
         
-        loader.stop();
+        if (!jsonMode && !quiet) {
+          loader.stop();
+        }
         const duration = tracker.total();
-        const totalTime = Date.now() - startTime;
         
         if (jsonMode) {
           ctx.presenter.json({
@@ -106,18 +111,20 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             depsChanges: result.deps ? result.deps.edgesAdded + result.deps.edgesRemoved : 0,
             diffFiles: result.diff?.files || 0,
             partial: result.partial,
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'success',
           },
         });
         
         return 0;
       } catch (e: unknown) {
-        loader.stop();
+        if (!jsonMode && !quiet) {
+          loader.stop();
+        }
         
         const errorMessage = e instanceof Error ? e.message : String(e);
         const errorCode = e instanceof Error && 'code' in e ? (e as any).code : 'MIND_UPDATE_ERROR';
-        const totalTime = Date.now() - startTime;
+        const duration = tracker.total();
 
         // Track command failure
         await emit({
@@ -126,7 +133,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             since,
             noCache,
             timeBudget,
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'error',
             error: errorMessage,
           },
@@ -136,13 +143,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           ok: false,
           code: errorCode,
           message: errorMessage,
-          hint: 'Check your workspace and git status'
+          hint: 'Check your workspace and git status',
+          timing: duration
         };
         
         if (jsonMode) {
           ctx.presenter.json(errorData);
         } else {
-          loader.fail('Update failed');
+          if (!quiet) {
+            loader.fail('Update failed');
+          }
           ctx.presenter.error(errorMessage);
           if (!quiet) {
             ctx.presenter.info(`Code: ${errorCode}`);

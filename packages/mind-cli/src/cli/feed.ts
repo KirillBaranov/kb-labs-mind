@@ -6,17 +6,15 @@ import type { CommandModule } from './types';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET, createMindError, wrapError, getExitCode } from '@kb-labs/mind-core';
-import { TimingTracker } from '@kb-labs/shared-cli-ui';
+import { TimingTracker, box, keyValue, formatTiming, safeColors, parseNumberFlag } from '@kb-labs/shared-cli-ui';
 import { promises as fs } from 'node:fs';
 import { join, dirname, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const startTime = Date.now();
   const jsonMode = !!flags.json;
   const quiet = !!flags.quiet;
-  const _tracker = new TimingTracker();
   
   // Parse flags with defaults
   const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
@@ -27,17 +25,21 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
       ctx: { workspace: cwd },
     },
     async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
+      const tracker = new TimingTracker();
+      
       try {
+        tracker.checkpoint('start');
+        
         const doUpdate = !flags['no-update'];
         const intent = typeof flags.intent === 'string' && flags.intent ? flags.intent : 'ad-hoc feed';
         const product = typeof flags.product === 'string' ? flags.product : undefined;
         const preset = typeof flags.preset === 'string' ? flags.preset : undefined;
-        const budget = Number.isFinite(flags.budget) ? Number(flags.budget) : DEFAULT_BUDGET.totalTokens;
+        const budget = parseNumberFlag(flags.budget) ?? DEFAULT_BUDGET.totalTokens;
         const withBundle = !!flags['with-bundle'];
         const since = typeof flags.since === 'string' ? flags.since : undefined;
-        const timeBudget = Number.isFinite(flags['time-budget']) ? Number(flags['time-budget']) : undefined;
+        const timeBudget = parseNumberFlag(flags['time-budget']);
         const outFile = typeof flags.out === 'string' && flags.out ? flags.out : undefined;
-        const seed = Number.isFinite(flags.seed) ? Number(flags.seed) : undefined;
+        const seed = parseNumberFlag(flags.seed);
         
         // Track command start
         await emit({
@@ -94,13 +96,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         // Return validation errors
         if (validationErrors.length > 0) {
           const error = createMindError('MIND_BAD_FLAGS', validationErrors.join('; '));
-          const totalTime = Date.now() - startTime;
+          const duration = tracker.total();
           
           await emit({
             type: ANALYTICS_EVENTS.FEED_FINISHED,
             payload: {
               doUpdate,
-              durationMs: totalTime,
+              durationMs: duration,
               result: 'failed',
               error: error.message,
             },
@@ -111,7 +113,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
               ok: false,
               code: error.code,
               message: error.message,
-              hint: error.hint
+              hint: error.hint,
+              timing: duration
             });
           } else {
             ctx.presenter.error(error.message);
@@ -125,11 +128,12 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         
         // Step 1: Update indexes (optional)
         if (doUpdate) {
+          tracker.checkpoint('update-start');
           const updateOptions: any = {
             cwd,
             log: (entry: any) => {
               if (!quiet && !jsonMode) {
-                console.log('Update:', entry);
+                ctx.presenter.info(`Update: ${entry.msg || entry}`);
               }
             }
           };
@@ -138,16 +142,18 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           if (timeBudget) {updateOptions.timeBudgetMs = timeBudget;}
           
           updateResult = await updateIndexes(updateOptions);
+          tracker.checkpoint('update-complete');
         }
         
         // Step 2: Build pack
+        tracker.checkpoint('pack-start');
         const packOptions: any = {
           cwd,
           intent,
           budget: { totalTokens: budget, caps: {}, truncation: 'end' as const },
           log: (entry: any) => {
             if (!quiet && !jsonMode) {
-              console.log('Pack:', entry);
+              ctx.presenter.info(`Pack: ${entry.msg || entry}`);
             }
           }
         };
@@ -158,8 +164,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         if (seed) {packOptions.seed = seed;}
         
         const packResult = await buildPack(packOptions);
-        
-        const totalTime = Date.now() - startTime;
+        tracker.checkpoint('pack-complete');
+        const duration = tracker.total();
         
         // Prepare data for artifacts (if not using --out flag)
         // If --out is specified, user wants explicit file location, so don't use artifacts
@@ -185,6 +191,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
               deterministic: !!seed
             },
             ignoredFlags: ignoredFlags.length > 0 ? ignoredFlags : undefined,
+            timing: duration,
             ...(artifactData || {}),
           };
           
@@ -196,26 +203,39 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             await fs.writeFile(absPath, packResult.markdown, 'utf8');
             
             if (!quiet) {
-              console.log(`✓ Pack saved: ${absPath}`);
-              console.log(`Intent: ${intent}`);
-              console.log(`Product: ${product || 'none'}`);
-              console.log(`Tokens: ${packResult.tokensEstimate}`);
-              console.log(`Mode: ${doUpdate ? 'Update + Pack' : 'Pack Only'}`);
+              const summaryLines = keyValue({
+                'Status': safeColors.success('✓ Pack saved'),
+                'File': absPath,
+                'Intent': intent,
+                'Product': product || 'none',
+                'Tokens': String(packResult.tokensEstimate),
+                'Mode': doUpdate ? 'Update + Pack' : 'Pack Only',
+              });
+              
               if (ignoredFlags.length > 0) {
-                console.log(`⚠ Ignored flags: ${ignoredFlags.join(', ')}`);
+                summaryLines.push('', `${safeColors.warning('⚠')} Ignored flags: ${ignoredFlags.join(', ')}`);
               }
+              
+              summaryLines.push('', `Time: ${formatTiming(duration)}`);
+              ctx.presenter.write(box('Mind Feed', summaryLines));
             }
           } else {
             // Default: stream Markdown to stdout
-            // Show warnings to stderr if not quiet
+            // Show summary to stderr if not quiet
             if (!quiet) {
-              console.error(`Intent: ${intent}`);
-              console.error(`Product: ${product || 'none'}`);
-              console.error(`Tokens: ${packResult.tokensEstimate}`);
-              console.error(`Mode: ${doUpdate ? 'Update + Pack' : 'Pack Only'}`);
+              const summaryLines = keyValue({
+                'Intent': intent,
+                'Product': product || 'none',
+                'Tokens': String(packResult.tokensEstimate),
+                'Mode': doUpdate ? 'Update + Pack' : 'Pack Only',
+              });
+              
               if (ignoredFlags.length > 0) {
-                console.error(`⚠ Ignored flags: ${ignoredFlags.join(', ')}`);
+                summaryLines.push('', `${safeColors.warning('⚠')} Ignored flags: ${ignoredFlags.join(', ')}`);
               }
+              
+              summaryLines.push('', `Time: ${formatTiming(duration)}`);
+              ctx.presenter.write(box('Mind Feed', summaryLines));
             }
             // Stream markdown to stdout
             ctx.presenter.write(packResult.markdown);
@@ -237,7 +257,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             preset,
             budget,
             tokensEstimate: packResult.tokensEstimate,
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'success',
           },
         });
@@ -245,14 +265,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         return 0;
       } catch (e: unknown) {
         const error = wrapError(e, 'MIND_FEED_ERROR');
-        const totalTime = Date.now() - startTime;
+        const duration = tracker.total();
 
         // Track command failure
         await emit({
           type: ANALYTICS_EVENTS.FEED_FINISHED,
           payload: {
             doUpdate: !flags['no-update'],
-            durationMs: totalTime,
+            durationMs: duration,
             result: 'error',
             error: error.message,
           },
@@ -263,7 +283,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             ok: false,
             code: error.code,
             message: error.message,
-            hint: error.hint
+            hint: error.hint,
+            timing: duration
           });
         } else {
           ctx.presenter.error(error.message);

@@ -1,0 +1,84 @@
+{
+  "files": {
+    "src/index.ts": {
+      "exports": [
+        {
+          "jsdoc": "Main application class",
+          "kind": "class",
+          "name": "App",
+          "signature": "export class App {"
+        },
+        {
+          "jsdoc": "Calculate factorial using MathUtils",
+          "kind": "function",
+          "name": "calculateFactorial",
+          "signature": "export function calculateFactorial(n: number): number {"
+        },
+        {
+          "jsdoc": "Create a new application instance",
+          "kind": "function",
+          "name": "createApp",
+          "signature": "export function createApp(name: string): App {"
+        }
+      ],
+      "sha256": "7df371d4720bb9d21466828eb2724ffc6dd2a7929f3f2412b2d24f23a4568458",
+      "size": 1025
+    },
+    "src/types.ts": {
+      "exports": [
+        {
+          "jsdoc": "API response type",
+          "kind": "type",
+          "name": "ApiResponse",
+          "signature": "export type ApiResponse<T> = {"
+        },
+        {
+          "jsdoc": "Configuration options",
+          "kind": "interface",
+          "name": "Config",
+          "signature": "export interface Config {"
+        },
+        {
+          "jsdoc": "Event handler type",
+          "kind": "type",
+          "name": "EventHandler",
+          "signature": "export type EventHandler<T = any> = (event: T) => void;"
+        },
+        {
+          "jsdoc": "User interface",
+          "kind": "interface",
+          "name": "User",
+          "signature": "export interface User {"
+        }
+      ],
+      "sha256": "baa8b9f0c6a45bf02c11abb211a38f8a6c98da02b8c0697076a5c5ad9e242fcd",
+      "size": 508
+    },
+    "src/utils.ts": {
+      "exports": [
+        {
+          "jsdoc": "Calculate the sum of two numbers",
+          "kind": "function",
+          "name": "add",
+          "signature": "export function add(a: number, b: number): number {"
+        },
+        {
+          "jsdoc": "Utility class for mathematical operations",
+          "kind": "class",
+          "name": "MathUtils",
+          "signature": "export class MathUtils {"
+        },
+        {
+          "jsdoc": "Calculate the product of two numbers",
+          "kind": "function",
+          "name": "multiply",
+          "signature": "export function multiply(a: number, b: number): number {"
+        }
+      ],
+      "sha256": "ad7d67f0a5508e3c0475adf022ea43aa9b62cc1d1a10f604d92e74fa7f1960b9",
+      "size": 786
+    }
+  },
+  "generator": "kb-labs-mind@0.1.0",
+  "schemaVersion": "1.0"
+}
