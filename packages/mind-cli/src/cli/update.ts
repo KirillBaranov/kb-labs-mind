@@ -4,7 +4,16 @@
 
 import type { CommandModule } from './types';
 import { updateIndexes } from '@kb-labs/mind-indexer';
-import { createSpinner, box, keyValue, safeColors, TimingTracker, formatTiming, parseNumberFlag } from '@kb-labs/shared-cli-ui';
+import {
+  createSpinner,
+  box,
+  keyValue,
+  safeColors,
+  safeSymbols,
+  TimingTracker,
+  formatTiming,
+  parseNumberFlag,
+} from '@kb-labs/shared-cli-ui';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
@@ -77,25 +86,31 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           });
         } else {
           if (!quiet) {
-            // Show final summary box
-            const summaryLines = keyValue({
-              'API Changes': result.api ? `${result.api.added > 0 ? '+' : ''}${result.api.added} ~${result.api.updated} -${result.api.removed}` : 'N/A',
-              'Dependencies': result.deps ? `${result.deps.edgesAdded > 0 ? '+' : ''}${result.deps.edgesAdded} -${result.deps.edgesRemoved}` : 'N/A',
-              'Diff Files': result.diff ? String(result.diff.files || 0) : 'none',
-              'Status': result.partial ? safeColors.warning('⚠ Partial') : safeColors.success('✓ Complete')
-            });
-            
+            const summaryLines: string[] = [];
+            summaryLines.push(
+              ...keyValue({
+                'API Changes': formatDelta(result.api?.added, result.api?.updated, result.api?.removed),
+                'Dependencies': formatDelta(result.deps?.edgesAdded, undefined, result.deps?.edgesRemoved),
+                'Diff Files': result.diff ? String(result.diff.files || 0) : 'none',
+              }),
+            );
+
             if (result.partial && result.budget) {
+              summaryLines.push('');
               summaryLines.push(
-                '',
-                `${safeColors.warning('⚠')} Partial update due to time budget`,
-                `Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`
+                safeColors.muted('Partial update due to time budget'),
+                safeColors.muted(`Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`),
               );
             }
-            
-            summaryLines.push('', `Time: ${formatTiming(duration)}`);
-            
-            // Add empty line before box for separation
+
+            const statusSymbol = result.partial ? safeSymbols.warning : safeSymbols.success;
+            const statusColor = result.partial ? safeColors.warning : safeColors.success;
+            const statusLabel = result.partial ? 'Partial update' : 'Update complete';
+            summaryLines.push(
+              '',
+              `${statusSymbol} ${statusColor(statusLabel)} · ${safeColors.muted(formatTiming(duration))}`,
+            );
+
             ctx.presenter.write('\n' + box('Mind Update', summaryLines));
           }
         }
@@ -163,3 +178,31 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
     }
   )) as number;
 };
+
+function formatDelta(
+  added?: number,
+  updated?: number,
+  removed?: number,
+): string {
+  const parts: string[] = [];
+
+  if (typeof added === 'number' && added !== 0) {
+    const prefix = added > 0 ? `+${added}` : String(added);
+    parts.push(prefix);
+  }
+
+  if (typeof updated === 'number' && updated !== 0) {
+    parts.push(`~${updated}`);
+  }
+
+  if (typeof removed === 'number' && removed !== 0) {
+    const prefix = removed > 0 ? `-${removed}` : String(removed);
+    parts.push(prefix);
+  }
+
+  if (parts.length === 0) {
+    return '0';
+  }
+
+  return parts.join(' ');
+}

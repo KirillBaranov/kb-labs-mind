@@ -5,7 +5,16 @@
 import type { CommandModule } from './types';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
-import { TimingTracker, box, keyValue, formatTiming, safeColors, parseNumberFlag } from '@kb-labs/shared-cli-ui';
+import {
+  TimingTracker,
+  box,
+  keyValue,
+  formatTiming,
+  safeColors,
+  safeSymbols,
+  parseNumberFlag,
+  displayArtifacts,
+} from '@kb-labs/shared-cli-ui';
 import { promises as fs } from 'node:fs';
 import { join, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
@@ -156,16 +165,39 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
               await fs.writeFile(absPath, result.markdown, 'utf8');
               
               if (!quiet) {
-                const summaryLines = keyValue({
-                  'Status': safeColors.success('✓ Pack saved'),
-                  'File': absPath,
-                  'Intent': intent,
-                  'Product': product || 'none',
-                  'Tokens': String(result.tokensEstimate),
-                });
-                
-                summaryLines.push('', `Time: ${formatTiming(duration)}`);
-                ctx.presenter.write(box('Mind Pack', summaryLines));
+                const summaryLines: string[] = [];
+                summaryLines.push(
+                  ...keyValue({
+                    File: absPath,
+                    Intent: intent,
+                    Product: product || 'none',
+                    Tokens: String(result.tokensEstimate),
+                  }),
+                );
+
+                summaryLines.push('');
+                summaryLines.push(
+                  ...displayArtifacts(
+                    [
+                      {
+                        name: 'Mind Pack',
+                        path: absPath,
+                        size: Buffer.byteLength(result.markdown, 'utf8'),
+                        modified: new Date(),
+                        description: 'Markdown bundle saved to disk',
+                      },
+                    ],
+                    {
+                      title: 'Artifacts',
+                      showDescription: true,
+                      showTime: false,
+                      maxItems: 1,
+                    },
+                  ),
+                );
+
+                summaryLines.push('', renderStatusLine('Pack saved', 'success', duration));
+                ctx.presenter.write('\n' + box('Mind Pack', summaryLines));
               }
             } catch (writeError: any) {
               const errorMessage = writeError instanceof Error ? writeError.message : String(writeError);
@@ -205,14 +237,17 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             // Default: stream Markdown to stdout
             // Show summary if not quiet
             if (!quiet) {
-              const summaryLines = keyValue({
-                'Intent': intent,
-                'Product': product || 'none',
-                'Tokens': String(result.tokensEstimate),
-              });
-              
-              summaryLines.push('', `Time: ${formatTiming(duration)}`);
-              ctx.presenter.write(box('Mind Pack', summaryLines));
+              const summaryLines: string[] = [];
+              summaryLines.push(
+                ...keyValue({
+                  Intent: intent,
+                  Product: product || 'none',
+                  Tokens: String(result.tokensEstimate),
+                }),
+              );
+
+              summaryLines.push('', renderStatusLine('Pack ready', 'success', duration));
+              ctx.presenter.write('\n' + box('Mind Pack', summaryLines));
             }
             // Also return data for artifacts
             ctx.presenter.write(result.markdown);
@@ -283,3 +318,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
     }
   )) as number;
 };
+
+type StatusKind = 'success' | 'warning' | 'error';
+
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+  const symbol =
+    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+  const color =
+    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+
+  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+}

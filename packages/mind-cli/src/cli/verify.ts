@@ -7,7 +7,14 @@ import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { sha256 } from '@kb-labs/mind-core';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-types';
-import { TimingTracker, box, keyValue, formatTiming, safeColors } from '@kb-labs/shared-cli-ui';
+import {
+  TimingTracker,
+  box,
+  keyValue,
+  formatTiming,
+  safeColors,
+  safeSymbols,
+} from '@kb-labs/shared-cli-ui';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
 
@@ -118,14 +125,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
         tracker.checkpoint('load-start');
         // Load all index files
-        const [index, apiIndex, depsGraph, recentDiff, meta, docs] = await Promise.all([
+        const [index, apiIndex, depsGraph, recentDiff, meta, docsPrimary, docsLegacy] = await Promise.all([
           readJsonSafely<MindIndex>(join(mindDir, 'index.json')),
           readJsonSafely<ApiIndex>(join(mindDir, 'api-index.json')),
           readJsonSafely<DepsGraph>(join(mindDir, 'deps.json')),
           readJsonSafely<RecentDiff>(join(mindDir, 'recent-diff.json')),
           readJsonSafely<any>(join(mindDir, 'meta.json')),
-          readJsonSafely<any>(join(mindDir, 'docs.json'))
+          readJsonSafely<any>(join(mindDir, 'docs.json')),
+          readJsonSafely<any>(join(mindDir, 'docs-index.json'))
         ]);
+        const docs = docsPrimary ?? docsLegacy ?? null;
         tracker.checkpoint('load-complete');
 
         tracker.checkpoint('verify-start');
@@ -233,31 +242,38 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         if (json) {
           ctx.presenter.json(result);
         } else {
-          if (result.ok) {
-            if (!quiet) {
-              const summaryLines = keyValue({
-                'Status': safeColors.success('✓ Consistent'),
-                'Files Checked': String(filesChecked),
-              });
-              
-              summaryLines.push('', `Time: ${formatTiming(duration)}`);
-              ctx.presenter.write(box('Mind Verify', summaryLines));
+          if (!quiet) {
+            if (result.ok) {
+              const summaryLines: string[] = [];
+              summaryLines.push(
+                ...keyValue({
+                  'Files Checked': String(filesChecked),
+                }),
+              );
+              summaryLines.push('', renderStatusLine('Workspace consistent', 'success', duration));
+              ctx.presenter.write('\n' + box('Mind Verify', summaryLines));
+            } else {
+              const summaryLines: string[] = [];
+              summaryLines.push(
+                ...keyValue({
+                  'Files Checked': String(filesChecked),
+                  Inconsistencies: String(inconsistencies.length),
+                }),
+              );
+
+              if (inconsistencies.length > 0) {
+                summaryLines.push('');
+                summaryLines.push(safeColors.bold('Details'));
+                for (const inc of inconsistencies) {
+                  summaryLines.push(safeColors.muted(`- ${inc.file} (${inc.type} mismatch)`));
+                }
+              }
+
+              summaryLines.push('');
+              summaryLines.push(safeColors.muted('Hint: Run kb mind update'));
+              summaryLines.push('', renderStatusLine('Inconsistencies found', 'warning', duration));
+              ctx.presenter.write('\n' + box('Mind Verify', summaryLines));
             }
-          } else {
-            const summaryLines = keyValue({
-              'Status': safeColors.warning('✗ Inconsistent'),
-              'Files Checked': String(filesChecked),
-              'Inconsistencies': String(inconsistencies.length),
-            });
-            
-            summaryLines.push('');
-            for (const inc of inconsistencies) {
-              summaryLines.push(`  • ${inc.file}: ${inc.type} mismatch`);
-            }
-            
-            summaryLines.push('', 'Run: kb mind update');
-            summaryLines.push('', `Time: ${formatTiming(duration)}`);
-            ctx.presenter.write(box('Mind Verify', summaryLines));
           }
         }
 
@@ -319,3 +335,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
     }
   )) as number | void;
 };
+
+type StatusKind = 'success' | 'warning' | 'error';
+
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+  const symbol =
+    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+  const color =
+    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+
+  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+}

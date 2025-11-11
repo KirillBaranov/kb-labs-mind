@@ -4,11 +4,10 @@
 
 import type { CommandModule, CommandContext as MindCommandContext } from './types';
 import { initMindStructure } from '@kb-labs/mind-indexer';
-import { 
-  createCommandRunner, 
-  discoverArtifacts, 
-  safeColors,
-  type CommandContext as SharedCommandContext 
+import {
+  createCommandRunner,
+  discoverArtifacts,
+  type CommandContext as SharedCommandContext,
 } from '@kb-labs/shared-cli-ui';
 import { TimingTracker } from '@kb-labs/shared-cli-ui';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
@@ -70,7 +69,7 @@ const commandRunner = createCommandRunner({
     return {
       summary: {
         Workspace: mindDir,
-        Status: safeColors.success('✓ Initialized'),
+        Status: 'Initialized',
       },
       artifacts,
       data: {

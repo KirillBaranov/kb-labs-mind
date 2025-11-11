@@ -3,7 +3,7 @@
  * REST handler for Mind verify endpoint (Plugin Model v2)
  */
 
-import type { VerifyRequest, VerifyResponse, GatewayError } from '@kb-labs/mind-gateway';
+import type { MindVerifyRequest, MindVerifyResponse, MindGatewayError } from '../types.js';
 import type { CardData } from '@kb-labs/plugin-manifest';
 import { verifyIndexes } from '@kb-labs/mind-gateway';
 import { findRepoRoot } from '@kb-labs/core';
@@ -33,9 +33,9 @@ export async function handleVerify(
       };
     };
   }
-): Promise<VerifyResponse | GatewayError> {
+): Promise<MindVerifyResponse | MindGatewayError> {
   try {
-    const request = input as VerifyRequest;
+    const request = input as MindVerifyRequest;
 
     // Use runtime.log if available, otherwise use console
     const log = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
@@ -101,7 +101,7 @@ export async function handleVerify(
     // but we return only widget data
     return {
       cards,
-    } as unknown as VerifyResponse;
+    } as unknown as MindVerifyResponse;
   } catch (error: any) {
     const log = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
       console.log(`[${level}] ${msg}`, meta || '');
@@ -112,7 +112,7 @@ export async function handleVerify(
       code: 'MIND_GATEWAY_ERROR',
       message: error.message,
       hint: 'Check workspace permissions and structure',
-    };
+    } as MindGatewayError;
   }
 }
 

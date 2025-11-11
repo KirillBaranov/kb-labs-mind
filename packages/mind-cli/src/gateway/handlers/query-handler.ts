@@ -3,7 +3,7 @@
  * REST handler for Mind query endpoint (Plugin Model v2)
  */
 
-import type { QueryRequest, QueryResponse, GatewayError } from '@kb-labs/mind-gateway';
+import type { MindQueryRequest, MindQueryResponse, MindGatewayError } from '../types.js';
 import type { InfoPanelSection } from '@kb-labs/plugin-manifest';
 import { executeQuery } from '@kb-labs/mind-query';
 import { findRepoRoot } from '@kb-labs/core';
@@ -33,9 +33,9 @@ export async function handleQuery(
       };
     };
   }
-): Promise<QueryResponse | GatewayError> {
+): Promise<MindQueryResponse | MindGatewayError> {
   try {
-    const request = input as QueryRequest;
+    const request = input as MindQueryRequest;
 
     // Use runtime.log if available, otherwise use console
     const log = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
@@ -150,7 +150,7 @@ export async function handleQuery(
     // but we return only widget data
     return {
       sections,
-    } as unknown as QueryResponse;
+    } as unknown as MindQueryResponse;
   } catch (error: any) {
     // Re-create log function in catch block (in case it's not in scope)
     const logError = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
@@ -162,7 +162,7 @@ export async function handleQuery(
       code: 'MIND_GATEWAY_ERROR',
       message: error.message,
       hint: 'Check query parameters and workspace state',
-    };
+    } as MindGatewayError;
   }
 }
 

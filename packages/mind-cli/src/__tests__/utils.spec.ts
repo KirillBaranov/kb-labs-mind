@@ -123,48 +123,39 @@ describe('CLI Utilities', () => {
   });
 
   describe('box', () => {
-    it('should create a simple box', () => {
-      const result = box('Hello World');
-      expect(result).toContain('┌');
-      expect(result).toContain('┐');
-      expect(result).toContain('└');
-      expect(result).toContain('┘');
-      expect(result).toContain('Hello World');
+    it('formats content with a single left border', () => {
+      const output = box('Title', ['First line', 'Second line']).split('\n');
+      expect(output).toEqual([
+        '│ Title',
+        '│ First line',
+        '│ Second line',
+        '│',
+      ]);
     });
 
-    it('should create a box with title', () => {
-      const result = box('Content', 'Title');
-      expect(result).toContain('Title');
-      expect(result).toContain('Content');
-      expect(result).toContain('├');
-      expect(result).toContain('┤');
-    });
-
-    it('should handle multi-line content', () => {
-      const result = box('Line 1\nLine 2\nLine 3');
-      expect(result).toContain('Line 1');
-      expect(result).toContain('Line 2');
-      expect(result).toContain('Line 3');
-    });
-
-    it('should handle minimum width', () => {
-      const result = box('Hi');
-      expect(result).toContain('┌' + '─'.repeat(48) + '┐');
+    it('handles empty content', () => {
+      const output = box('Only Title', []).split('\n');
+      expect(output).toEqual(['│ Only Title', '│']);
     });
   });
 
   describe('keyValue', () => {
-    it('should format string value', () => {
-      const result = keyValue('name', 'value');
-      expect(result).toContain('name');
-      expect(result).toContain('value');
-      expect(result).toContain('\x1b[36m'); // cyan color
+    beforeEach(() => {
+      process.env.NO_COLOR = '1';
     });
 
-    it('should format number value', () => {
-      const result = keyValue('count', 42);
-      expect(result).toContain('count');
-      expect(result).toContain('42');
+    afterEach(() => {
+      delete process.env.NO_COLOR;
+    });
+
+    it('formats string values as key-value pairs', () => {
+      const lines = keyValue({ name: 'value' });
+      expect(lines).toEqual(['name: value']);
+    });
+
+    it('formats numeric values consistently', () => {
+      const lines = keyValue({ count: 42 });
+      expect(lines).toEqual(['count: 42']);
     });
   });
 

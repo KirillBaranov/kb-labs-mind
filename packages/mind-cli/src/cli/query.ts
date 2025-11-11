@@ -5,7 +5,15 @@
 import type { CommandModule } from './types.js';
 import { executeQuery } from '@kb-labs/mind-query';
 import type { QueryName } from '@kb-labs/mind-types';
-import { TimingTracker, formatTiming, box, keyValue, discoverArtifacts } from '@kb-labs/shared-cli-ui';
+import {
+  TimingTracker,
+  formatTiming,
+  box,
+  keyValue,
+  safeSymbols,
+  safeColors,
+  displayArtifacts,
+} from '@kb-labs/shared-cli-ui';
 import { resolve, join } from 'node:path';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { encode } from '@byjohann/toon';
@@ -100,8 +108,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         tracker.checkpoint('query-complete');
         
         // Handle TOON output (token-efficient LLM format)
+        let sidecarArtifact: {
+          name: string;
+          path: string;
+          size: number;
+          modified: Date;
+          description: string;
+        } | null = null;
+
         if (toonMode || toonSidecar) {
-      const toonOutput = encode(result);
+          const toonOutput = encode(result);
 
           // Prepare data for artifacts (if using --toon-sidecar)
           // If --toon-sidecar is specified, also write via artifacts system
@@ -116,6 +132,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             mkdirSync(sidecarDir, { recursive: true });
             sidecarPath = join(sidecarDir, `${result.meta.queryId || 'query'}.toon`);
             writeFileSync(sidecarPath, toonOutput, 'utf-8');
+            sidecarArtifact = {
+              name: 'Query TOON',
+              path: sidecarPath,
+              size: Buffer.byteLength(toonOutput, 'utf8'),
+              modified: new Date(),
+              description: 'Serialized query output',
+            };
           }
 
           // Output TOON format
@@ -129,12 +152,28 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
               });
             } else {
               if (!quiet) {
-                const lines = keyValue({
-                  'Query': queryName,
-                  'Format': 'TOON',
-                  'Time': formatTiming(tracker.total())
-                });
-                ctx.presenter.write(box('Mind Query (TOON)', lines));
+                const summaryLines: string[] = [];
+                summaryLines.push(
+                  ...keyValue({
+                    Query: queryName,
+                    Format: 'TOON',
+                  }),
+                );
+
+                if (sidecarArtifact) {
+                  summaryLines.push('');
+                  summaryLines.push(
+                    ...displayArtifacts([sidecarArtifact], {
+                      title: 'Artifacts',
+                      showDescription: true,
+                      showTime: false,
+                      maxItems: 1,
+                    }),
+                  );
+                }
+
+                summaryLines.push('', renderStatusLine('Query ready', 'success', tracker.total()));
+                ctx.presenter.write('\n' + box('Mind Query (TOON)', summaryLines));
               }
               ctx.presenter.write(toonOutput);
             }
@@ -168,32 +207,51 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           ctx.presenter.write(output);
         } else {
           if (!quiet) {
-            const lines = keyValue({
-              'Query': queryName,
-              'Results': String((result.result as any)?.count || 0),
-              'Cached': result.meta.cached ? 'Yes' : 'No',
-              'Tokens': String(result.meta.tokensEstimate),
-              'Time': formatTiming(tracker.total())
-            });
-            
+            const summaryLines: string[] = [];
+            summaryLines.push(
+              ...keyValue({
+                Query: queryName,
+                Results: String((result.result as any)?.count || 0),
+                Cached: result.meta.cached ? 'Yes' : 'No',
+                Tokens: String(result.meta.tokensEstimate),
+              }),
+            );
+
             if (result.summary) {
-              lines.push('', `Summary: ${result.summary}`);
+              summaryLines.push('');
+              summaryLines.push(safeColors.muted(`Summary: ${result.summary}`));
             }
-            
+
             if (result.suggestNextQueries && result.suggestNextQueries.length > 0) {
-              lines.push('', 'Suggestions:');
+              summaryLines.push('');
+              summaryLines.push(safeColors.bold('Suggestions'));
               for (const suggestion of result.suggestNextQueries) {
-                lines.push(`  • ${suggestion}`);
+                summaryLines.push(safeColors.muted(`- ${suggestion}`));
               }
             }
-            
-            ctx.presenter.write(box('Mind Query', lines));
+
+            if (sidecarArtifact) {
+              summaryLines.push('');
+              summaryLines.push(
+                ...displayArtifacts([sidecarArtifact], {
+                  title: 'Artifacts',
+                  showDescription: true,
+                  showTime: false,
+                  maxItems: 1,
+                }),
+              );
+            }
+
+            summaryLines.push('', renderStatusLine('Query ready', 'success', tracker.total()));
+
+            ctx.presenter.write('\n' + box('Mind Query', summaryLines));
           }
           
           // Show result preview
           if (result.result) {
             ctx.presenter.write(JSON.stringify(result.result, null, 2));
           }
+
         }
 
         // Track command completion
@@ -244,3 +302,15 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
     }
   )) as number | void;
 };
+
+type StatusKind = 'success' | 'warning' | 'error';
+
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+  const symbol =
+    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+  const color =
+    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+
+  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+}
+
