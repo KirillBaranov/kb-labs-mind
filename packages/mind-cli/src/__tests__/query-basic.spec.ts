@@ -1,14 +1,48 @@
 /**
- * Basic tests for query.ts CLI command
+ * Basic tests for mind:query command
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/query.js';
+import { run } from '../cli/commands/query.js';
 import type { CommandContext } from '../cli/types.js';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
+import { getExitCode, getProducedArtifacts } from './helpers.js';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-query', () => ({
   executeQuery: vi.fn()
+}));
+
+vi.mock('@kb-labs/analytics-sdk-node', () => ({
+  runScope: async (_config: any, fn: any) => {
+    return fn(async () => {});
+  }
+}));
+
+vi.mock('@kb-labs/shared-cli-ui', () => ({
+  TimingTracker: vi.fn(() => ({
+    checkpoint: vi.fn(),
+    total: vi.fn(() => 25),
+  })),
+  formatTiming: vi.fn((ms: number) => `${ms}ms`),
+  box: vi.fn((title: string, content: string[]) => `[${title}]
+${content.join('\n')}`),
+  keyValue: vi.fn((pairs: Record<string, string | number>) =>
+    Object.entries(pairs).map(([k, v]) => `${k}: ${v}`)
+  ),
+  safeColors: {
+    success: (s: string) => s,
+    warning: (s: string) => s,
+    error: (s: string) => s,
+    muted: (s: string) => s,
+    bold: (s: string) => s,
+  },
+  safeSymbols: {
+    success: '✓',
+    warning: '⚠',
+    error: '✗',
+  },
+  displayArtifacts: vi.fn(() => []),
 }));
 
 const mockPresenter = {
@@ -34,6 +68,9 @@ afterEach(() => {
 });
 
 describe('Mind Query Command - Basic Tests', () => {
+  const QUERY_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.query.output']?.id ?? 'mind.query.output';
+
   it('should handle basic externals query', async () => {
     const { executeQuery } = await import('@kb-labs/mind-query');
     vi.mocked(executeQuery).mockResolvedValue({
@@ -57,8 +94,10 @@ describe('Mind Query Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { query: 'externals' });
 
-    expect(result).toBe(0);
+    expect(typeof result).toBe('number');
+    expect(getExitCode(result)).toBe(0);
     expect(executeQuery).toHaveBeenCalledWith('externals', {}, expect.any(Object));
+    expect(mockPresenter.error).not.toHaveBeenCalled();
   });
 
   it('should handle impact query with file parameter', async () => {
@@ -87,7 +126,7 @@ describe('Mind Query Command - Basic Tests', () => {
       file: '/test/project/src/App.tsx'
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(executeQuery).toHaveBeenCalledWith('impact', { file: '/test/project/src/App.tsx' }, expect.any(Object));
   });
 
@@ -117,7 +156,7 @@ describe('Mind Query Command - Basic Tests', () => {
       'ai-mode': true
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(executeQuery).toHaveBeenCalledWith('meta', {}, expect.objectContaining({
       aiMode: true
     }));
@@ -148,7 +187,7 @@ describe('Mind Query Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { query: 'externals' });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     // JSON mode should call presenter.json
     // expect(mockPresenter.json).toHaveBeenCalled();
   });
@@ -156,7 +195,7 @@ describe('Mind Query Command - Basic Tests', () => {
   it('should handle missing required parameters', async () => {
     const result = await run(mockContext, [], { query: 'impact' });
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith("Query 'impact' requires --file flag");
   });
 
@@ -166,7 +205,7 @@ describe('Mind Query Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { query: 'externals' });
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('Index not found');
   });
 });

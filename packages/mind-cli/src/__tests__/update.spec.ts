@@ -3,8 +3,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/update.js';
+import { run } from '../cli/commands/update.js';
 import type { CommandContext } from '../cli/types.js';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
+import { getExitCode, getProducedArtifacts } from './helpers.js';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-indexer', () => ({
@@ -25,12 +27,25 @@ vi.mock('@kb-labs/shared-cli-ui', () => ({
   keyValue: vi.fn((pairs) => Object.entries(pairs).map(([k, v]) => `${k}: ${v}`)),
   safeColors: {
     success: (s: string) => `✓ ${s}`,
-    warning: (s: string) => `⚠ ${s}`
+    warning: (s: string) => `⚠ ${s}`,
+    error: (s: string) => `✗ ${s}`,
+    muted: (s: string) => s,
   },
-  formatTiming: vi.fn((ms) => `${ms}ms`)
+  safeSymbols: {
+    success: '✓',
+    warning: '⚠',
+    error: '✗',
+  },
+  formatTiming: vi.fn((ms) => `${ms}ms`),
+  parseNumberFlag: vi.fn(value => {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : undefined;
+  }),
 }));
 
 describe('Mind Update Command', () => {
+  const UPDATE_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
   let mockContext: CommandContext;
   let mockPresenter: any;
 
@@ -66,12 +81,12 @@ describe('Mind Update Command', () => {
 
     const result = await run(mockContext, [], {});
 
-    expect(result).toBe(0);
-      expect(updateIndexes).toHaveBeenCalledWith({
-        cwd: '/test/project',
-        log: expect.any(Function),
-        timeBudgetMs: 5000
-      });
+    expect(getExitCode(result)).toBe(0);
+    expect(updateIndexes).toHaveBeenCalledWith({
+      cwd: '/test/project',
+      log: expect.any(Function),
+      timeBudgetMs: 5000
+    });
     expect(mockPresenter.write).toHaveBeenCalled();
   });
 
@@ -90,7 +105,7 @@ describe('Mind Update Command', () => {
       'time-budget': 1000
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(updateIndexes).toHaveBeenCalledWith({
       cwd: '/custom/path',
       since: 'HEAD~1',
@@ -111,13 +126,16 @@ describe('Mind Update Command', () => {
 
     const result = await run(mockContext, [], { json: true });
 
-    expect(result).toBe(0);
-    expect(mockPresenter.json).toHaveBeenCalledWith({
-      ok: true,
-      delta: expect.any(Object),
-      budget: expect.any(Object),
-      timing: expect.any(Number)
-    });
+    expect(getExitCode(result)).toBe(0);
+    expect(mockPresenter.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: true,
+        delta: expect.any(Object),
+        budget: expect.any(Object),
+        timing: expect.any(Number),
+        produces: expect.arrayContaining([UPDATE_ARTIFACT_ID])
+      })
+    );
   });
 
   it('should handle partial updates', async () => {
@@ -132,7 +150,7 @@ describe('Mind Update Command', () => {
 
     const result = await run(mockContext, [], {});
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(mockPresenter.write).toHaveBeenCalledWith(
       expect.stringContaining('⚠ Partial')
     );
@@ -149,7 +167,7 @@ describe('Mind Update Command', () => {
 
     const result = await run(mockContext, [], { quiet: true });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     // Should not call presenter.write in quiet mode
     expect(mockPresenter.write).not.toHaveBeenCalled();
   });
@@ -160,7 +178,7 @@ describe('Mind Update Command', () => {
 
     const result = await run(mockContext, [], {});
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('Git not found');
   });
 
@@ -170,12 +188,14 @@ describe('Mind Update Command', () => {
 
     const result = await run(mockContext, [], { json: true });
 
-    expect(result).toBe(1);
-    expect(mockPresenter.json).toHaveBeenCalledWith({
-      ok: false,
-      code: 'MIND_UPDATE_ERROR',
-      message: 'Git not found',
-      hint: 'Check your workspace and git status'
-    });
+    expect(getExitCode(result)).toBe(1);
+    expect(mockPresenter.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: false,
+        code: 'MIND_UPDATE_ERROR',
+        message: 'Git not found',
+        hint: 'Check your workspace and git status'
+      })
+    );
   });
 });

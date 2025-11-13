@@ -2,10 +2,11 @@
  * Mind feed command - One-shot command for AI tools
  */
 
-import type { CommandModule } from './types';
+import type { CommandModule } from '../types.js';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET, createMindError, wrapError, getExitCode } from '@kb-labs/mind-core';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
   TimingTracker,
   box,
@@ -16,10 +17,15 @@ import {
   parseNumberFlag,
   displayArtifacts,
 } from '@kb-labs/shared-cli-ui';
-import { promises as fs } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join, dirname, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+
+const PACK_ARTIFACT_ID =
+  pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
+const UPDATE_ARTIFACT_ID =
+  pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const jsonMode = !!flags.json;
@@ -94,9 +100,9 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         if (outFile) {
           try {
             const absPath = isAbsolute(outFile) ? outFile : join(cwd, outFile);
-            await fs.mkdir(dirname(absPath), { recursive: true });
+            await mkdir(dirname(absPath), { recursive: true });
             // Test write access
-            await fs.writeFile(absPath, '', 'utf8');
+            await writeFile(absPath, '', 'utf8');
           } catch (error: any) {
             validationErrors.push(`Invalid output path: ${error.message}`);
           }
@@ -178,9 +184,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         
         // Prepare data for artifacts (if not using --out flag)
         // If --out is specified, user wants explicit file location, so don't use artifacts
-        const artifactData = !outFile ? {
-          'pack-output': packResult.markdown,
-        } : undefined;
+        const producedArtifacts = doUpdate ? [UPDATE_ARTIFACT_ID, PACK_ARTIFACT_ID] : [PACK_ARTIFACT_ID];
+
+        const artifactData = !outFile
+          ? {
+              [PACK_ARTIFACT_ID]: packResult.markdown,
+            }
+          : undefined;
         
         // Step 3: Handle output
         if (jsonMode) {
@@ -201,6 +211,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             },
             ignoredFlags: ignoredFlags.length > 0 ? ignoredFlags : undefined,
             timing: duration,
+            produces: producedArtifacts,
             ...(artifactData || {}),
           };
           
@@ -209,7 +220,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           // Handle output to file or stdout
           if (outFile) {
             const absPath = isAbsolute(outFile) ? outFile : join(cwd, outFile);
-            await fs.writeFile(absPath, packResult.markdown, 'utf8');
+            await writeFile(absPath, packResult.markdown, 'utf8');
             
             if (!quiet) {
               const summaryLines: string[] = [];
@@ -285,7 +296,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         
         // Return data for artifacts if available
         if (artifactData) {
-          return { exitCode: 0, ...artifactData } as any;
+          return { exitCode: 0, produces: producedArtifacts, ...artifactData } as any;
         }
 
         // Track command completion

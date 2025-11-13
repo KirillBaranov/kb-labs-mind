@@ -1,13 +1,12 @@
 /**
- * @module @kb-labs/mind-cli/core/query
+ * @module @kb-labs/mind-cli/application/queries/run-query-core
  * Core query execution logic (shared between CLI and REST)
  */
 
 import { executeQuery } from '@kb-labs/mind-query';
-import type { QueryName } from '@kb-labs/mind-types';
-import { resolve } from 'node:path';
 import { encode } from '@byjohann/toon';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import type { QueryName, QueryResult } from '@kb-labs/mind-types';
 
 /**
  * Normalized query input (independent of CLI/REST interface)
@@ -23,9 +22,9 @@ export interface QueryCoreInput {
     limit?: number;
     depth?: number;
     cacheTtl?: number;
-    cacheMode?: 'local' | 'remote';
+    cacheMode?: 'local' | 'ci';
     noCache?: boolean;
-    pathMode?: 'id' | 'relative' | 'absolute';
+    pathMode?: 'id' | 'absolute';
     aiMode?: boolean;
   };
   /** Output options */
@@ -38,20 +37,10 @@ export interface QueryCoreInput {
 /**
  * Normalized query result (independent of CLI/REST interface)
  */
-export interface QueryCoreResult {
-  /** Query name */
-  query: string;
-  /** Query result */
-  result: any;
-  /** Query metadata */
-  meta?: {
-    queryId?: string;
-    cached?: boolean;
-    tokensEstimate?: number;
-  };
+export type QueryCoreResult = QueryResult & {
   /** TOON sidecar path (if requested) */
   toonPath?: string;
-}
+};
 
 /**
  * Runtime context for core functions (minimal interface)
@@ -87,7 +76,7 @@ export async function runQueryCore(
   }
 
   // Execute query
-  const result = await executeQuery(query as QueryName, params, {
+  const queryResult = await executeQuery(query as QueryName, params, {
     cwd: options.cwd,
     limit: options.limit || 500,
     depth: options.depth || 5,
@@ -101,13 +90,13 @@ export async function runQueryCore(
   // Handle TOON sidecar if requested
   let toonPath: string | undefined;
   if (output?.toonSidecar) {
-    const toonOutput = encode(result);
+    const toonOutput = encode(queryResult);
     const sidecarDir = ctx.outdir 
       ? join(ctx.outdir, 'query')
       : join(ctx.workdir, '.kb', 'mind', 'query');
     
     await ctx.fs.mkdir(sidecarDir, { recursive: true });
-    const sidecarPath = output.toonPath || join(sidecarDir, `${result.meta?.queryId || 'query'}.toon`);
+    const sidecarPath = output.toonPath || join(sidecarDir, `${queryResult.meta?.queryId || 'query'}.toon`);
     await ctx.fs.writeFile(sidecarPath, toonOutput, 'utf-8');
     toonPath = sidecarPath;
     
@@ -115,9 +104,7 @@ export async function runQueryCore(
   }
 
   return {
-    query,
-    result: result.result,
-    meta: result.meta,
+    ...queryResult,
     toonPath,
   };
 }
@@ -162,9 +149,9 @@ export function parseQueryFromCliFlags(flags: Record<string, unknown>, cwd: stri
       limit: flags.limit as number | undefined,
       depth: flags.depth as number | undefined,
       cacheTtl: flags.cacheTtl as number | undefined,
-      cacheMode: flags.cacheMode as 'local' | 'remote' | undefined,
+      cacheMode: flags.cacheMode as 'local' | 'ci' | undefined,
       noCache: flags.noCache as boolean | undefined,
-      pathMode: flags.paths as 'id' | 'relative' | 'absolute' | undefined,
+      pathMode: flags.paths as 'id' | 'absolute' | undefined,
       aiMode: flags.aiMode as boolean | undefined,
     },
     output: {
@@ -184,9 +171,9 @@ export function parseQueryFromHttpRequest(request: {
     limit?: number;
     depth?: number;
     cacheTtl?: number;
-    cacheMode?: 'local' | 'remote';
+    cacheMode?: 'local' | 'ci';
     noCache?: boolean;
-    pathMode?: 'id' | 'relative' | 'absolute';
+    pathMode?: 'id' | 'absolute';
     aiMode?: boolean;
   };
 }, defaultCwd: string): QueryCoreInput {

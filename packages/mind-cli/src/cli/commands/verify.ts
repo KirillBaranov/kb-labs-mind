@@ -2,7 +2,7 @@
  * Mind verify command
  */
 
-import type { CommandModule } from './types';
+import type { CommandModule } from '../types.js';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { sha256 } from '@kb-labs/mind-core';
@@ -16,7 +16,7 @@ import {
   safeSymbols,
 } from '@kb-labs/shared-cli-ui';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
 interface VerifyResult {
   ok: boolean;

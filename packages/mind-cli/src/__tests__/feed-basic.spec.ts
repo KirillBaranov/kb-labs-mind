@@ -1,10 +1,12 @@
 /**
- * Basic tests for feed.ts CLI command
+ * Basic tests for mind:feed command
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/feed.js';
+import { run } from '../cli/commands/feed.js';
 import type { CommandContext } from '../cli/types.js';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
+import { getExitCode, getProducedArtifacts } from './helpers.js';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-indexer', () => ({
@@ -38,6 +40,11 @@ afterEach(() => {
 });
 
 describe('Mind Feed Command - Basic Tests', () => {
+  const PACK_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
+  const UPDATE_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
+
   it('should handle basic feed command', async () => {
     const { updateIndexes } = await import('@kb-labs/mind-indexer');
     const { buildPack } = await import('@kb-labs/mind-pack');
@@ -61,7 +68,8 @@ describe('Mind Feed Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toEqual(expect.arrayContaining([PACK_ARTIFACT_ID, UPDATE_ARTIFACT_ID]));
     expect(updateIndexes).toHaveBeenCalled();
     expect(buildPack).toHaveBeenCalled();
   });
@@ -74,13 +82,14 @@ describe('Mind Feed Command - Basic Tests', () => {
       json: { sections: ['api'], sectionUsage: { api_signatures: 75 } },
       tokensEstimate: 100
     });
-
+ 
     const result = await run(mockContext, [], { 
       intent: 'analyze project',
-      'pack-only': true
+      'no-update': true
     });
-
-    expect(result).toBe(0);
+ 
+     expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toEqual([PACK_ARTIFACT_ID]);
     expect(buildPack).toHaveBeenCalled();
   });
 
@@ -109,7 +118,8 @@ describe('Mind Feed Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toEqual(expect.arrayContaining([PACK_ARTIFACT_ID, UPDATE_ARTIFACT_ID]));
     // JSON mode should call presenter.json or write to stdout
     // expect(mockPresenter.json).toHaveBeenCalled();
   });
@@ -120,7 +130,7 @@ describe('Mind Feed Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('Update failed');
   });
 });

@@ -2,8 +2,9 @@
  * Mind update command
  */
 
-import type { CommandModule } from './types';
+import type { CommandModule } from '../types.js';
 import { updateIndexes } from '@kb-labs/mind-indexer';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
   createSpinner,
   box,
@@ -15,7 +16,10 @@ import {
   parseNumberFlag,
 } from '@kb-labs/shared-cli-ui';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+
+const UPDATE_ARTIFACT_ID =
+  pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const jsonMode = !!flags.json;
@@ -82,7 +86,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             ok: true,
             delta: result,
             budget: result.budget,
-            timing: duration
+            timing: duration,
+            produces: [UPDATE_ARTIFACT_ID]
           });
         } else {
           if (!quiet) {

@@ -1,10 +1,12 @@
 /**
- * Basic tests for pack.ts CLI command
+ * Basic tests for mind:pack command
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/pack.js';
+import { run } from '../cli/commands/pack.js';
 import type { CommandContext } from '../cli/types.js';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
+import { getExitCode, getProducedArtifacts } from './helpers.js';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-pack', () => ({
@@ -39,6 +41,9 @@ afterEach(() => {
 });
 
 describe('Mind Pack Command - Basic Tests', () => {
+  const PACK_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
+
   it('should handle basic pack command', async () => {
     const { buildPack } = await import('@kb-labs/mind-pack');
     vi.mocked(buildPack).mockResolvedValue({
@@ -49,7 +54,8 @@ describe('Mind Pack Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toContain(PACK_ARTIFACT_ID);
     expect(buildPack).toHaveBeenCalled();
     expect(mockPresenter.write).toHaveBeenCalledWith('# Project Context');
   });
@@ -67,7 +73,8 @@ describe('Mind Pack Command - Basic Tests', () => {
       budget: 500
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toContain(PACK_ARTIFACT_ID);
     expect(buildPack).toHaveBeenCalledWith({
       cwd: '/test/project',
       intent: 'analyze project',
@@ -88,7 +95,8 @@ describe('Mind Pack Command - Basic Tests', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toContain(PACK_ARTIFACT_ID);
     // JSON mode should call presenter.json
     // expect(mockPresenter.json).toHaveBeenCalled();
   });
@@ -106,7 +114,8 @@ describe('Mind Pack Command - Basic Tests', () => {
       quiet: true
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toContain(PACK_ARTIFACT_ID);
     // In quiet mode, presenter.write should still be called for output
     expect(mockPresenter.write).toHaveBeenCalled();
   });

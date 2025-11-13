@@ -2,9 +2,10 @@
  * Mind query command
  */
 
-import type { CommandModule } from './types.js';
+import type { CommandModule } from '../types.js';
 import { executeQuery } from '@kb-labs/mind-query';
 import type { QueryName } from '@kb-labs/mind-types';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
   TimingTracker,
   formatTiming,
@@ -15,10 +16,19 @@ import {
   displayArtifacts,
 } from '@kb-labs/shared-cli-ui';
 import { resolve, join } from 'node:path';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { encode } from '@byjohann/toon';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+import {
+  runQueryCore,
+  parseQueryFromCliFlags,
+  parseQueryFromHttpRequest,
+  type QueryRuntimeContext
+} from '../../application/index.js';
+
+const QUERY_ARTIFACT_ID =
+  pluginContractsManifest.artifacts['mind.query.output']?.id ?? 'mind.query.output';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags) => {
   const jsonMode = !!flags.json;
@@ -95,16 +105,48 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         }
         
         tracker.checkpoint('query-start');
-        const result = await executeQuery(queryName as QueryName, params, {
-          cwd,
-          limit: Number(flags.limit) || 500,
-          depth: Number(flags.depth) || 5,
-          cacheTtl: Number(flags['cache-ttl']) || 60,
-          cacheMode: (flags['cache-mode'] as 'ci' | 'local') || 'local',
-          noCache: !!flags['no-cache'],
-          pathMode: (flags.paths as 'id' | 'absolute') || 'id',
-          aiMode: !!flags['ai-mode']
-        });
+
+        const queryInput = {
+          query: queryName as string,
+          params,
+          options: {
+            cwd,
+            limit: Number(flags.limit) || 500,
+            depth: Number(flags.depth) || 5,
+            cacheTtl: Number(flags['cache-ttl']) || 60,
+            cacheMode: (flags['cache-mode'] as 'ci' | 'local') || 'local',
+            noCache: !!flags['no-cache'],
+            pathMode: (flags.paths as 'id' | 'absolute') || 'id',
+            aiMode: !!flags['ai-mode'],
+          },
+          output: toonSidecar
+            ? {
+                toonSidecar: true,
+                toonPath:
+                  typeof flags['toon-path'] === 'string' ? resolve(cwd, flags['toon-path']) : undefined,
+              }
+            : undefined,
+        };
+
+        const runtimeContext: QueryRuntimeContext = {
+          workdir: cwd,
+          outdir: join(cwd, '.kb', 'mind'),
+          fs: {
+            mkdir: async (path, options) => {
+              await mkdir(path, { recursive: options?.recursive ?? false });
+            },
+            writeFile: async (path, data, encoding = 'utf8') => {
+              await writeFile(path, data, { encoding: encoding as BufferEncoding });
+            },
+          },
+          log: (level, message) => {
+            if (!quiet && !jsonMode) {
+              ctx.presenter.info(`[${level.toUpperCase()}] ${message}`);
+            }
+          },
+        };
+
+        const queryResult = await runQueryCore(queryInput, runtimeContext);
         tracker.checkpoint('query-complete');
         
         // Handle TOON output (token-efficient LLM format)
@@ -117,28 +159,37 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         } | null = null;
 
         if (toonMode || toonSidecar) {
-          const toonOutput = encode(result);
+          const toonOutput = encode(queryResult.result);
 
           // Prepare data for artifacts (if using --toon-sidecar)
           // If --toon-sidecar is specified, also write via artifacts system
-          const artifactData = toonSidecar ? {
-            'query-output': toonOutput,
-          } : undefined;
+          const artifactData = toonSidecar
+            ? {
+                [QUERY_ARTIFACT_ID]: toonOutput,
+              }
+            : undefined;
 
           // Write sidecar file if requested (manual write for backward compatibility)
           let sidecarPath: string | undefined;
-          if (toonSidecar) {
-            const sidecarDir = join(cwd, '.kb', 'mind', 'query');
-            mkdirSync(sidecarDir, { recursive: true });
-            sidecarPath = join(sidecarDir, `${result.meta.queryId || 'query'}.toon`);
-            writeFileSync(sidecarPath, toonOutput, 'utf-8');
-            sidecarArtifact = {
-              name: 'Query TOON',
-              path: sidecarPath,
-              size: Buffer.byteLength(toonOutput, 'utf8'),
-              modified: new Date(),
-              description: 'Serialized query output',
-            };
+          if (queryResult.toonPath) {
+            sidecarPath = queryResult.toonPath;
+          } else if (toonSidecar) {
+            sidecarPath = join(cwd, '.kb', 'mind', 'query', `${queryResult.meta?.queryId || 'query'}.toon`);
+          }
+
+          if (sidecarPath) {
+            try {
+              const stats = await stat(sidecarPath);
+              sidecarArtifact = {
+                name: 'Query TOON',
+                path: sidecarPath,
+                size: stats.size,
+                modified: stats.mtime,
+                description: 'Serialized query output',
+              };
+            } catch {
+              // ignore missing stats
+            }
           }
 
           // Output TOON format
@@ -148,7 +199,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
               ctx.presenter.json({
                 ok: true,
                 format: 'toon',
-                content: toonOutput
+                content: toonOutput,
+                produces: [QUERY_ARTIFACT_ID],
               });
             } else {
               if (!quiet) {
@@ -185,73 +237,65 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
                 queryName,
                 toonMode,
                 toonSidecar,
-                cached: result.meta.cached,
-                tokensEstimate: result.meta.tokensEstimate,
+                cached: queryResult.meta?.cached,
+                tokensEstimate: queryResult.meta?.tokensEstimate,
                 durationMs: tracker.total(),
                 result: 'success',
               },
             });
-            
+
             // Return data for artifacts if using --toon-sidecar
             if (artifactData) {
-              return { exitCode: 0, ...artifactData } as any;
+              return { exitCode: 0, produces: [QUERY_ARTIFACT_ID], ...artifactData } as any;
             }
             return 0;
           }
 
-          // If only sidecar, continue with regular output
+          // Non-TOON mode but sidecar requested -> just record artifact info
+          if (artifactData) {
+            if (sidecarArtifact) {
+              ctx.presenter.info(`TOON sidecar written to ${sidecarArtifact.path}`);
+            }
+          }
         }
+
+        const { meta, result: queryData } = queryResult;
         
         if (jsonMode) {
-          const output = compact ? JSON.stringify(result) : JSON.stringify(result, null, 2);
-          ctx.presenter.write(output);
+          ctx.presenter.json({
+            ok: true,
+            query: queryName,
+            params,
+            result: queryData,
+            meta,
+          });
         } else {
           if (!quiet) {
             const summaryLines: string[] = [];
             summaryLines.push(
               ...keyValue({
                 Query: queryName,
-                Results: String((result.result as any)?.count || 0),
-                Cached: result.meta.cached ? 'Yes' : 'No',
-                Tokens: String(result.meta.tokensEstimate),
+                Duration: formatTiming(tracker.total()),
+                Cached: meta?.cached ? 'Yes' : 'No',
               }),
             );
 
-            if (result.summary) {
-              summaryLines.push('');
-              summaryLines.push(safeColors.muted(`Summary: ${result.summary}`));
+            if (meta?.tokensEstimate !== undefined) {
+              summaryLines.push(`Token Estimate: ${meta.tokensEstimate}`);
             }
 
-            if (result.suggestNextQueries && result.suggestNextQueries.length > 0) {
-              summaryLines.push('');
-              summaryLines.push(safeColors.bold('Suggestions'));
-              for (const suggestion of result.suggestNextQueries) {
-                summaryLines.push(safeColors.muted(`- ${suggestion}`));
-              }
+            if (meta?.filesScanned !== undefined) {
+              summaryLines.push(`Files Scanned: ${meta.filesScanned}`);
             }
-
-            if (sidecarArtifact) {
-              summaryLines.push('');
-              summaryLines.push(
-                ...displayArtifacts([sidecarArtifact], {
-                  title: 'Artifacts',
-                  showDescription: true,
-                  showTime: false,
-                  maxItems: 1,
-                }),
-              );
-            }
-
-            summaryLines.push('', renderStatusLine('Query ready', 'success', tracker.total()));
 
             ctx.presenter.write('\n' + box('Mind Query', summaryLines));
           }
-          
-          // Show result preview
-          if (result.result) {
-            ctx.presenter.write(JSON.stringify(result.result, null, 2));
-          }
 
+          if (compact) {
+            ctx.presenter.write(JSON.stringify(queryData, null, 2));
+          } else {
+            ctx.presenter.write(JSON.stringify(queryData, null, 2));
+          }
         }
 
         // Track command completion
@@ -261,15 +305,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             queryName,
             toonMode,
             toonSidecar,
-            cached: result.meta.cached,
-            tokensEstimate: result.meta.tokensEstimate,
-            resultsCount: (result.result as any)?.count || 0,
+            cached: meta?.cached,
+            tokensEstimate: meta?.tokensEstimate,
             durationMs: tracker.total(),
             result: 'success',
           },
         });
         
-        // Return exit code (0 for success)
         return 0;
       } catch (error: any) {
         const duration = tracker.total();

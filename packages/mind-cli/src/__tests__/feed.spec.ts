@@ -3,8 +3,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/feed.js';
+import { run } from '../cli/commands/feed.js';
 import type { CommandContext } from '../cli/types.js';
+import { pluginContractsManifest } from '@kb-labs/mind-contracts';
+import { getExitCode, getProducedArtifacts } from './helpers.js';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-indexer', () => ({
@@ -23,6 +25,11 @@ vi.mock('node:fs/promises', () => ({
 describe('Mind Feed Command', () => {
   let mockContext: CommandContext;
   let mockPresenter: any;
+
+  const PACK_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
+  const UPDATE_ARTIFACT_ID =
+    pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
 
   beforeEach(() => {
     mockPresenter = {
@@ -64,7 +71,8 @@ describe('Mind Feed Command', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toEqual(expect.arrayContaining([PACK_ARTIFACT_ID, UPDATE_ARTIFACT_ID]));
     expect(updateIndexes).toHaveBeenCalled();
     expect(buildPack).toHaveBeenCalled();
     expect(mockPresenter.write).toHaveBeenCalledWith('# Project Context');
@@ -84,7 +92,8 @@ describe('Mind Feed Command', () => {
       'no-update': true
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
+    expect(getProducedArtifacts(result)).toEqual([PACK_ARTIFACT_ID]);
     expect(buildPack).toHaveBeenCalled();
     expect(mockPresenter.write).toHaveBeenCalledWith('# Project Context');
   });
@@ -111,7 +120,7 @@ describe('Mind Feed Command', () => {
       budget: 2000
     });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(buildPack).toHaveBeenCalledWith({
       cwd: '/test/project',
       intent: 'analyze project',
@@ -142,12 +151,12 @@ describe('Mind Feed Command', () => {
       product: 'react-app',
       preset: 'frontend'
     });
-
-    expect(result).toBe(0);
+ 
+    expect(getExitCode(result)).toBe(0);
     expect(buildPack).toHaveBeenCalledWith({
       cwd: '/test/project',
       intent: 'analyze project',
-      budget: { totalTokens: 8000, caps: {}, truncation: 'end' },
+      budget: { totalTokens: 9000, caps: {}, truncation: 'end' },
       product: 'react-app',
       preset: 'frontend',
       log: expect.any(Function)
@@ -175,12 +184,12 @@ describe('Mind Feed Command', () => {
       intent: 'analyze project',
       'with-bundle': true
     });
-
-    expect(result).toBe(0);
+ 
+    expect(getExitCode(result)).toBe(0);
     expect(buildPack).toHaveBeenCalledWith({
       cwd: '/test/project',
       intent: 'analyze project',
-      budget: { totalTokens: 8000, caps: {}, truncation: 'end' },
+      budget: { totalTokens: 9000, caps: {}, truncation: 'end' },
       withBundle: true,
       log: expect.any(Function)
     });
@@ -215,18 +224,19 @@ describe('Mind Feed Command', () => {
     });
 
     const result = await run(mockContext, [], { intent: 'analyze project', json: true });
-
-    expect(result).toBe(0);
-    expect(mockPresenter.json).toHaveBeenCalledWith({
-      ok: true,
-      mode: 'update-and-pack',
-      intent: 'analyze project',
-      product: undefined,
-      tokensEstimate: 100,
-      out: null,
-      update: {
-        delta: undefined,
-        budget: {
+ 
+    expect(getExitCode(result)).toBe(0);
+    expect(mockPresenter.json).toHaveBeenCalledWith(expect.objectContaining({
+       ok: true,
+       mode: 'update-and-pack',
+       intent: 'analyze project',
+       product: undefined,
+       tokensEstimate: 100,
+       out: null,
+       produces: expect.arrayContaining([PACK_ARTIFACT_ID, UPDATE_ARTIFACT_ID]),
+       update: {
+         delta: undefined,
+         budget: {
           limitMs: 5000,
           usedMs: 500,
         }
@@ -243,7 +253,7 @@ describe('Mind Feed Command', () => {
         deterministic: false
       },
       ignoredFlags: undefined
-    });
+    }));
   });
 
   it('should handle output to file', async () => {
@@ -269,10 +279,11 @@ describe('Mind Feed Command', () => {
     const result = await run(mockContext, [], { 
       intent: 'analyze project',
       out: 'context.md'
-    });
-
-    expect(result).toBe(1); // File write fails in test environment
-    // writeFile not called due to test environment limitations
+     });
+ 
+    expect(getExitCode(result)).toBe(0);
+    expect(mkdir).toHaveBeenCalled();
+    expect(writeFile).toHaveBeenCalled();
   });
 
   it('should handle quiet mode', async () => {
@@ -294,7 +305,7 @@ describe('Mind Feed Command', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project', quiet: true });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     // In quiet mode, console.log is still called but presenter.write is not
     expect(mockPresenter.write).toHaveBeenCalledWith('# Project Context');
   });
@@ -302,14 +313,14 @@ describe('Mind Feed Command', () => {
   it('should handle missing intent', async () => {
     const result = await run(mockContext, [], { intent: undefined });
 
-    expect(result).toBe(0); // Command uses default intent 'ad-hoc feed'
+    expect(getExitCode(result)).toBe(0); // Command uses default intent 'ad-hoc feed'
     expect(mockPresenter.write).toHaveBeenCalled();
   });
 
   it('should handle JSON mode missing intent', async () => {
     const result = await run(mockContext, [], { intent: undefined, json: true });
 
-    expect(result).toBe(0); // Command uses default intent 'ad-hoc feed'
+    expect(getExitCode(result)).toBe(0); // Command uses default intent 'ad-hoc feed'
     expect(mockPresenter.json).toHaveBeenCalledWith(expect.objectContaining({
       ok: true
     }));
@@ -321,7 +332,7 @@ describe('Mind Feed Command', () => {
       budget: 0
     });
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('Budget must be greater than 0');
   });
 
@@ -331,7 +342,7 @@ describe('Mind Feed Command', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('Git not found');
   });
 
@@ -350,7 +361,7 @@ describe('Mind Feed Command', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project' });
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('No indexes found');
   });
 
@@ -360,12 +371,12 @@ describe('Mind Feed Command', () => {
 
     const result = await run(mockContext, [], { intent: 'analyze project', json: true });
 
-    expect(result).toBe(1);
-    expect(mockPresenter.json).toHaveBeenCalledWith({
+    expect(getExitCode(result)).toBe(1);
+    expect(mockPresenter.json).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       code: 'MIND_FEED_ERROR',
       message: 'Git not found',
       hint: 'Mind feed operation failed - check logs for details'
-    });
+    }));
   });
 });

@@ -1,5 +1,5 @@
 /**
- * Shared gateway request/response types used by Mind CLI handlers.
+ * Shared REST surface request/response types used by Mind handlers.
  * They mirror the contracts consumed by Studio widgets and REST gateway.
  */
 

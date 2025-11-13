@@ -22,6 +22,7 @@ export const manifest: ManifestV2 = {
   cli: {
     commands: [
       {
+        manifestVersion: '1.0',
         id: 'init',
         group: 'mind',
         describe: 'Initialize mind workspace',
@@ -59,9 +60,10 @@ export const manifest: ManifestV2 = {
           'kb mind init --force',
           'kb mind init --json',
         ],
-        handler: './cli/init#run',
+        handler: './cli/commands/init#run',
       },
       {
+        manifestVersion: '1.0',
         id: 'update',
         group: 'mind',
         describe: 'Update mind workspace',
@@ -103,9 +105,10 @@ export const manifest: ManifestV2 = {
           'kb mind update --since HEAD~1',
           'kb mind update --time-budget 600 --json',
         ],
-        handler: './cli/update#run',
+        handler: './cli/commands/update#run',
       },
       {
+        manifestVersion: '1.0',
         id: 'pack',
         group: 'mind',
         describe: 'Pack mind workspace',
@@ -177,9 +180,10 @@ export const manifest: ManifestV2 = {
           'kb mind pack -i "demo" --with-bundle --out pack.md',
           'kb mind pack -i "demo" --seed 42 --json',
         ],
-        handler: './cli/pack#run',
+        handler: './cli/commands/pack#run',
       },
       {
+        manifestVersion: '1.0',
         id: 'feed',
         group: 'mind',
         describe: 'Feed mind workspace',
@@ -265,9 +269,10 @@ export const manifest: ManifestV2 = {
           'kb mind feed -i "demo" --no-update --json',
           'kb mind feed -i "demo" --since HEAD~1 --out pack.md',
         ],
-        handler: './cli/feed#run',
+        handler: './cli/commands/feed#run',
       },
       {
+        manifestVersion: '1.0',
         id: 'query',
         group: 'mind',
         describe: 'Query mind indexes',
@@ -396,9 +401,10 @@ export const manifest: ManifestV2 = {
           'kb mind query externals --toon',
           'kb mind query externals --toon --toon-sidecar',
         ],
-        handler: './cli/query#run',
+        handler: './cli/commands/query#run',
       },
       {
+        manifestVersion: '1.0',
         id: 'verify',
         group: 'mind',
         describe: 'Verify mind workspace consistency',
@@ -425,7 +431,7 @@ export const manifest: ManifestV2 = {
           'kb mind verify --json',
           'kb mind verify --cwd /path/to/project',
         ],
-        handler: './cli/verify#run',
+        handler: './cli/commands/verify#run',
       },
     ],
   },
@@ -438,10 +444,10 @@ export const manifest: ManifestV2 = {
         method: 'POST',
         path: '/query',
         input: {
-          $ref: '#/components/schemas/QueryRequest',
+          zod: '@kb-labs/mind-contracts/schema#MindQueryRequestSchema',
         },
         output: {
-          $ref: '#/components/schemas/QueryResponse',
+          zod: '@kb-labs/mind-contracts/schema#MindQueryResponseSchema',
         },
         errors: [
           {
@@ -455,7 +461,7 @@ export const manifest: ManifestV2 = {
             description: 'Query execution error',
           },
         ],
-        handler: './gateway/handlers/query-handler.js#handleQuery',
+        handler: './rest/handlers/query-handler.js#handleQuery',
         permissions: {
           fs: {
             mode: 'read',
@@ -478,10 +484,10 @@ export const manifest: ManifestV2 = {
         method: 'GET',
         path: '/verify',
         input: {
-          $ref: '#/components/schemas/VerifyRequest',
+          zod: '@kb-labs/mind-contracts/schema#MindVerifyCommandInputSchema',
         },
         output: {
-          $ref: '#/components/schemas/VerifyResponse',
+          zod: '@kb-labs/mind-contracts/schema#MindVerifyResponseSchema',
         },
         errors: [
           {
@@ -490,7 +496,7 @@ export const manifest: ManifestV2 = {
             description: 'Verification error',
           },
         ],
-        handler: './gateway/handlers/verify-handler.js#handleVerify',
+        handler: './rest/handlers/verify-handler.js#handleVerify',
         permissions: {
           fs: {
             mode: 'read',
@@ -587,11 +593,7 @@ export const manifest: ManifestV2 = {
   },
 
   // Capabilities required
-  capabilities: [
-    'fs:read',
-    'fs:write',
-    'net:http',
-  ],
+  capabilities: ['fs:read', 'fs:write'],
 
   // Permissions (global defaults for the plugin)
   permissions: {
@@ -609,7 +611,7 @@ export const manifest: ManifestV2 = {
       memoryMb: 512,
       cpuMs: 30000,
     },
-    capabilities: ['fs:read', 'fs:write', 'net:http'],
+    capabilities: ['fs:read', 'fs:write'],
     // Cross-plugin invocation permissions
     // Mind can be invoked by other plugins via REST API
     // No need to declare invoke permissions here as mind doesn't call other plugins
@@ -636,12 +638,12 @@ export const manifest: ManifestV2 = {
   // Artifacts (output files)
   artifacts: [
     {
-      id: 'pack-output',
+      id: 'mind.pack.output',
       pathTemplate: '.kb/mind/pack/{profile}/{runId}.md',
       description: 'Context pack output',
     },
     {
-      id: 'query-output',
+      id: 'mind.query.output',
       pathTemplate: '.kb/mind/query/{profile}/{runId}.toon',
       description: 'Query output in TOON format',
     },

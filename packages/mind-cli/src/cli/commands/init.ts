@@ -2,7 +2,7 @@
  * Mind init command
  */
 
-import type { CommandModule, CommandContext as MindCommandContext } from './types';
+import type { CommandModule, CommandContext as MindCommandContext } from '../types.js';
 import { initMindStructure } from '@kb-labs/mind-indexer';
 import {
   createCommandRunner,
@@ -10,7 +10,7 @@ import {
   type CommandContext as SharedCommandContext,
 } from '@kb-labs/shared-cli-ui';
 import { TimingTracker } from '@kb-labs/shared-cli-ui';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../analytics/events';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
 // Create command runner
 const commandRunner = createCommandRunner({

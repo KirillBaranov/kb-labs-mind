@@ -1,13 +1,13 @@
 // Simple CLI utilities for mind-cli
 export const colors = {
-  red: (text: string) => `\x1b[31m${text}\x1b[0m`,
-  green: (text: string) => `\x1b[32m${text}\x1b[0m`,
-  yellow: (text: string) => `\x1b[33m${text}\x1b[0m`,
-  blue: (text: string) => `\x1b[34m${text}\x1b[0m`,
-  cyan: (text: string) => `\x1b[36m${text}\x1b[0m`,
-  gray: (text: string) => `\x1b[90m${text}\x1b[0m`,
-  bold: (text: string) => `\x1b[1m${text}\x1b[0m`,
-  dim: (text: string) => `\x1b[2m${text}\x1b[0m`,
+  red: (text: string) => `[31m${text}[0m`,
+  green: (text: string) => `[32m${text}[0m`,
+  yellow: (text: string) => `[33m${text}[0m`,
+  blue: (text: string) => `[34m${text}[0m`,
+  cyan: (text: string) => `[36m${text}[0m`,
+  gray: (text: string) => `[90m${text}[0m`,
+  bold: (text: string) => `[1m${text}[0m`,
+  dim: (text: string) => `[2m${text}[0m`,
 };
 
 export const safeColors = colors;
@@ -45,31 +45,35 @@ export function formatTiming(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-export function box(text: string, title?: string): string {
-  const lines = text.split('\n');
-  const maxWidth = Math.max(...lines.map(line => line.length));
-  const width = Math.max(maxWidth + 4, 50);
-  
-  const top = '┌' + '─'.repeat(width - 2) + '┐';
-  const bottom = '└' + '─'.repeat(width - 2) + '┘';
-  
-  let result = top + '\n';
-  
-  if (title) {
-    result += '│ ' + title.padEnd(width - 4) + ' │\n';
-    result += '├' + '─'.repeat(width - 2) + '┤\n';
-  }
-  
-  for (const line of lines) {
-    result += '│ ' + line.padEnd(width - 4) + ' │\n';
-  }
-  
-  result += bottom;
-  return result;
+export function box(textOrTitle: string, maybeLines: string[] | string = []): string {
+  const lines = Array.isArray(maybeLines)
+    ? maybeLines
+    : typeof maybeLines === 'string'
+      ? maybeLines.split('\n')
+      : [];
+  const rows = [textOrTitle, ...lines, ''];
+  return rows
+    .map(line => (line && line.length > 0 ? `│ ${line}` : '│'))
+    .join('\n');
 }
 
-export function keyValue(key: string, value: string | number): string {
-  return `${colors.cyan(key)}: ${value}`;
+export function keyValue(entries: Record<string, string | number>): string[];
+export function keyValue(key: string, value: string | number): string;
+export function keyValue(arg1: any, arg2?: any): string | string[] {
+  const format = (key: string, value: string | number) => {
+    const label = process.env.NO_COLOR ? key : colors.cyan(key);
+    return `${label}: ${value}`;
+  };
+
+  if (typeof arg1 === 'string' && arg2 !== undefined) {
+    return format(arg1, arg2);
+  }
+
+  if (arg1 && typeof arg1 === 'object') {
+    return Object.entries(arg1).map(([key, value]) => format(key, value as string | number));
+  }
+
+  return '';
 }
 
 export function createSpinner(text: string) {

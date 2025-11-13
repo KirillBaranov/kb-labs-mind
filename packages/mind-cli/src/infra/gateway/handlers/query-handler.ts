@@ -5,8 +5,8 @@
 
 import type { MindQueryRequest, MindQueryResponse, MindGatewayError } from '../types.js';
 import type { InfoPanelSection } from '@kb-labs/plugin-manifest';
-import { executeQuery } from '@kb-labs/mind-query';
 import { findRepoRoot } from '@kb-labs/core';
+import { runQueryCore, parseQueryFromHttpRequest, type QueryRuntimeContext } from '@app/application';
 
 /**
  * Handler for POST /v1/plugins/mind/query
@@ -36,69 +36,36 @@ export async function handleQuery(
 ): Promise<MindQueryResponse | MindGatewayError> {
   try {
     const request = input as MindQueryRequest;
-
-    // Use runtime.log if available, otherwise use console
     const log = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
       console.log(`[${level}] ${msg}`, meta || '');
     });
+
     log('info', 'Executing Mind query', { query: request.query, params: request.params });
 
-    // Validate request
-    if (!request.query) {
-      return {
-        ok: false,
-        code: 'MIND_BAD_REQUEST',
-        message: 'Missing query parameter',
-        hint: 'Provide a valid query name',
-      };
-    }
-
-    if (!request.params) {
-      return {
-        ok: false,
-        code: 'MIND_BAD_REQUEST',
-        message: 'Missing params parameter',
-        hint: 'Provide query parameters',
-      };
-    }
-
-    // Get environment variables
     const env = ctx.runtime?.env || ((key: string) => process.env[key]);
-    
-    // Determine workspace root: use request.options.cwd, KB_LABS_REPO_ROOT, or auto-detect
-    let repoRoot: string = request.options?.cwd || '';
+    let repoRoot = request.options?.cwd || env('KB_LABS_REPO_ROOT') || '';
     if (!repoRoot) {
-      // Try env variable first (if permission granted in manifest)
-      repoRoot = env('KB_LABS_REPO_ROOT') || '';
-      if (!repoRoot) {
-        // Auto-detect monorepo root by finding pnpm-workspace.yaml or .git
-        // Start from current working directory
-        try {
-          const detectedRoot = await findRepoRoot(process.cwd());
-          // findRepoRoot finds the directory with .git or pnpm-workspace.yaml
-          // This should be the monorepo root (kb-labs)
-          repoRoot = detectedRoot;
-        } catch {
-          // Fallback to current directory
-          repoRoot = '.';
-        }
+      try {
+        repoRoot = await findRepoRoot(process.cwd());
+      } catch {
+        repoRoot = '.';
       }
     }
 
-    // Execute query
-    const result = await executeQuery(
-      request.query as any,
-      request.params,
-      {
-        cwd: request.options?.cwd || repoRoot,
-        limit: request.options?.limit || 500,
-        depth: request.options?.depth || 5,
-        cacheTtl: request.options?.cacheTtl || 60,
-        noCache: request.options?.noCache || false,
-        pathMode: request.options?.pathMode || 'id',
-        aiMode: request.options?.aiMode || false,
-      }
-    );
+    const normalizedInput = parseQueryFromHttpRequest(request, repoRoot);
+
+    const runtimeContext: QueryRuntimeContext = {
+      workdir: repoRoot,
+      outdir: ctx.outdir || repoRoot,
+      fs: {
+        mkdir: (path, options) => ctx.runtime?.fs?.mkdir(path, options) ?? Promise.resolve(),
+        writeFile: (path, data, encoding) =>
+          ctx.runtime?.fs?.writeFile?.(path, data, encoding) ?? Promise.resolve(),
+      },
+      log: (level, message, meta) => log(level, message, meta),
+    };
+
+    const result = await runQueryCore(normalizedInput, runtimeContext);
 
     log('info', 'Mind query executed successfully', { query: request.query });
 
@@ -121,14 +88,14 @@ export async function handleQuery(
       {
         title: 'Metadata',
         data: {
-          'Files Scanned': result.meta.filesScanned,
-          'Edges Touched': result.meta.edgesTouched,
-          'Cached': result.meta.cached ? 'Yes' : 'No',
-          'Total Time': `${result.meta.timingMs.total}ms`,
-          'Load Time': `${result.meta.timingMs.load}ms`,
-          'Filter Time': `${result.meta.timingMs.filter}ms`,
-          'Query ID': result.meta.queryId,
-          'Tokens Estimate': result.meta.tokensEstimate,
+          'Files Scanned': result.meta?.filesScanned,
+          'Edges Touched': result.meta?.edgesTouched,
+          'Cached': result.meta?.cached ? 'Yes' : 'No',
+          'Total Time': result.meta ? `${result.meta.timingMs.total}ms` : 'n/a',
+          'Load Time': result.meta ? `${result.meta.timingMs.load}ms` : 'n/a',
+          'Filter Time': result.meta ? `${result.meta.timingMs.filter}ms` : 'n/a',
+          'Query ID': result.meta?.queryId,
+          'Tokens Estimate': result.meta?.tokensEstimate,
         },
         format: 'keyvalue' as const,
       },
@@ -144,10 +111,6 @@ export async function handleQuery(
     }
 
     // Return widget-ready format (InfoPanelData)
-    // REST API will wrap this in { status: 'ok', data: { sections } }
-    // Studio will extract sections from data
-    // Type assertion needed because handler signature expects QueryResponse | GatewayError
-    // but we return only widget data
     return {
       sections,
     } as unknown as MindQueryResponse;

@@ -1,5 +1,5 @@
 /**
- * @module @kb-labs/mind-cli/gateway/handlers/verify-handler
+ * @module @kb-labs/mind-cli/rest/handlers/verify-handler
  * REST handler for Mind verify endpoint (Plugin Model v2)
  */
 

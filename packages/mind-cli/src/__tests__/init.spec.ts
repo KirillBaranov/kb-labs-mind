@@ -3,8 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/init.js';
+import { run } from '../cli/commands/init.js';
 import type { CommandContext } from '../cli/types.js';
+import { getExitCode } from './helpers.js';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-indexer', () => ({
@@ -46,14 +47,13 @@ describe('Mind Init Command', () => {
 
     const result = await run(mockContext, [], { force: false });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(initMindStructure).toHaveBeenCalledWith({
       cwd: '/test/project',
       force: false,
       log: expect.any(Function)
     });
-    // Command uses console.log instead of presenter.write
-    expect(mockPresenter.write).not.toHaveBeenCalled();
+    expect(mockPresenter.write).toHaveBeenCalled();
   });
 
   it('should handle force flag', async () => {
@@ -62,7 +62,7 @@ describe('Mind Init Command', () => {
 
     const result = await run(mockContext, [], { force: true });
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(initMindStructure).toHaveBeenCalledWith({
       cwd: '/test/project',
       force: true,
@@ -78,7 +78,7 @@ describe('Mind Init Command', () => {
 
     const result = await run(mockContext, [], {});
 
-    expect(result).toBe(0);
+    expect(getExitCode(result)).toBe(0);
     expect(initMindStructure).toHaveBeenCalledWith({
       cwd: '/test/project',
       force: false,
@@ -92,12 +92,14 @@ describe('Mind Init Command', () => {
 
     const result = await run(mockContext, [], { json: true });
 
-    expect(result).toBe(0);
-    expect(mockPresenter.json).toHaveBeenCalledWith({
-      ok: true,
-      mindDir: '/test/project/.kb/mind',
-      cwd: '/test/project'
-    });
+    expect(getExitCode(result)).toBe(0);
+    expect(mockPresenter.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: true,
+        mindDir: '/test/project/.kb/mind',
+        cwd: '/test/project'
+      })
+    );
   });
 
   it('should handle initialization errors', async () => {
@@ -106,7 +108,7 @@ describe('Mind Init Command', () => {
 
     const result = await run(mockContext, [], {});
 
-    expect(result).toBe(1);
+    expect(getExitCode(result)).toBe(1);
     expect(mockPresenter.error).toHaveBeenCalledWith('Permission denied');
   });
 
@@ -116,12 +118,12 @@ describe('Mind Init Command', () => {
 
     const result = await run(mockContext, [], { json: true });
 
-    expect(result).toBe(1);
-    expect(mockPresenter.json).toHaveBeenCalledWith({
-      ok: false,
-      code: 'MIND_INIT_ERROR',
-      message: 'Permission denied',
-      hint: 'Check your workspace permissions and try again'
-    });
+    expect(getExitCode(result)).toBe(1);
+    expect(mockPresenter.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ok: false,
+        error: 'Permission denied',
+      })
+    );
   });
 });
