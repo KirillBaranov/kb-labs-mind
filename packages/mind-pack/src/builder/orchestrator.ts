@@ -8,11 +8,14 @@ import { buildApiSection } from '../sections/api.js';
 import { buildDiffsSection } from '../sections/diffs.js';
 import { buildSnippetsSection } from '../sections/snippets.js';
 import { buildConfigsSection } from '../sections/configs.js';
+import { buildMetaSection } from '../sections/meta.js';
+import { buildDocsSection } from '../sections/docs.js';
 import { getBundleInfo } from '../bundle/integration.js';
 import { generateMarkdown } from '../formatter/markdown.js';
 import { createContextPackJson } from '../formatter/json.js';
 import type { PackContext } from '../types/index.js';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-core';
+import type { ProjectMeta, DocsIndex } from '@kb-labs/mind-types';
 
 /**
  * Orchestrate the pack building process
@@ -22,7 +25,9 @@ export async function orchestratePackBuilding(
   index: MindIndex,
   apiIndex: ApiIndex,
   depsGraph: DepsGraph,
-  recentDiff: RecentDiff
+  recentDiff: RecentDiff,
+  meta: ProjectMeta | null,
+  docs: DocsIndex | null
 ): Promise<{ json: any; markdown: string; tokensEstimate: number }> {
   // Build sections
   const sections: Record<string, string> = {};
@@ -41,6 +46,12 @@ export async function orchestratePackBuilding(
   sectionUsage.product_overview = overviewResult.tokensUsed;
   totalTokens += overviewResult.tokensUsed;
 
+  // Project metadata
+  const metaResult = await buildMetaSection(context, meta, context.budget.caps.project_meta || 500);
+  sections.project_meta = metaResult.content;
+  sectionUsage.project_meta = metaResult.tokensUsed;
+  totalTokens += metaResult.tokensUsed;
+
   // API signatures
   const apiResult = await buildApiSection(context, apiIndex, context.budget.caps.api_signatures || 2200);
   sections.api_signatures = apiResult.content;
@@ -52,6 +63,12 @@ export async function orchestratePackBuilding(
   sections.recent_diffs = diffsResult.content;
   sectionUsage.recent_diffs = diffsResult.tokensUsed;
   totalTokens += diffsResult.tokensUsed;
+
+  // Documentation overview
+  const docsResult = await buildDocsSection(context, docs, context.budget.caps.docs_overview || 600);
+  sections.docs_overview = docsResult.content;
+  sectionUsage.docs_overview = docsResult.tokensUsed;
+  totalTokens += docsResult.tokensUsed;
 
   // Implementation snippets
   const snippetsResult = await buildSnippetsSection(context, apiIndex, context.budget.caps.impl_snippets || 3000);

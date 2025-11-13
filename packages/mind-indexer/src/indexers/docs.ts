@@ -35,8 +35,17 @@ export async function indexDocs(ctx: IndexerContext): Promise<void> {
       generatedAt: new Date().toISOString()
     };
     
-    const indexPath = join(ctx.cwd, '.kb', 'mind', 'docs-index.json');
-    await fsp.writeFile(indexPath, JSON.stringify(docsIndex, null, 2));
+    const mindDir = join(ctx.cwd, '.kb', 'mind');
+    const docsPath = join(mindDir, 'docs.json');
+    await fsp.writeFile(docsPath, JSON.stringify(docsIndex, null, 2));
+
+    // Write legacy file for backward compatibility
+    const legacyPath = join(mindDir, 'docs-index.json');
+    try {
+      await fsp.writeFile(legacyPath, JSON.stringify(docsIndex, null, 2));
+    } catch {
+      // Ignore legacy write errors
+    }
     
     ctx.log({ level: 'info', msg: `Indexed ${docs.length} documentation files` });
   } catch (error: any) {

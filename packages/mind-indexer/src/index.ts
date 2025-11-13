@@ -12,6 +12,7 @@ export type { UpdateOptions, DeltaReport, InitOptions, CacheEntry, IndexerContex
 
 // Utils
 export { createIndexerContext, isTimeBudgetExceeded, getRemainingTime } from './utils/workspace.js';
+export type { ExistingIndexes } from './utils/workspace.js';
 
 // FS
 export { readJson, writeJson, computeJsonHash } from './fs/json.js';

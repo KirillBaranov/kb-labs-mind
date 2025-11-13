@@ -3,13 +3,46 @@
  */
 
 import { promises as fsp } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, sep, isAbsolute } from 'node:path';
 import { realpath } from 'node:fs/promises';
 import * as ts from 'typescript';
 import type { DepsGraph as _DepsGraph, PackageNode } from '@kb-labs/mind-types';
 import type { IndexerContext } from '../types';
 import { toPosix } from '@kb-labs/mind-core';
 import { writeJson } from '../fs/json.js';
+
+const CANDIDATE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.d.ts'];
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await fsp.access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveWithExtensions(basePath: string): Promise<string | null> {
+  if (await fileExists(basePath)) {
+    return basePath;
+  }
+
+  for (const ext of CANDIDATE_EXTENSIONS) {
+    const candidate = basePath + ext;
+    if (await fileExists(candidate)) {
+      return candidate;
+    }
+  }
+
+  for (const ext of CANDIDATE_EXTENSIONS) {
+    const indexPath = join(basePath, 'index' + ext);
+    if (await fileExists(indexPath)) {
+      return indexPath;
+    }
+  }
+
+  return null;
+}
 
 /**
  * Compute edge priority for AI token economy
@@ -21,10 +54,16 @@ function computeEdgePriority(edge: { from: string; to: string; type: string; imp
   return 'normal';
 }
 
+interface ResolvedModuleInfo {
+  path: string | null;
+  external?: string;
+  isType?: boolean;
+}
+
 /**
  * Compute graph summary for AI insights
  */
-function computeGraphSummary(edges: any[], packages: Record<string, any>): any {
+function computeGraphSummary(edges: any[], packages: Record<string, any>, externalImports: Set<string>): any {
   const fileConnections = new Map<string, { in: number; out: number }>();
   const externalDepsSet = new Set<string>();
   
@@ -48,6 +87,12 @@ function computeGraphSummary(edges: any[], packages: Record<string, any>): any {
       if (!dep.startsWith('@kb-labs/')) {externalDepsSet.add(dep);}
     }
   }
+
+  externalImports.forEach(dep => {
+    if (!dep.startsWith('@kb-labs/')) {
+      externalDepsSet.add(dep);
+    }
+  });
   
   const packageGraph: Record<string, string[]> = {};
   for (const [name, pkg] of Object.entries(packages)) {
@@ -72,8 +117,12 @@ export async function indexDependencies(
 ): Promise<{ edgesAdded: number; edgesRemoved: number }> {
   let edgesAdded = 0;
   let edgesRemoved = 0;
+  const externalImports = new Set<string>();
 
   try {
+    const previousEdges = Array.isArray(ctx.depsGraph.edges) ? [...ctx.depsGraph.edges] : [];
+    ctx.depsGraph.packages = {};
+
     // Read tsconfig.json if exists
     const tsconfigPath = join(ctx.cwd, 'tsconfig.json');
     let compilerOptions: ts.CompilerOptions = {};
@@ -83,9 +132,24 @@ export async function indexDependencies(
     try {
       const tsconfigContent = await fsp.readFile(tsconfigPath, 'utf8');
       const tsconfig = JSON.parse(tsconfigContent);
-      compilerOptions = tsconfig.compilerOptions || {};
-      baseUrl = compilerOptions.baseUrl;
-      paths = compilerOptions.paths || {};
+      const rawPaths = tsconfig.compilerOptions?.paths || {};
+      const rawBaseUrl = tsconfig.compilerOptions?.baseUrl;
+      const parsed = ts.convertCompilerOptionsFromJson(tsconfig.compilerOptions ?? {}, ctx.cwd);
+      compilerOptions = parsed.options;
+      baseUrl = compilerOptions.baseUrl ?? rawBaseUrl;
+      paths = compilerOptions.paths && Object.keys(compilerOptions.paths).length > 0
+        ? compilerOptions.paths
+        : rawPaths;
+      if (parsed.errors?.length) {
+        parsed.errors.forEach(err => {
+          ctx.log({
+            level: 'warn',
+            code: 'MIND_PARSE_ERROR',
+            msg: 'tsconfig option conversion warning',
+            error: ts.flattenDiagnosticMessageText(err.messageText, '\n')
+          });
+        });
+      }
     } catch {
       // No tsconfig.json, use defaults
     }
@@ -138,6 +202,15 @@ export async function indexDependencies(
           }
         }
       }
+
+      const rootPackage: PackageNode = {
+        name: packageJson.name || 'unknown',
+        version: packageJson.version,
+        private: packageJson.private || false,
+        dir: '.',
+        deps: Object.keys(packageJson.dependencies || {})
+      };
+      ctx.depsGraph.packages[rootPackage.name] = rootPackage;
     } catch {
       // Not a monorepo, only root directory scanned
     }
@@ -163,7 +236,7 @@ export async function indexDependencies(
       }
 
       const batch = uniqueFiles.slice(i, i + batchSize);
-      await processBatch(batch, ctx, compilerOptions, baseUrl, paths, edges);
+      await processBatch(batch, ctx, compilerOptions, baseUrl, paths, edges, externalImports);
     }
 
     // Normalize paths and filter to workspace
@@ -216,35 +289,28 @@ export async function indexDependencies(
     });
 
     // Update deps graph
-    edgesAdded = normalizedEdges.length;
-    edgesRemoved = 0; // For now, we don't track removals
+    const prevKeySet = new Set(previousEdges.map(edge => `${edge.from}→${edge.to}:${edge.type}`));
+    const newKeySet = new Set<string>();
+    for (const edge of normalizedEdges) {
+      newKeySet.add(`${edge.from}→${edge.to}:${edge.type}`);
+    }
+
+    let intersection = 0;
+    for (const key of newKeySet) {
+      if (prevKeySet.has(key)) {
+        intersection++;
+      }
+    }
+
+    edgesAdded = newKeySet.size - intersection;
+    edgesRemoved = prevKeySet.size - intersection;
 
     // Update the context's deps graph
     ctx.depsGraph.edges = normalizedEdges as any;
 
     // Compute graph summary
-    const summary = computeGraphSummary(normalizedEdges, ctx.depsGraph.packages);
+    const summary = computeGraphSummary(normalizedEdges, ctx.depsGraph.packages, externalImports);
     ctx.depsGraph.summary = summary;
-
-    // Update packages info (already scanned above)
-    try {
-      const packageJson = JSON.parse(await fsp.readFile(packageJsonPath, 'utf8'));
-      const packageNode: PackageNode = {
-        name: packageJson.name || 'unknown',
-        version: packageJson.version,
-        private: packageJson.private || false,
-        dir: '.',
-        deps: Object.keys(packageJson.dependencies || {})
-      };
-      ctx.depsGraph.packages[packageNode.name] = packageNode;
-    } catch (error: any) {
-      ctx.log({
-        level: 'warn',
-        code: 'MIND_PARSE_ERROR',
-        msg: 'Failed to parse package.json',
-        error: error.message
-      });
-    }
 
     // Save deps graph to disk
     await writeJson(`${ctx.cwd}/.kb/mind/deps.json`, ctx.depsGraph);
@@ -306,7 +372,8 @@ async function processBatch(
   compilerOptions: ts.CompilerOptions,
   baseUrl: string | undefined,
   paths: Record<string, string[]>,
-  edges: Array<{ from: string; to: string; type: 'runtime' | 'type'; imports?: string[] }>
+  edges: Array<{ from: string; to: string; type: 'runtime' | 'type'; imports?: string[] }>,
+  externalImports: Set<string>
 ): Promise<void> {
   try {
     // Create TypeScript program for this batch
@@ -322,7 +389,7 @@ async function processBatch(
 
     for (const sourceFile of sourceFiles) {
       try {
-        await processSourceFile(sourceFile, ctx, compilerOptions, baseUrl, paths, edges);
+        await processSourceFile(sourceFile, ctx, compilerOptions, baseUrl, paths, edges, externalImports);
       } catch (error: any) {
         ctx.log({
           level: 'warn',
@@ -383,38 +450,51 @@ async function processSourceFile(
   compilerOptions: ts.CompilerOptions,
   baseUrl: string | undefined,
   paths: Record<string, string[]>,
-  edges: Array<{ from: string; to: string; type: 'runtime' | 'type'; imports?: string[] }>
+  edges: Array<{ from: string; to: string; type: 'runtime' | 'type'; imports?: string[] }>,
+  externalImports: Set<string>
 ): Promise<void> {
   const fileName = sourceFile.fileName;
-
   const visit = async (node: ts.Node) => {
     // Import declarations
     if (ts.isImportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
       const moduleSpecifier = node.moduleSpecifier.text;
-      const resolved = await resolveModule(fileName, moduleSpecifier, compilerOptions, baseUrl, paths);
-      if (resolved) {
-        const imports = extractImportedNames(node);
-        edges.push({
-          from: fileName,
-          to: resolved,
-          type: 'runtime',
-          imports
-        });
+      const resolution = await resolveModule(fileName, moduleSpecifier, compilerOptions, baseUrl, paths, ctx.cwd);
+      if (resolution) {
+        if (resolution.external) {
+          externalImports.add(resolution.external);
+        }
+        if (resolution.path) {
+          const imports = extractImportedNames(node);
+          const isTypeImport = Boolean(node.importClause?.isTypeOnly);
+          const edgeType: 'runtime' | 'type' = (isTypeImport || resolution.isType) ? 'type' : 'runtime';
+          edges.push({
+            from: fileName,
+            to: resolution.path,
+            type: edgeType,
+            imports
+          });
+        }
       }
     }
 
     // Export declarations with 'from'
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
       const moduleSpecifier = node.moduleSpecifier.text;
-      const resolved = await resolveModule(fileName, moduleSpecifier, compilerOptions, baseUrl, paths);
-      if (resolved) {
-        const imports = extractImportedNames(node);
-        edges.push({
-          from: fileName,
-          to: resolved,
-          type: 'runtime',
-          imports
-        });
+      const resolution = await resolveModule(fileName, moduleSpecifier, compilerOptions, baseUrl, paths, ctx.cwd);
+      if (resolution) {
+        if (resolution.external) {
+          externalImports.add(resolution.external);
+        }
+        if (resolution.path) {
+          const imports = extractImportedNames(node);
+          const edgeType: 'runtime' | 'type' = (node.isTypeOnly || resolution.isType) ? 'type' : 'runtime';
+          edges.push({
+            from: fileName,
+            to: resolution.path,
+            type: edgeType,
+            imports
+          });
+        }
       }
     }
 
@@ -425,14 +505,19 @@ async function processSourceFile(
         node.arguments[0] &&
         ts.isStringLiteral(node.arguments[0])) {
       const moduleSpecifier = node.arguments[0].text;
-      const resolved = await resolveModule(fileName, moduleSpecifier, compilerOptions, baseUrl, paths);
-      if (resolved) {
-        edges.push({
-          from: fileName,
-          to: resolved,
-          type: 'runtime',
-          imports: [] // Dynamic imports don't have named imports
-        });
+      const resolution = await resolveModule(fileName, moduleSpecifier, compilerOptions, baseUrl, paths, ctx.cwd);
+      if (resolution) {
+        if (resolution.external) {
+          externalImports.add(resolution.external);
+        }
+        if (resolution.path) {
+          edges.push({
+            from: fileName,
+            to: resolution.path,
+            type: resolution.isType ? 'type' : 'runtime',
+            imports: [] // Dynamic imports don't have named imports
+          });
+        }
       }
     }
 
@@ -445,55 +530,183 @@ async function processSourceFile(
 /**
  * Resolve module path using TypeScript resolution
  */
+function extractPackageName(moduleSpecifier: string): string {
+  if (moduleSpecifier.startsWith('@')) {
+    const parts = moduleSpecifier.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : moduleSpecifier;
+  }
+  const [packageName] = moduleSpecifier.split('/');
+  return packageName ?? moduleSpecifier;
+}
+
+function extractPackageNameFromPath(resolvedPath: string): string | null {
+  const marker = `${sep}node_modules${sep}`;
+  const idx = resolvedPath.lastIndexOf(marker);
+  if (idx === -1) {return null;}
+  const remainder = resolvedPath.slice(idx + marker.length);
+  const segments = remainder.split(sep);
+  const [firstSegment, secondSegment] = segments;
+  if (firstSegment?.startsWith('@') && secondSegment) {
+    return `${firstSegment}/${secondSegment}`;
+  }
+  return firstSegment ?? null;
+}
+
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceWildcards(template: string, captures: string[]): string {
+  let result = template;
+  for (const capture of captures) {
+    result = result.replace('*', capture);
+  }
+  return result;
+}
+
+function normalizeModuleResolutionKind(
+  value: ts.ModuleResolutionKind | string | undefined
+): ts.ModuleResolutionKind | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value === 'number') {
+    return value as ts.ModuleResolutionKind;
+  }
+
+  switch (value.toLowerCase()) {
+    case 'classic':
+      return ts.ModuleResolutionKind.Classic;
+    case 'node':
+    case 'nodejs':
+    case 'node10':
+      return ts.ModuleResolutionKind.Node10;
+    case 'node16':
+      return ts.ModuleResolutionKind.Node16;
+    case 'nodenext':
+      return ts.ModuleResolutionKind.NodeNext;
+    case 'bundler':
+      return ts.ModuleResolutionKind.Bundler;
+    default:
+      return undefined;
+  }
+}
+
+async function resolveViaPaths(
+  moduleSpecifier: string,
+  projectRoot: string,
+  baseUrl: string | undefined,
+  paths: Record<string, string[]>
+): Promise<string | null> {
+  if (!paths || Object.keys(paths).length === 0) {
+    return null;
+  }
+
+  const baseDir = baseUrl ? resolve(projectRoot, baseUrl) : projectRoot;
+
+  for (const [pattern, replacements] of Object.entries(paths)) {
+    const regex = new RegExp('^' + escapeForRegex(pattern).replace(/\\\*/g, '(.*)') + '$');
+    const match = moduleSpecifier.match(regex);
+    if (!match) {
+      continue;
+    }
+
+    const captures = match.slice(1);
+    for (const replacement of replacements) {
+      const substituted = replaceWildcards(replacement, captures);
+      const candidateBase = isAbsolute(substituted)
+        ? substituted
+        : resolve(baseDir, substituted);
+      const resolved = await resolveWithExtensions(candidateBase);
+      if (resolved) {
+        return resolved;
+      }
+    }
+  }
+
+  return null;
+}
+
 async function resolveModule(
   fromFile: string,
   moduleSpecifier: string,
   _compilerOptions: ts.CompilerOptions,
   _baseUrl: string | undefined,
-  _paths: Record<string, string[]>
-): Promise<string | null> {
+  _paths: Record<string, string[]>,
+  projectRoot: string
+): Promise<ResolvedModuleInfo | null> {
   try {
-    // Skip external modules
-    if (moduleSpecifier.startsWith('node_modules') || 
-        (!moduleSpecifier.startsWith('.') && !moduleSpecifier.startsWith('/'))) {
-      return null;
+    const options: ts.CompilerOptions = {
+      ..._compilerOptions,
+      baseUrl: _baseUrl ?? _compilerOptions.baseUrl,
+      paths: Object.keys(_paths || {}).length > 0 ? { ..._compilerOptions.paths, ..._paths } : _compilerOptions.paths
+    };
+
+    const normalizedModuleResolution = normalizeModuleResolutionKind(options.moduleResolution as any);
+    if (normalizedModuleResolution !== undefined) {
+      options.moduleResolution = normalizedModuleResolution;
     }
 
+    const resolution = ts.resolveModuleName(moduleSpecifier, fromFile, options, ts.sys);
+    const resolved = resolution.resolvedModule;
+
+    if (resolved?.resolvedFileName) {
+      let externalName: string | undefined;
+      if (resolved.isExternalLibraryImport) {
+        if (resolved.packageId?.name) {
+          externalName = resolved.packageId.name;
+        } else if (!moduleSpecifier.startsWith('.')) {
+          externalName = extractPackageName(moduleSpecifier);
+        } else {
+          const inferred = extractPackageNameFromPath(resolved.resolvedFileName);
+          externalName = inferred ?? undefined;
+        }
+      }
+
+      const info: ResolvedModuleInfo = {
+        path: resolved.resolvedFileName,
+        isType: resolved.extension === ts.Extension.Dts,
+        external: externalName
+      };
+
+      return info;
+    }
+  } catch {
+    // fall through to manual resolution
+  }
+
+  const aliasResolved = await resolveViaPaths(moduleSpecifier, projectRoot, _baseUrl, _paths);
+  if (aliasResolved) {
+    let externalName: string | undefined;
+    if (aliasResolved.includes(`${sep}node_modules${sep}`)) {
+      externalName = extractPackageNameFromPath(aliasResolved) ?? extractPackageName(moduleSpecifier);
+    }
+    return {
+      path: aliasResolved,
+      isType: aliasResolved.endsWith('.d.ts'),
+      external: externalName
+    };
+  }
+
+  // Manual fallback for basic relative resolution
+  try {
     const fromDir = dirname(fromFile);
-    let resolvedPath: string;
+    const resolvedPath = resolve(fromDir, moduleSpecifier);
 
-    // Handle relative imports
-    if (moduleSpecifier.startsWith('.')) {
-      resolvedPath = resolve(fromDir, moduleSpecifier);
-    } else {
-      // Handle absolute imports
-      resolvedPath = resolve(fromDir, moduleSpecifier);
-    }
-
-    // Try to resolve with extensions
-    const extensions = ['.ts', '.tsx', '.js', '.jsx'];
-    for (const ext of extensions) {
-      const withExt = resolvedPath + ext;
-      try {
-        await fsp.access(withExt);
-        return withExt;
-      } catch {
-        // File doesn't exist
+    const resolvedWithExtension = await resolveWithExtensions(resolvedPath);
+    if (resolvedWithExtension) {
+      let externalName: string | undefined;
+      if (resolvedWithExtension.includes(`${sep}node_modules${sep}`)) {
+        externalName = extractPackageNameFromPath(resolvedWithExtension) ?? extractPackageName(moduleSpecifier);
       }
+      return {
+        path: resolvedWithExtension,
+        isType: resolvedWithExtension.endsWith('.d.ts'),
+        external: externalName
+      };
     }
 
-    // Try index files
-    for (const ext of extensions) {
-      const indexPath = join(resolvedPath, 'index' + ext);
-      try {
-        await fsp.access(indexPath);
-        return indexPath;
-      } catch {
-        // File doesn't exist
-      }
-    }
-
-    return resolvedPath;
+    return { path: resolvedPath };
   } catch {
     return null;
   }

@@ -90,12 +90,14 @@ interface ContextBudget {
 
 // Default budget configuration
 export const DEFAULT_BUDGET: ContextBudget = {
-  totalTokens: 8000,
+  totalTokens: 9000,
   caps: {
     intent_summary: 300,
     product_overview: 600,
+    project_meta: 500,
     api_signatures: 2200,
     recent_diffs: 1200,
+    docs_overview: 600,
     impl_snippets: 3000,
     configs_profiles: 700,
   },

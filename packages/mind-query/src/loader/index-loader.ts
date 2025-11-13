@@ -19,13 +19,15 @@ let cachedIndexes: LoadedIndexes | null = null;
 export async function loadIndexes(cwd: string): Promise<LoadedIndexes> {
   const mindDir = join(cwd, '.kb', 'mind');
   
-  const [index, api, deps, meta, docs] = await Promise.all([
+  const [index, api, deps, meta, docsPrimary, docsLegacy] = await Promise.all([
     readJson(join(mindDir, 'index.json')) as Promise<MindIndex | null>,
     readJson(join(mindDir, 'api-index.json')) as Promise<ApiIndex | null>,
     readJson(join(mindDir, 'deps.json')) as Promise<DepsGraph | null>,
     readJson(join(mindDir, 'meta.json')) as Promise<ProjectMeta | null>,
+    readJson(join(mindDir, 'docs.json')) as Promise<DocsIndex | null>,
     readJson(join(mindDir, 'docs-index.json')) as Promise<DocsIndex | null>
   ]);
+  const docs = docsPrimary ?? docsLegacy ?? null;
   
   if (!index || !api || !deps) {
     throw new Error('Mind indexes not found. Run: kb mind init && kb mind update');

@@ -2,18 +2,30 @@
  * Tests for mind-pack
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { buildPack } from '../index.js';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
+import { initMindStructure } from '../../../mind-indexer/src/api/init.js';
+import { updateIndexes } from '../../../mind-indexer/src/api/update.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const fixturePath = join(__dirname, '../../../../fixtures/small-project');
+const mediumFixturePath = join(__dirname, '../../../../fixtures/medium-project');
 
 describe('Mind Pack Builder', () => {
+  beforeAll(async () => {
+    await initMindStructure({ cwd: fixturePath, log: () => {} });
+    await updateIndexes({
+      cwd: fixturePath,
+      timeBudgetMs: 2000,
+      log: () => {}
+    });
+  });
+
   beforeEach(async () => {
     // Clean up any existing pack files
     try {
@@ -35,6 +47,8 @@ describe('Mind Pack Builder', () => {
     expect(pack.json).toBeDefined();
     expect(pack.markdown).toBeDefined();
     expect(pack.tokensEstimate).toBeGreaterThan(0);
+    expect(pack.json.sections).toHaveProperty('project_meta');
+    expect(pack.json.sections).toHaveProperty('docs_overview');
   });
 
   it('should handle different intents', async () => {
@@ -63,12 +77,25 @@ describe('Mind Pack Builder', () => {
       cwd: fixturePath,
       intent: 'Test budget',
       product: 'test',
-      budget: { totalTokens: 100, caps: {}, truncation: 'end' }
+      budget: { 
+        totalTokens: 500, 
+        caps: {
+          intent_summary: 50,
+          product_overview: 50,
+          project_meta: 50,
+          api_signatures: 100,
+          recent_diffs: 100,
+          docs_overview: 50,
+          impl_snippets: 50,
+          configs_profiles: 50
+        }, 
+        truncation: 'end' 
+      }
     });
 
     expect(pack.json).toBeDefined();
     expect(pack.markdown).toBeDefined();
-    expect(pack.tokensEstimate).toBeLessThanOrEqual(100);
+    expect(pack.tokensEstimate).toBeLessThanOrEqual(500);
   });
 
   it('should handle deterministic output with seed', async () => {
@@ -92,5 +119,28 @@ describe('Mind Pack Builder', () => {
     expect(pack2.json).toBeDefined();
     expect(pack1.markdown).toBeDefined();
     expect(pack2.markdown).toBeDefined();
+  });
+});
+
+describe('Mind Pack Builder with metadata and docs', () => {
+  beforeAll(async () => {
+    await initMindStructure({ cwd: mediumFixturePath, log: () => {} });
+    await updateIndexes({
+      cwd: mediumFixturePath,
+      timeBudgetMs: 2000,
+      log: () => {}
+    });
+  });
+
+  it('should include indexed metadata and docs entries', async () => {
+    const pack = await buildPack({
+      cwd: mediumFixturePath,
+      intent: 'Review documentation',
+      product: 'medium-project',
+      budget: { totalTokens: 2000, caps: {}, truncation: 'end' }
+    });
+
+    expect(pack.json.sections.project_meta).toContain('medium-project');
+    expect(pack.json.sections.docs_overview).toContain('ADR-0001');
   });
 });

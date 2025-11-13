@@ -1,5 +1,18 @@
 {
-  "edges": [],
+  "edges": [
+    {
+      "from": "fixtures/small-project/src/index.ts",
+      "imports": [
+        "MathUtils",
+        "add",
+        "multiply"
+      ],
+      "priority": "critical",
+      "to": "fixtures/small-project/src/utils.ts",
+      "type": "runtime",
+      "weight": 1
+    }
+  ],
   "generator": "kb-labs-mind@0.1.0",
   "packages": {
     "sample-project": {
@@ -15,11 +28,19 @@
   "root": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind",
   "schemaVersion": "1.0",
   "summary": {
-    "externalDeps": [],
+    "externalDeps": [
+      "lodash",
+      "undici-types",
+      "csstype",
+      "@types/eslint",
+      "@types/estree"
+    ],
     "hotspots": [],
-    "internalEdges": 0,
+    "internalEdges": 1,
     "maxDepth": 0,
-    "packageGraph": {},
-    "totalEdges": 0
+    "packageGraph": {
+      "sample-project": []
+    },
+    "totalEdges": 1
   }
 }

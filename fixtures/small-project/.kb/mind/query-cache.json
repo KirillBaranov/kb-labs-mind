@@ -1,93 +1,68 @@
 {
-  "Q-12428bd6d1eb": {
+  "Q-052f65906746": {
     "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.494Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-12428bd6d1eb",
+    "createdAt": "2025-11-13T14:01:35.108Z",
+    "depsHash": "4bfeffd78350c9c4f46c0f7208d64f4460a2eaae0386442abfb99376ff18b85c",
+    "queryId": "Q-052f65906746",
     "result": {
       "code": null,
       "meta": {
         "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
         "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
+        "cwd": "../../fixtures/small-project",
+        "depsHash": "4bfeffd78350c9c4f46c0f7208d64f4460a2eaae0386442abfb99376ff18b85c",
         "edgesTouched": 0,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 1,
-          "load": 0,
-          "total": 2
-        },
-        "tokensEstimate": 13,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {
-        "file": "src/index.ts"
-      },
-      "paths": {},
-      "query": "impact",
-      "result": {
-        "count": 0,
-        "importers": []
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-5f62c23d4533": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.516Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-5f62c23d4533",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-        "edgesTouched": 0,
-        "filesScanned": 0,
+        "filesScanned": 1,
         "queryId": "",
         "timingMs": {
           "filter": 0,
-          "load": 1,
+          "load": 0,
           "total": 1
         },
-        "tokensEstimate": 13,
+        "tokensEstimate": 76,
         "truncated": false
       },
       "ok": true,
       "params": {},
       "paths": {},
-      "query": "docs",
+      "query": "meta",
       "result": {
-        "count": 0,
-        "docs": []
+        "generatedAt": "2025-11-13T13:58:11.410Z",
+        "products": [
+          {
+            "description": "",
+            "docs": [],
+            "id": "sample-project",
+            "maintainers": [
+              "unknown"
+            ],
+            "name": "sample-project"
+          }
+        ],
+        "project": "sample-project"
       },
       "schemaVersion": "1.0"
     }
   },
-  "Q-685d0477bda9": {
+  "Q-3305377cacd2": {
     "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.498Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-685d0477bda9",
+    "createdAt": "2025-11-13T13:49:53.838Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-3305377cacd2",
     "result": {
       "code": null,
       "meta": {
         "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
         "cached": false,
         "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-        "edgesTouched": 0,
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+        "edgesTouched": 1,
         "filesScanned": 0,
         "queryId": "",
         "timingMs": {
           "filter": 0,
-          "load": 1,
-          "total": 1
+          "load": 0,
+          "total": 0
         },
         "tokensEstimate": 13,
         "truncated": false
@@ -105,59 +80,25 @@
       "schemaVersion": "1.0"
     }
   },
-  "Q-6c54c14fce2f": {
+  "Q-42a784a929f2": {
     "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.505Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-6c54c14fce2f",
+    "createdAt": "2025-11-13T13:49:53.840Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-42a784a929f2",
     "result": {
       "code": null,
       "meta": {
         "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
         "cached": false,
         "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-        "edgesTouched": 0,
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+        "edgesTouched": 1,
         "filesScanned": 0,
         "queryId": "",
         "timingMs": {
           "filter": 0,
-          "load": 1,
-          "total": 1
-        },
-        "tokensEstimate": 13,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {},
-      "paths": {},
-      "query": "externals",
-      "result": {
-        "count": 0,
-        "externals": {}
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-78eec6778b3f": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.510Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-78eec6778b3f",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-        "edgesTouched": 0,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 1,
-          "total": 2
+          "load": 0,
+          "total": 0
         },
         "tokensEstimate": 33,
         "truncated": false
@@ -184,25 +125,133 @@
       "schemaVersion": "1.0"
     }
   },
-  "Q-d643ef9f99fb": {
+  "Q-889e88ae4568": {
     "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.513Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-d643ef9f99fb",
+    "createdAt": "2025-11-13T13:49:53.836Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-889e88ae4568",
     "result": {
       "code": null,
       "meta": {
         "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
         "cached": false,
         "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+        "edgesTouched": 1,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 0
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {
+        "file": "src/index.ts"
+      },
+      "paths": {},
+      "query": "impact",
+      "result": {
+        "count": 0,
+        "importers": []
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-9ef9083f3027": {
+    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+    "createdAt": "2025-11-13T13:49:53.839Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-9ef9083f3027",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+        "edgesTouched": 1,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 0
+        },
+        "tokensEstimate": 32,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "externals",
+      "result": {
+        "count": 1,
+        "externals": {
+          "fixtures": [
+            "fixtures/small-project/src/index.ts"
+          ]
+        }
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-b81ceb66fb78": {
+    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+    "createdAt": "2025-11-13T13:49:53.842Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-b81ceb66fb78",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 0,
+          "total": 0
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "docs",
+      "result": {
+        "count": 0,
+        "docs": []
+      },
+      "schemaVersion": "1.0"
+    }
+  },
+  "Q-c235d0630e92": {
+    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+    "createdAt": "2025-11-13T13:49:53.841Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-c235d0630e92",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
         "edgesTouched": 0,
         "filesScanned": 1,
         "queryId": "",
         "timingMs": {
           "filter": 0,
-          "load": 1,
-          "total": 1
+          "load": 0,
+          "total": 0
         },
         "tokensEstimate": 76,
         "truncated": false
@@ -212,7 +261,7 @@
       "paths": {},
       "query": "meta",
       "result": {
-        "generatedAt": "2025-11-07T13:02:01.482Z",
+        "generatedAt": "2025-11-13T13:49:53.834Z",
         "products": [
           {
             "description": "",
@@ -229,25 +278,25 @@
       "schemaVersion": "1.0"
     }
   },
-  "Q-e3ee5420aac0": {
+  "Q-f6fa73f5f94a": {
     "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-07T13:02:01.501Z",
-    "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
-    "queryId": "Q-e3ee5420aac0",
+    "createdAt": "2025-11-13T13:49:53.838Z",
+    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
+    "queryId": "Q-f6fa73f5f94a",
     "result": {
       "code": null,
       "meta": {
         "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
         "cached": false,
         "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "59935685de1c3641d338eee7d9ce00de47876df741efc179b361a9e6951d60f3",
+        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
         "edgesTouched": 0,
         "filesScanned": 1,
         "queryId": "",
         "timingMs": {
           "filter": 0,
           "load": 0,
-          "total": 1
+          "total": 0
         },
         "tokensEstimate": 148,
         "truncated": false

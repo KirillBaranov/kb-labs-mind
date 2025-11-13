@@ -8,15 +8,40 @@ import type { IndexerContext } from "../types/index.js";
 /**
  * Create indexer context with workspace root detection
  */
+export interface ExistingIndexes {
+  apiIndex?: IndexerContext['apiIndex'];
+  depsGraph?: IndexerContext['depsGraph'];
+  recentDiff?: IndexerContext['recentDiff'];
+}
+
 export async function createIndexerContext(
   cwd: string,
   timeBudgetMs: number,
-  log: (e: object) => void
+  log: (e: object) => void,
+  existing?: ExistingIndexes
 ): Promise<IndexerContext> {
   const root = await findWorkspaceRoot(cwd);
   const { getGenerator } = await import('@kb-labs/mind-core');
   
   const generator = getGenerator();
+  const apiIndex = existing?.apiIndex ?? {
+    schemaVersion: "1.0",
+    generator,
+    files: {}
+  };
+  const depsGraph = existing?.depsGraph ?? {
+    schemaVersion: "1.0",
+    generator,
+    root: toPosix(root),
+    packages: {},
+    edges: []
+  };
+  const recentDiff = existing?.recentDiff ?? {
+    schemaVersion: "1.0",
+    generator,
+    since: "",
+    files: []
+  };
   
   return {
     cwd,
@@ -24,24 +49,9 @@ export async function createIndexerContext(
     timeBudgetMs,
     startTime: Date.now(),
     log,
-    apiIndex: {
-      schemaVersion: "1.0",
-      generator,
-      files: {}
-    },
-    depsGraph: {
-      schemaVersion: "1.0",
-      generator,
-      root: toPosix(root),
-      packages: {},
-      edges: []
-    },
-    recentDiff: {
-      schemaVersion: "1.0",
-      generator,
-      since: "",
-      files: []
-    }
+    apiIndex,
+    depsGraph,
+    recentDiff
   };
 }
 

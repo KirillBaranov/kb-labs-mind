@@ -1,0 +1,102 @@
+{
+  "files": {
+    "src/index.ts": {
+      "exports": [
+        {
+          "jsdoc": "Create and export app instance",
+          "kind": "const",
+          "name": "app",
+          "signature": "app = new MediumApp()"
+        },
+        {
+          "jsdoc": "Application class with multiple dependencies",
+          "kind": "class",
+          "name": "MediumApp",
+          "signature": "export class MediumApp {"
+        },
+        {
+          "jsdoc": "Utility function using external dependency",
+          "kind": "function",
+          "name": "processWithLodash",
+          "signature": "export function processWithLodash<T>(items: T[]): T[] {"
+        }
+      ],
+      "sha256": "c4aef0495fc084f7ce09af0280d3682846de32d440e6249ba340b8f27691f7cb",
+      "size": 1403
+    },
+    "src/services/core.ts": {
+      "exports": [
+        {
+          "jsdoc": "Core service class",
+          "kind": "class",
+          "name": "CoreService",
+          "signature": "export class CoreService {"
+        },
+        {
+          "jsdoc": "",
+          "kind": "interface",
+          "name": "ServiceConfig",
+          "signature": "export interface ServiceConfig {"
+        }
+      ],
+      "sha256": "ce9361d389b85b2b4d9eefb30452d7be9ae345f9690e6db35fd7809735fdbaa4",
+      "size": 1020
+    },
+    "src/services/processor.ts": {
+      "exports": [
+        {
+          "jsdoc": "Data processor class",
+          "kind": "class",
+          "name": "DataProcessor",
+          "signature": "export class DataProcessor {"
+        },
+        {
+          "jsdoc": "",
+          "kind": "interface",
+          "name": "ProcessedData",
+          "signature": "export interface ProcessedData {"
+        }
+      ],
+      "sha256": "7910ffa160e618201dbfa4945a414f0f31c423a9fbd959df662b81413dc38788",
+      "size": 1225
+    },
+    "src/utils/config.ts": {
+      "exports": [
+        {
+          "jsdoc": "Configuration manager",
+          "kind": "interface",
+          "name": "AppConfig",
+          "signature": "export interface AppConfig {"
+        },
+        {
+          "jsdoc": "Configuration manager class",
+          "kind": "class",
+          "name": "ConfigManager",
+          "signature": "export class ConfigManager {"
+        }
+      ],
+      "sha256": "ccf7022f24ee0e13d1103ea0949bbfcb23d4d70837b29d1501d83f86c461ebe9",
+      "size": 1174
+    },
+    "src/utils/helper.ts": {
+      "exports": [
+        {
+          "jsdoc": "Utility helper functions",
+          "kind": "interface",
+          "name": "HelperConfig",
+          "signature": "export interface HelperConfig {"
+        },
+        {
+          "jsdoc": "Utility helper class",
+          "kind": "class",
+          "name": "UtilityHelper",
+          "signature": "export class UtilityHelper {"
+        }
+      ],
+      "sha256": "6d0eb8b85d8edf43b931fbce2ccbf0dff8f4448d27f6b5264cb3a960bbf48282",
+      "size": 1176
+    }
+  },
+  "generator": "kb-labs-mind@0.1.0",
+  "schemaVersion": "1.0"
+}

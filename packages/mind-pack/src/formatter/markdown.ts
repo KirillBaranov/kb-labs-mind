@@ -8,9 +8,11 @@
 export function generateMarkdown(sections: Record<string, string>): string {
   const order = [
     'intent_summary',
-    'product_overview', 
+    'product_overview',
+    'project_meta',
     'api_signatures',
     'recent_diffs',
+    'docs_overview',
     'impl_snippets',
     'configs_profiles'
   ];

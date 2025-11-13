@@ -57,9 +57,10 @@ export async function indexApiFiles(
   await ensureMindStructure(ctx.cwd);
   
   const extractor = new TSExtractor();
-  const added = 0;
+  let added = 0;
   let updated = 0;
   let removed = 0;
+  const processed = new Set<string>();
 
   // If no file paths provided, find all TypeScript/JavaScript files
   let filesToProcess = filePaths;
@@ -74,10 +75,14 @@ export async function indexApiFiles(
       // Check if file exists
       const fullPath = join(ctx.cwd, filePath);
       const exists = await fsp.access(fullPath).then(() => true).catch(() => false);
+      processed.add(filePath);
       
       if (!exists) {
         // File was deleted
-        removed++;
+        if (ctx.apiIndex.files[filePath]) {
+          delete ctx.apiIndex.files[filePath];
+          removed++;
+        }
         continue;
       }
 
@@ -97,8 +102,12 @@ export async function indexApiFiles(
       };
 
       // Update API index with this file
+      if (ctx.apiIndex.files[filePath]) {
+        updated++;
+      } else {
+        added++;
+      }
       ctx.apiIndex.files[filePath] = apiFile;
-      updated++;
 
     } catch (error: any) {
       // Fail-open: log warning but continue
@@ -108,6 +117,20 @@ export async function indexApiFiles(
         msg: `Failed to parse ${filePath}`, 
         error: error.message 
       });
+    }
+  }
+
+  // Remove any entries that no longer exist on disk (covers stale metadata)
+  const existingKeys = Object.keys(ctx.apiIndex.files);
+  for (const existingPath of existingKeys) {
+    if (processed.has(existingPath)) {
+      continue;
+    }
+    const fullPath = join(ctx.cwd, existingPath);
+    const exists = await fsp.access(fullPath).then(() => true).catch(() => false);
+    if (!exists) {
+      delete ctx.apiIndex.files[existingPath];
+      removed++;
     }
   }
 

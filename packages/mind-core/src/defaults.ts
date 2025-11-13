@@ -8,12 +8,14 @@ import type { ContextBudget, ContextPreset } from "./types/pack.js";
  * Default context budget
  */
 export const DEFAULT_BUDGET: ContextBudget = {
-  totalTokens: 8000,
+  totalTokens: 9000,
   caps: {
     intent_summary: 300,
     product_overview: 600,
+    project_meta: 500,
     api_signatures: 2200,
     recent_diffs: 1200,
+    docs_overview: 600,
     impl_snippets: 3000,
     configs_profiles: 700,
   },
@@ -30,7 +32,9 @@ export const DEFAULT_PRESET: ContextPreset = {
     api: 1.2, 
     diffs: 1, 
     snippets: 1.4, 
-    configs: 0.6 
+    configs: 0.6,
+    meta: 0.8,
+    docs: 0.9
   }
 };
 
