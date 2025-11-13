@@ -6,6 +6,12 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
 
+## 🧭 Start here
+
+- Follow the [Getting Started guide](./docs/getting-started.md) after cloning the repo. It walks through DevKit sync, contract checks, and first CLI runs on the new layered structure.
+- Read the [Mind Contracts guide](./docs/dev/mind-contracts.md) before changing artefact IDs, schemas, or `contractsVersion`.
+- Use [Mind Extensibility](./docs/dev/mind-extensibility.md) when adding new indexers, pack sections, or queries.
+
 ## 🎯 Vision
 
 KB Labs Mind is a headless context layer for KB Labs projects that provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows. It creates structured context from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, recent changes, and dependencies.
@@ -49,6 +55,8 @@ pnpm lint
 
 ### Basic Usage
 
+All CLI calls use the shared KB Labs CLI (`pnpm kb …`) from the repository root.
+
 ```typescript
 import { initMindStructure, updateIndexes } from '@kb-labs/mind-indexer';
 import { buildPack } from '@kb-labs/mind-pack';
@@ -69,12 +77,14 @@ const pack = await buildPack({
   intent: 'Implement new feature',
   product: 'devlink',
   budget: {
-    totalTokens: 8000,
+    totalTokens: 9000,
     caps: {
       intent_summary: 300,
       product_overview: 600,
+      project_meta: 500,
       api_signatures: 2200,
       recent_diffs: 1200,
+      docs_overview: 600,
       impl_snippets: 3000,
       configs_profiles: 700
     },
@@ -89,23 +99,25 @@ console.log(pack.markdown);
 
 ```bash
 # Initialize mind workspace
-kb mind init
+pnpm kb mind init
 
 # Update indexes with delta tracking
-kb mind update
+pnpm kb mind update
 
 # Execute queries (impact, scope, exports, externals, chain, meta, docs)
-kb mind query
+pnpm kb mind query
 
 # Verify index consistency and detect hash mismatches
-kb mind verify
+pnpm kb mind verify
 
 # Generate context packs for AI tools
-kb mind pack
+pnpm kb mind pack
 
 # One-shot command: update indexes and build context pack
-kb mind feed
+pnpm kb mind feed
 ```
+
+> **Tip:** If the KB CLI reports `Unknown command: mind`, clear discovery caches with `pnpm kb plugins:clear-cache`, rebuild `@kb-labs/mind-cli`, and run `pnpm kb plugins:list` again.
 
 ## ✨ Features
 
@@ -160,6 +172,22 @@ kb-labs-mind/
 | [@kb-labs/mind-gateway](./packages/mind-gateway/) | Gateway for external integrations |
 | [@kb-labs/mind-types](./packages/mind-types/) | Shared TypeScript types |
 | [@kb-labs/mind-tests](./packages/mind-tests/) | Test utilities and helpers |
+
+## 🗺️ Surface Map
+
+The layered aliases exposed through `tsconfig.paths.json` resolve to the following entry points:
+
+| Alias | Path | Purpose |
+|-------|------|---------|
+| `@app/shared/*` | `packages/mind-cli/src/shared/*` | Shared utilities, types, logging |
+| `@app/domain/*` | `packages/mind-cli/src/domain/*` | Domain models and invariants |
+| `@app/application/*` | `packages/mind-cli/src/application/*` | Use-cases orchestrating domain + infra |
+| `@app/infra/*` | `packages/mind-cli/src/infra/*` | Gateways (git, analytics, runtime adapters) |
+| `@app/cli/*` | `packages/mind-cli/src/cli/*` | CLI command handlers, flag mapping |
+| `@app/rest/*` | `packages/mind-cli/src/rest/*` | REST handlers built on the same contracts |
+| `@app/studio/*` | `packages/mind-cli/src/studio/*` | Studio widgets and integration helpers |
+
+Regenerate these mappings after adding new surfaces with `pnpm --filter @kb-labs/mind devkit:paths`.
 
 ### Package Details
 
@@ -248,12 +276,14 @@ kb-labs-mind/
 
 ```typescript
 const budget: ContextBudget = {
-  totalTokens: 8000,
+  totalTokens: 9000,
   caps: {
     intent_summary: 300,
     product_overview: 600,
+    project_meta: 500,
     api_signatures: 2200,
     recent_diffs: 1200,
+    docs_overview: 600,
     impl_snippets: 3000,
     configs_profiles: 700
   },
@@ -298,6 +328,7 @@ The system creates artifacts in `.kb/mind/`:
 - Binary files are detected and excluded
 - Snippet length is limited to 60 lines
 - All paths are normalized to POSIX format
+- Runs fully offline — CLI manifest does not request network access
 
 ## 🧪 Test Coverage
 
@@ -312,6 +343,9 @@ The system creates artifacts in `.kb/mind/`:
 - [Documentation Standard](./docs/DOCUMENTATION.md) - Full documentation guidelines
 - [Contributing Guide](./CONTRIBUTING.md) - How to contribute
 - [Architecture Decisions](./docs/adr/) - ADRs for this project
+- [Getting Started](./docs/getting-started.md) - Step-by-step onboarding after cloning
+- [Mind Contracts Guide](./docs/dev/mind-contracts.md) - Public contracts package, SemVer rules, and integration checklist
+- [Mind Extensibility Guide](./docs/dev/mind-extensibility.md) - Add new indexers, pack sections, and queries
 
 ## 🔗 Related Packages
 
