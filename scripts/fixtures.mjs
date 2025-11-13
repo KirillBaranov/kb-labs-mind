@@ -7,6 +7,9 @@ import { existsSync } from 'node:fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
+const repoRoot = join(rootDir, '..');
+const cliBin = join(repoRoot, 'kb-labs-cli', 'packages', 'cli', 'dist', 'bin.js');
+const CLI = `node ${JSON.stringify(cliBin)}`;
 
 // Declare known fixtures (dirs under fixtures/)
 const FIXTURES = ['small-project', 'medium-project', 'big-project'];
@@ -92,9 +95,9 @@ function planCommands(fixture, action) {
 const base = {
   bootstrap: 'pnpm i --no-frozen-lockfile',
   clean: 'rimraf .kb',
-  init: 'node ../../packages/mind-cli/dist/index.js mind init --json',
-  update: 'node ../../packages/mind-cli/dist/index.js mind update --json',
-  verify: 'node ../../packages/mind-cli/dist/index.js mind verify --json',
+  init: `${CLI} mind init --json`,
+  update: `${CLI} mind update --json`,
+  verify: `${CLI} mind verify --json`,
 };
 
   // Composite "check": init → update → verify
