@@ -30,8 +30,6 @@
   "summary": {
     "externalDeps": [
       "lodash",
-      "undici-types",
-      "csstype",
       "@types/eslint",
       "@types/estree"
     ],

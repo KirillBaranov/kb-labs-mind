@@ -1,302 +1,23 @@
 {
-  "Q-052f65906746": {
+  "Q-22abde7330ae": {
     "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T14:01:35.108Z",
-    "depsHash": "4bfeffd78350c9c4f46c0f7208d64f4460a2eaae0386442abfb99376ff18b85c",
-    "queryId": "Q-052f65906746",
+    "createdAt": "2025-11-17T20:35:27.905Z",
+    "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
+    "queryId": "Q-22abde7330ae",
     "result": {
       "code": null,
       "meta": {
         "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
         "cached": false,
-        "cwd": "../../fixtures/small-project",
-        "depsHash": "4bfeffd78350c9c4f46c0f7208d64f4460a2eaae0386442abfb99376ff18b85c",
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
         "edgesTouched": 0,
         "filesScanned": 1,
         "queryId": "",
         "timingMs": {
           "filter": 0,
-          "load": 0,
-          "total": 1
-        },
-        "tokensEstimate": 76,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {},
-      "paths": {},
-      "query": "meta",
-      "result": {
-        "generatedAt": "2025-11-13T13:58:11.410Z",
-        "products": [
-          {
-            "description": "",
-            "docs": [],
-            "id": "sample-project",
-            "maintainers": [
-              "unknown"
-            ],
-            "name": "sample-project"
-          }
-        ],
-        "project": "sample-project"
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-3305377cacd2": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.838Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-3305377cacd2",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 1,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
-        },
-        "tokensEstimate": 13,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {
-        "path": "src"
-      },
-      "paths": {},
-      "query": "scope",
-      "result": {
-        "count": 0,
-        "edges": []
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-42a784a929f2": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.840Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-42a784a929f2",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 1,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
-        },
-        "tokensEstimate": 33,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {
-        "file": "src/index.ts"
-      },
-      "paths": {
-        "f1": "src/index.ts"
-      },
-      "query": "chain",
-      "result": {
-        "levels": [
-          {
-            "depth": 0,
-            "files": [
-              "src/index.ts"
-            ]
-          }
-        ],
-        "visited": 1
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-889e88ae4568": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.836Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-889e88ae4568",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 1,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
-        },
-        "tokensEstimate": 13,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {
-        "file": "src/index.ts"
-      },
-      "paths": {},
-      "query": "impact",
-      "result": {
-        "count": 0,
-        "importers": []
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-9ef9083f3027": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.839Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-9ef9083f3027",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 1,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
-        },
-        "tokensEstimate": 32,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {},
-      "paths": {},
-      "query": "externals",
-      "result": {
-        "count": 1,
-        "externals": {
-          "fixtures": [
-            "fixtures/small-project/src/index.ts"
-          ]
-        }
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-b81ceb66fb78": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.842Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-b81ceb66fb78",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 0,
-        "filesScanned": 0,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
-        },
-        "tokensEstimate": 13,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {},
-      "paths": {},
-      "query": "docs",
-      "result": {
-        "count": 0,
-        "docs": []
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-c235d0630e92": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.841Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-c235d0630e92",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 0,
-        "filesScanned": 1,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
-        },
-        "tokensEstimate": 76,
-        "truncated": false
-      },
-      "ok": true,
-      "params": {},
-      "paths": {},
-      "query": "meta",
-      "result": {
-        "generatedAt": "2025-11-13T13:49:53.834Z",
-        "products": [
-          {
-            "description": "",
-            "docs": [],
-            "id": "sample-project",
-            "maintainers": [
-              "unknown"
-            ],
-            "name": "sample-project"
-          }
-        ],
-        "project": "sample-project"
-      },
-      "schemaVersion": "1.0"
-    }
-  },
-  "Q-f6fa73f5f94a": {
-    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-    "createdAt": "2025-11-13T13:49:53.838Z",
-    "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-    "queryId": "Q-f6fa73f5f94a",
-    "result": {
-      "code": null,
-      "meta": {
-        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-        "cached": false,
-        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
-        "depsHash": "aa3bcf5d86e585e920cc641fd02361e552c7afb69dedee28e0386ea0559829be",
-        "edgesTouched": 0,
-        "filesScanned": 1,
-        "queryId": "",
-        "timingMs": {
-          "filter": 0,
-          "load": 0,
-          "total": 0
+          "load": 17,
+          "total": 21
         },
         "tokensEstimate": 148,
         "truncated": false
@@ -329,6 +50,96 @@
             "signature": "export function createApp(name: string): App {"
           }
         ]
+      },
+      "schemaVersion": "1.0",
+      "suggestNextQueries": [
+        "query impact src/index.ts to see who imports this file",
+        "query chain src/index.ts to see dependency chain"
+      ],
+      "summary": "3 export(s) found: App, calculateFactorial, createApp"
+    }
+  },
+  "Q-4a2833216462": {
+    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+    "createdAt": "2025-11-17T20:35:27.859Z",
+    "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
+    "queryId": "Q-4a2833216462",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
+        "edgesTouched": 0,
+        "filesScanned": 1,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 1,
+          "total": 2
+        },
+        "tokensEstimate": 88,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "meta",
+      "result": {
+        "generatedAt": "2025-11-17T20:35:27.842Z",
+        "products": [
+          {
+            "description": "Sample project fixture for testing Mind indexing functionality",
+            "docs": [],
+            "id": "sample-project",
+            "maintainers": [
+              "unknown"
+            ],
+            "name": "sample-project"
+          }
+        ],
+        "project": "sample-project"
+      },
+      "schemaVersion": "1.0",
+      "suggestNextQueries": [
+        "query docs --type=adr to see architecture decisions",
+        "query scope <product-path> to see dependencies",
+        "query externals to see external dependencies"
+      ],
+      "summary": "Project contains 1 product(s): sample-project"
+    }
+  },
+  "Q-651cbeb2d885": {
+    "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+    "createdAt": "2025-11-17T20:35:27.877Z",
+    "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
+    "queryId": "Q-651cbeb2d885",
+    "result": {
+      "code": null,
+      "meta": {
+        "apiHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
+        "cached": false,
+        "cwd": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project",
+        "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
+        "edgesTouched": 0,
+        "filesScanned": 0,
+        "queryId": "",
+        "timingMs": {
+          "filter": 0,
+          "load": 2,
+          "total": 4
+        },
+        "tokensEstimate": 13,
+        "truncated": false
+      },
+      "ok": true,
+      "params": {},
+      "paths": {},
+      "query": "docs",
+      "result": {
+        "count": 0,
+        "docs": []
       },
       "schemaVersion": "1.0"
     }
