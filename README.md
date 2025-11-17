@@ -1,6 +1,8 @@
 # KB Labs Mind (@kb-labs/mind)
 
-> **Headless context layer for KB Labs projects.** Provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows.
+> **Headless knowledge layer for KB Labs projects.** Provides semantic code search, intelligent indexing, and RAG-powered context generation for AI development workflows.
+
+**Mind v2** introduces vector-based semantic search with embeddings, self-learning capabilities, and advanced context optimization. The original **Mind v1** packages (delta indexing, context packs) remain available for backward compatibility.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
@@ -14,11 +16,19 @@
 
 ## 🎯 Vision
 
-KB Labs Mind is a headless context layer for KB Labs projects that provides intelligent code indexing, dependency tracking, and context pack generation for AI-powered development workflows. It creates structured context from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, recent changes, and dependencies.
+KB Labs Mind is a headless knowledge layer for KB Labs projects that provides semantic code search, intelligent indexing, and RAG-powered context generation for AI-powered development workflows. It creates structured, searchable knowledge from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, find relevant code, and generate accurate responses.
 
-The project solves the problem of providing AI tools with relevant, structured context about a codebase by implementing delta indexing (only processes changed files), intelligent caching, and budget-aware context packing. Instead of feeding AI tools with raw code dumps, Mind creates curated, token-budgeted context packs that include only the most relevant information.
+**Mind v2** solves the problem of semantic code search by implementing:
+- **Vector-based semantic search** using embeddings (OpenAI, deterministic fallback)
+- **AST-based chunking** for TypeScript/JavaScript code
+- **Hybrid search** combining vector similarity with keyword matching (RRF)
+- **Self-learning system** that improves search relevance over time
+- **Context optimization** with deduplication, diversification, and token compression
+- **Incremental indexing** for fast updates
 
-This project is part of the **@kb-labs** ecosystem and integrates seamlessly with all KB Labs products, providing them with intelligent context generation capabilities for AI-powered workflows.
+**Mind v1** (legacy) provides delta indexing and context pack generation for backward compatibility.
+
+This project is part of the **@kb-labs** ecosystem and integrates seamlessly with all KB Labs products, providing them with intelligent knowledge retrieval capabilities for AI-powered workflows.
 
 ## 🚀 Quick Start
 
@@ -53,9 +63,52 @@ pnpm lint
 
 > **Note:** Packages like `@kb-labs/mind-cli` import generated typings from `@kb-labs/shared-cli-ui` and `@kb-labs/mind-gateway`. Run `pnpm --filter @kb-labs/shared-cli-ui build` and `pnpm --filter @kb-labs/mind-gateway build` (or simply `pnpm build`) after pulling changes or modifying those packages to keep their `dist/*.d.ts` files up to date.
 
-### Basic Usage
+### Basic Usage (Mind v2 - RAG)
 
 All CLI calls use the shared KB Labs CLI (`pnpm kb …`) from the repository root.
+
+```bash
+# Build knowledge index
+pnpm kb mind:rag-index
+
+# Query with semantic search
+pnpm kb mind:rag-query --text "compression implementation" --intent search
+```
+
+**Programmatic API:**
+
+```typescript
+import { createMindKnowledgeRuntime } from '@kb-labs/mind-cli/shared/knowledge';
+
+// Create knowledge runtime
+const runtime = await createMindKnowledgeRuntime({
+  cwd: '/path/to/project',
+});
+
+// Build index
+await runtime.service.index({
+  scope: { id: 'default', label: 'Default Scope' },
+  sources: [
+    {
+      id: 'codebase',
+      kind: 'code',
+      language: 'typescript',
+      paths: ['src/**/*.ts'],
+    },
+  ],
+});
+
+// Query
+const result = await runtime.service.query({
+  text: 'compression implementation',
+  intent: 'search',
+  scope: 'default',
+});
+
+console.log(result.contextText);
+```
+
+**Legacy API (Mind v1):**
 
 ```typescript
 import { initMindStructure, updateIndexes } from '@kb-labs/mind-indexer';
@@ -97,6 +150,21 @@ console.log(pack.markdown);
 
 ### CLI Commands
 
+**Mind v2 (RAG):**
+
+```bash
+# Build knowledge index from codebase
+pnpm kb mind:rag-index
+
+# Query with semantic search
+pnpm kb mind:rag-query --text "your query" --intent search
+
+# Query with summary intent
+pnpm kb mind:rag-query --text "explain compression" --intent summary
+```
+
+**Mind v1 (Legacy):**
+
 ```bash
 # Initialize mind workspace
 pnpm kb mind init
@@ -121,6 +189,20 @@ pnpm kb mind feed
 
 ## ✨ Features
 
+### Mind v2 (RAG)
+
+- **Semantic Search**: Vector-based search using embeddings (OpenAI, deterministic fallback)
+- **AST-Based Chunking**: Intelligent code chunking preserving semantic units
+- **Hybrid Search**: Combines vector similarity with keyword matching (Reciprocal Rank Fusion)
+- **Self-Learning**: Query history, feedback collection, popularity boost, adaptive weights
+- **Context Optimization**: Deduplication, diversification, token compression
+- **Incremental Indexing**: Only re-indexes changed files for fast updates
+- **Token Compression**: Smart truncation and metadata-only mode for low-relevance chunks
+- **Vector Store Abstraction**: Supports Qdrant and local file-based storage
+- **Runtime Adapter Pattern**: Portable across Node.js, sandboxes, and serverless
+
+### Mind v1 (Legacy)
+
 - **Delta Indexing**: Only processes changed files for fast updates
 - **Time Budget Enforcement**: Partial results when budget is exceeded
 - **Intelligent Caching**: Uses mtime/size checks for efficient cache invalidation
@@ -136,18 +218,25 @@ pnpm kb mind feed
 ```
 kb-labs-mind/
 ├── packages/                # Core packages
-│   ├── mind-core/           # Core types and utilities
-│   ├── mind-indexer/        # Delta indexing system
-│   ├── mind-pack/            # Context pack builder
-│   ├── mind-adapters/        # Git integration helpers
-│   ├── mind-cli/             # CLI commands
-│   ├── mind-query/           # Query system for indexes
+│   ├── mind-engine/          # Mind v2: Core knowledge engine
+│   ├── mind-embeddings/      # Mind v2: Embedding providers
+│   ├── mind-llm/             # Mind v2: LLM client abstraction
+│   ├── mind-vector-store/    # Mind v2: Vector store implementations
+│   ├── mind-cli/             # CLI commands (v1 + v2)
+│   ├── mind-core/            # Mind v1: Core types and utilities
+│   ├── mind-indexer/         # Mind v1: Delta indexing system
+│   ├── mind-pack/            # Mind v1: Context pack builder
+│   ├── mind-adapters/        # Mind v1: Git integration helpers
+│   ├── mind-query/           # Mind v1: Query system for indexes
 │   ├── mind-gateway/         # Gateway for external integrations
 │   ├── mind-types/           # Type definitions
-│   └── mind-tests/           # Test utilities and helpers
-├── docs/                    # Documentation
+│   ├── mind-tests/           # Test utilities and helpers
+│   └── contracts/            # Public contracts
+├── docs/                     # Documentation
 │   ├── DOCUMENTATION.md      # Documentation standard
-│   └── adr/                  # Architecture Decision Records
+│   ├── adr/                  # Architecture Decision Records
+│   ├── rag-*.md              # RAG documentation (Mind v2)
+│   └── change-tracking-design.md
 ├── fixtures/                 # Test fixtures
 └── scripts/                  # Utility scripts
 ```
@@ -161,13 +250,24 @@ kb-labs-mind/
 
 ## 📦 Packages
 
+### Mind v2 (RAG)
+
+| Package | Description |
+|---------|-------------|
+| [@kb-labs/mind-engine](./packages/mind-engine/) | Core knowledge engine with vector search, chunking, and self-learning |
+| [@kb-labs/mind-embeddings](./packages/mind-embeddings/) | Embedding providers (OpenAI, deterministic) |
+| [@kb-labs/mind-llm](./packages/mind-llm/) | LLM client abstraction |
+| [@kb-labs/mind-vector-store](./packages/mind-vector-store/) | Vector store implementations (Qdrant, local) |
+| [@kb-labs/mind-cli](./packages/mind-cli/) | CLI commands for RAG operations |
+
+### Mind v1 (Legacy)
+
 | Package | Description |
 |---------|-------------|
 | [@kb-labs/mind-core](./packages/mind-core/) | Core types, utilities, and error handling |
 | [@kb-labs/mind-indexer](./packages/mind-indexer/) | Delta indexing for API, dependencies, and git changes |
 | [@kb-labs/mind-pack](./packages/mind-pack/) | Context pack builder with budget management |
 | [@kb-labs/mind-adapters](./packages/mind-adapters/) | Git integration helpers |
-| [@kb-labs/mind-cli](./packages/mind-cli/) | CLI commands for mind operations |
 | [@kb-labs/mind-query](./packages/mind-query/) | Query system for indexes |
 | [@kb-labs/mind-gateway](./packages/mind-gateway/) | Gateway for external integrations |
 | [@kb-labs/mind-types](./packages/mind-types/) | Shared TypeScript types |
@@ -340,12 +440,40 @@ The system creates artifacts in `.kb/mind/`:
 
 ## 📚 Documentation
 
+### Getting Started
+
+- [Getting Started](./docs/getting-started.md) - Step-by-step onboarding after cloning
+- [RAG Implementation Guide](./docs/rag-implementation-guide.md) - How to set up Mind v2 RAG
+- [RAG Configuration Examples](./docs/rag-configuration-examples.md) - Configuration examples
+- [RAG Optimal Strategy](./docs/rag-optimal-strategy.md) - Best practices for RAG
+
+### Architecture
+
+- [Architecture Decisions](./docs/adr/) - ADRs for this project
+  - [ADR-0015: Search Result Compression](./docs/adr/0015-search-result-compression.md)
+  - [ADR-0016: Vector Store Abstraction](./docs/adr/0016-vector-store-abstraction.md)
+  - [ADR-0017: Embedding Provider Abstraction](./docs/adr/0017-embedding-provider-abstraction.md)
+  - [ADR-0018: Hybrid Search with RRF](./docs/adr/0018-hybrid-search-rrf.md)
+  - [ADR-0019: Self-Learning System](./docs/adr/0019-self-learning-system.md)
+  - [ADR-0020: AST-Based Chunking](./docs/adr/0020-ast-based-chunking.md)
+  - [ADR-0021: Incremental Indexing](./docs/adr/0021-incremental-indexing.md)
+  - [ADR-0022: Context Optimization](./docs/adr/0022-context-optimization.md)
+  - [ADR-0023: Runtime Adapter Pattern](./docs/adr/0023-runtime-adapter-pattern.md)
+  - [ADR-0024: Deterministic Embeddings](./docs/adr/0024-deterministic-embeddings-fallback.md)
+  - [ADR-0025: Reranking Strategy](./docs/adr/0025-reranking-strategy.md)
+
+### Development
+
 - [Documentation Standard](./docs/DOCUMENTATION.md) - Full documentation guidelines
 - [Contributing Guide](./CONTRIBUTING.md) - How to contribute
-- [Architecture Decisions](./docs/adr/) - ADRs for this project
-- [Getting Started](./docs/getting-started.md) - Step-by-step onboarding after cloning
 - [Mind Contracts Guide](./docs/dev/mind-contracts.md) - Public contracts package, SemVer rules, and integration checklist
 - [Mind Extensibility Guide](./docs/dev/mind-extensibility.md) - Add new indexers, pack sections, and queries
+
+### Reference
+
+- [RAG Configuration Spec](./docs/rag-configuration-spec.md) - Complete configuration reference
+- [RAG Cost Analysis](./docs/rag-cost-analysis.md) - Cost analysis and optimization
+- [Vector Store Comparison](./docs/rag-vector-store-comparison.md) - Comparison of vector stores
 
 ## 🔗 Related Packages
 
