@@ -1,0 +1,63 @@
+{
+  "name": "@kb-labs/mind-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Knowledge engine adapter for KB Labs Mind (RAG, embeddings, vector store integration).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./adapters/runtime-adapter": {
+      "import": "./dist/adapters/runtime-adapter.js",
+      "types": "./dist/adapters/runtime-adapter.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests"
+  },
+  "dependencies": {
+    "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts",
+    "@kb-labs/knowledge-core": "link:../../../kb-labs-knowledge/packages/knowledge-core",
+    "@kb-labs/mind-core": "link:../mind-core",
+    "@kb-labs/mind-embeddings": "link:../mind-embeddings",
+    "@kb-labs/mind-llm": "link:../mind-llm",
+    "@kb-labs/mind-query": "link:../mind-query",
+    "@kb-labs/mind-types": "link:../mind-types",
+    "@kb-labs/mind-vector-store": "link:../mind-vector-store",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.2.0",
+    "picomatch": "^4.0.2",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "link:../../../kb-labs-devkit",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.7.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0"
+}
