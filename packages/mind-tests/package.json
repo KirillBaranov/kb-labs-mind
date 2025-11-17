@@ -13,7 +13,9 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:fixtures": "vitest run --reporter=verbose fixtures",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
   },
   "dependencies": {
     "@kb-labs/mind-adapters": "link:../mind-adapters",

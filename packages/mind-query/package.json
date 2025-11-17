@@ -15,7 +15,9 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "lint": "eslint . --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
   },
   "dependencies": {
     "@kb-labs/mind-core": "link:../mind-core",

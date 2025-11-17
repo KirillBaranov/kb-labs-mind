@@ -9,7 +9,10 @@
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint . --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
   },
   "dependencies": {
     "@kb-labs/mind-cli": "link:../mind-cli",
@@ -23,7 +26,8 @@
     "@types/node": "^20.0.0",
     "rimraf": "^6",
     "tsup": "^8",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18.18.0",
