@@ -7,4 +7,6 @@ export { run as runUpdateCommand } from './commands/update.js';
 export { run as runPackCommand } from './commands/pack.js';
 export { run as runFeedCommand } from './commands/feed.js';
 export { run as runQueryCommand } from './commands/query.js';
+export { run as runRagIndexCommand } from './commands/rag-index.js';
+export { run as runRagQueryCommand } from './commands/rag-query.js';
 export { run as runVerifyCommand } from './commands/verify.js';

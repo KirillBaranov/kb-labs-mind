@@ -15,6 +15,8 @@ export default defineConfig({
     'src/cli/commands/pack.ts',
     'src/cli/commands/feed.ts',
     'src/cli/commands/query.ts',
+    'src/cli/commands/rag-index.ts',
+    'src/cli/commands/rag-query.ts',
     'src/cli/commands/verify.ts',
     'src/cli/types.ts',
     'src/rest/handlers/query-handler.ts',

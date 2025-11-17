@@ -405,6 +405,97 @@ export const manifest: ManifestV2 = {
       },
       {
         manifestVersion: '1.0',
+        id: 'rag-index',
+        group: 'mind',
+        describe: 'Build Mind knowledge indexes for RAG',
+        longDescription: 'Refresh configured knowledge scopes (or a specific scope) for Mind RAG queries.',
+        flags: [
+          {
+            name: 'cwd',
+            type: 'string',
+            description: 'Working directory',
+          },
+          {
+            name: 'scope',
+            type: 'string',
+            description: 'Scope ID to rebuild (default: all scopes)',
+          },
+          {
+            name: 'json',
+            type: 'boolean',
+            description: 'Output in JSON format',
+          },
+          {
+            name: 'quiet',
+            type: 'boolean',
+            description: 'Quiet output',
+          },
+        ],
+        examples: [
+          'kb mind rag:index',
+          'kb mind rag:index --scope frontend --json',
+        ],
+        handler: './cli/commands/rag-index#run',
+      },
+      {
+        manifestVersion: '1.0',
+        id: 'rag-query',
+        group: 'mind',
+        describe: 'Run a semantic Mind RAG query',
+        longDescription: 'Use the knowledge orchestrator to search indexed Mind scopes via embeddings.',
+        flags: [
+          {
+            name: 'cwd',
+            type: 'string',
+            description: 'Working directory',
+          },
+          {
+            name: 'scope',
+            type: 'string',
+            description: 'Scope ID (default: first configured scope)',
+          },
+          {
+            name: 'text',
+            type: 'string',
+            description: 'Query text',
+            required: true,
+          },
+          {
+            name: 'intent',
+            type: 'string',
+            choices: ['summary', 'search', 'similar', 'nav'],
+            description: 'Intent hint for ranking/policy',
+          },
+          {
+            name: 'limit',
+            type: 'number',
+            description: 'Maximum chunks to return',
+            default: 16,
+          },
+          {
+            name: 'profile',
+            type: 'string',
+            description: 'Profile ID override (knowledge profiles v2)',
+          },
+          {
+            name: 'json',
+            type: 'boolean',
+            description: 'Output in JSON format',
+          },
+          {
+            name: 'quiet',
+            type: 'boolean',
+            description: 'Quiet output',
+          },
+        ],
+        examples: [
+          'kb mind rag:query --text "summarize monitoring stack"',
+          'kb mind rag:query --text "where is auth middleware?" --intent search --scope backend --json',
+        ],
+        handler: './cli/commands/rag-query#run',
+      },
+      {
+        manifestVersion: '1.0',
         id: 'verify',
         group: 'mind',
         describe: 'Verify mind workspace consistency',
@@ -602,14 +693,29 @@ export const manifest: ManifestV2 = {
       allow: ['.kb/mind/**', 'package.json', '**/package.json'],
       deny: ['**/*.key', '**/*.secret', '**/node_modules/**', '**/.artifacts/**'],
     },
-    net: 'none',
+    net: {
+      allowHosts: [
+        'api.openai.com',
+        'localhost',
+        '127.0.0.1',
+        '*.qdrant.io',
+      ],
+    },
     env: {
-      allow: ['NODE_ENV', 'KB_LABS_*'],
+      allow: [
+        'NODE_ENV',
+        'KB_LABS_*',
+        'OPENAI_API_KEY',
+        'QDRANT_URL',
+        'QDRANT_API_KEY',
+        'EMBEDDING_PROVIDER',
+        'VECTOR_STORE_TYPE',
+      ],
     },
     quotas: {
-      timeoutMs: 60000,
-      memoryMb: 512,
-      cpuMs: 30000,
+      timeoutMs: 300000,
+      memoryMb: 1024,
+      cpuMs: 180000,
     },
     capabilities: ['fs:read', 'fs:write'],
     // Cross-plugin invocation permissions
@@ -652,4 +758,3 @@ export const manifest: ManifestV2 = {
 
 // Export as default for compatibility
 export default manifest;
-
