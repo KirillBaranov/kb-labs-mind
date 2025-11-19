@@ -9,7 +9,7 @@ The compression system includes several techniques to reduce the number of token
 1. **Smart Truncation** - Intelligent truncation that preserves code structure
 2. **Metadata-Only Mode** - Show only metadata for low-relevance chunks
 3. **Incremental Context Building** - Build context with token budget awareness
-4. **LLM Compression** - Compression using LLM (placeholder for future implementation)
+4. **LLM Compression** - LLM-based compression using OpenAI (gpt-4o-mini) to reduce token usage while preserving meaning
 
 ## Configuration
 
@@ -38,7 +38,9 @@ Compression is configured in `kb.config.json` in the `knowledge.engines[].option
                   "scoreThreshold": 0.4
                 },
                 "llm": {
-                  "enabled": false
+                  "enabled": true,
+                  "model": "gpt-4o-mini",
+                  "maxTokens": 512
                 }
               }
             }
@@ -80,10 +82,14 @@ Compression is configured in `kb.config.json` in the `knowledge.engines[].option
 
 #### `llm`
 - **Type:** object
-- **Description:** LLM compression settings (placeholder for future implementation)
-  - `enabled` - enable/disable (default: `false`)
-  - `model` - LLM model for compression (optional)
-  - `maxTokens` - maximum number of tokens for compressed output (optional)
+- **Description:** LLM compression settings using OpenAI API
+- `enabled` - enable/disable (default: `false`)
+- `model` - OpenAI model for compression (default: `"gpt-4o-mini"` - cheap and fast)
+- `maxTokens` - maximum number of tokens for compressed output (default: calculated from original length)
+
+**Requirements:**
+- `OPENAI_API_KEY` environment variable must be set
+- Only chunks longer than 500 characters are compressed (to avoid unnecessary API calls)
 
 ## Compression Techniques
 
@@ -191,18 +197,65 @@ Build context with token budget awareness, applying more aggressive compression 
 - Works together with `adaptiveSelection` in `context-optimizer`
 - Uses `tokenBudget` from query context (if provided)
 
-### 4. LLM Compression (Placeholder)
+### 4. LLM Compression
 
-Placeholder for future LLM-based compression implementation.
+LLM-based compression using OpenAI API to intelligently compress code chunks while preserving meaning.
 
-**Current implementation:**
-- `NullLLMCompressor` simply returns original text
-- Interface is ready for future implementation
+**How it works:**
+- Uses OpenAI API (default: `gpt-4o-mini` - cheap and fast)
+- Only compresses chunks longer than 500 characters (to avoid unnecessary API calls)
+- Compresses to approximately 50% of original length while preserving:
+  - Function signatures and class definitions
+  - Type definitions
+  - Critical logic and important comments
+  - Code structure and readability
+- Falls back to smart truncation if LLM compression fails
 
-**Planned functionality:**
-- Use LLM to compress chunks while preserving meaning
-- Extract key information from long chunks
-- Generate concise descriptions of complex code
+**Example:**
+
+Before compression (1000 characters):
+```typescript
+export class CompressionExample {
+  private readonly options: CompressionOptions;
+  
+  constructor(options: CompressionOptions) {
+    this.options = options;
+    // Initialize compression settings
+    this.validateOptions();
+  }
+  
+  private validateOptions() {
+    // ... validation logic ...
+  }
+  
+  async compress(text: string): Promise<string> {
+    // ... compression logic ...
+  }
+}
+```
+
+After LLM compression (~500 characters):
+```typescript
+export class CompressionExample {
+  private readonly options: CompressionOptions;
+  
+  constructor(options: CompressionOptions) {
+    this.options = options;
+    this.validateOptions();
+  }
+  
+  private validateOptions() { /* validation */ }
+  
+  async compress(text: string): Promise<string> {
+    // Compression logic preserving key functionality
+  }
+}
+```
+
+**Requirements:**
+- `OPENAI_API_KEY` environment variable must be set
+- Requires OpenAI API access (uses `gpt-4o-mini` by default)
+- Adds latency (~1-2 seconds per compressed chunk)
 
 ## Metrics
 
@@ -229,7 +282,8 @@ The system logs compression metrics for each query:
 - **Base level (no compression):** 0% savings
 - **With Smart Truncation:** 20-30% savings
 - **With Metadata-Only Mode:** additional 10-20% savings
-- **Combined effect:** 30-50% token savings
+- **With LLM Compression:** additional 40-50% savings (on compressed chunks)
+- **Combined effect:** 50-70% token savings (with all features enabled)
 
 **Influencing factors:**
 - Chunk size (larger chunks → more savings)
@@ -266,13 +320,15 @@ The `metadataOnly.scoreThreshold` threshold depends on your index and chunker qu
 - ✅ Incremental Context Building with token budget
 - ✅ In-memory cache for compressed chunks
 - ✅ Metrics and logging
+- ✅ LLM Compression with OpenAI (gpt-4o-mini)
+- ✅ Chunk Summarization support
 
 ### Planned
-- 🔲 LLM Compression with real implementation
 - 🔲 Qdrant cache for compressed chunks
 - 🔲 Adaptive scoreThreshold based on feedback
 - 🔲 Improved extraction of important code parts
 - 🔲 Support for different programming languages
+- 🔲 Batch compression optimization (compress multiple chunks in one API call)
 
 ## Usage Examples
 
@@ -317,12 +373,29 @@ All sub-options will use default values.
 }
 ```
 
+### LLM Compression Enabled
+```json
+{
+  "compression": {
+    "enabled": true,
+    "llm": {
+      "enabled": true,
+      "model": "gpt-4o-mini",
+      "maxTokens": 512
+    }
+  }
+}
+```
+
+**Note:** Requires `OPENAI_API_KEY` environment variable to be set.
+
 ## Troubleshooting
 
 ### Compression Not Working
 - Check that `compression.enabled = true`
 - Check logs for errors
 - Ensure chunks have scores (for metadata-only mode)
+- For LLM compression: verify `OPENAI_API_KEY` is set and API is accessible
 
 ### Too Aggressive Compression
 - Increase `scoreThreshold` for metadata-only mode

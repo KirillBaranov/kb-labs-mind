@@ -14,6 +14,17 @@ export interface MindLLMGenerateResult {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * LLM Engine interface for Mind v2.
+ * 
+ * Supports:
+ * - OpenAI models (via createOpenAILLMEngine)
+ * - Local stub for development (via createLocalStubLLMEngine)
+ * - Future: Local models (Ollama, llama.cpp, etc.)
+ * 
+ * The interface is language-agnostic and works with any LLM provider
+ * that implements this contract.
+ */
 export interface MindLLMEngine {
   readonly id: string;
   readonly description?: string;
@@ -63,3 +74,7 @@ export function createLocalStubLLMEngine(
     },
   };
 }
+
+// Export OpenAI engine
+export { createOpenAILLMEngine } from './openai.js';
+export type { OpenAILLMEngineOptions } from './openai.js';

@@ -610,3 +610,6 @@ export class ElasticsearchAdapter implements VectorStoreAdapter {
 **Лучший подход:** Поддержка нескольких бэкендов с возможностью выбора через конфигурацию.
 
 
+
+
+

@@ -642,3 +642,6 @@ describe('Sandbox permissions', () => {
 **Ключевой принцип:** Все внешние запросы должны идти через `ctx.runtime.fetch`, который уже имеет whitelist проверки на уровне sandbox.
 
 
+
+
+
