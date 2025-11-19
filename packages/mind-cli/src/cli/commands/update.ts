@@ -2,168 +2,18 @@
  * Mind update command
  */
 
-import type { CommandModule } from '../types.js';
+import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
-  TimingTracker,
   formatTiming,
   parseNumberFlag,
 } from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
-import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
 const UPDATE_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
-
-export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  // Parse flags with defaults
-  const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
-  const since = typeof flags.since === 'string' ? flags.since : undefined;
-  const noCache = !!flags['no-cache'];
-  // Default to 5000ms for full indexing (instead of 800ms)
-  const parsedTimeBudget = parseNumberFlag(flags['time-budget']);
-  const timeBudget = parsedTimeBudget ?? 5000;
-
-  return (await runScope(
-    {
-      actor: ANALYTICS_ACTOR,
-      ctx: { workspace: cwd },
-    },
-    async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
-      const tracker = new TimingTracker();
-      const spinner = ctx.output.spinner('Indexing project');
-      
-      try {
-        // Track command start
-        await emit({
-          type: ANALYTICS_EVENTS.UPDATE_STARTED,
-          payload: {
-            since,
-            noCache,
-            timeBudget,
-          },
-        });
-        
-        tracker.checkpoint('start');
-        if (!ctx.output.isQuiet && !ctx.output.isJSON) {
-          spinner.start();
-        }
-        
-        const updateOptions: any = {
-          cwd,
-          log: (entry: any) => {
-            if (!ctx.output.isQuiet && !ctx.output.isJSON) {
-              ctx.output.info(`Update: ${entry.msg || entry}`);
-            }
-          }
-        };
-        
-        if (since) {updateOptions.since = since;}
-        if (timeBudget) {updateOptions.timeBudgetMs = timeBudget;}
-        if (noCache) {updateOptions.noCache = noCache;}
-        
-        tracker.checkpoint('update-start');
-        const result = await updateIndexes(updateOptions);
-        tracker.checkpoint('update-complete');
-        
-        if (!ctx.output.isQuiet && !ctx.output.isJSON) {
-          spinner.succeed('Indexing complete');
-        }
-        const duration = tracker.total();
-        
-        if (ctx.output.isJSON) {
-          ctx.output.json({
-            ok: true,
-            delta: result,
-            budget: result.budget,
-            timing: duration,
-            produces: [UPDATE_ARTIFACT_ID]
-          });
-        } else {
-          if (!ctx.output.isQuiet) {
-            const { ui } = ctx.output;
-            const summaryLines: string[] = [];
-            summaryLines.push(
-              ...ui.keyValue({
-                'API Changes': formatDelta(result.api?.added, result.api?.updated, result.api?.removed),
-                'Dependencies': formatDelta(result.deps?.edgesAdded, undefined, result.deps?.edgesRemoved),
-                'Diff Files': result.diff ? String(result.diff.files || 0) : 'none',
-              }),
-            );
-
-            if (result.partial && result.budget) {
-              summaryLines.push('');
-              summaryLines.push(
-                ui.colors.muted('Partial update due to time budget'),
-                ui.colors.muted(`Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`),
-              );
-            }
-
-            const statusSymbol = result.partial ? ui.symbols.warning : ui.symbols.success;
-            const statusColor = result.partial ? ui.colors.warn : ui.colors.success;
-            const statusLabel = result.partial ? 'Partial update' : 'Update complete';
-            summaryLines.push(
-              '',
-              `${statusSymbol} ${statusColor(statusLabel)} · ${ui.colors.muted(formatTiming(duration))}`,
-            );
-
-            ctx.output.write('\n' + ui.box('Mind Update', summaryLines));
-          }
-        }
-
-        // Track command completion
-        await emit({
-          type: ANALYTICS_EVENTS.UPDATE_FINISHED,
-          payload: {
-            since,
-            noCache,
-            timeBudget,
-            apiChanges: result.api ? result.api.added + result.api.updated + result.api.removed : 0,
-            depsChanges: result.deps ? result.deps.edgesAdded + result.deps.edgesRemoved : 0,
-            diffFiles: result.diff?.files || 0,
-            partial: result.partial,
-            durationMs: duration,
-            result: 'success',
-          },
-        });
-        
-        return 0;
-      } catch (e: unknown) {
-        if (!ctx.output.isQuiet && !ctx.output.isJSON) {
-          spinner.fail('Update failed');
-        }
-        
-        const errorMessage = e instanceof Error ? e.message : String(e);
-        const duration = tracker.total();
-
-        // Track command failure
-        await emit({
-          type: ANALYTICS_EVENTS.UPDATE_FINISHED,
-          payload: {
-            since,
-            noCache,
-            timeBudget,
-            durationMs: duration,
-            result: 'error',
-            error: errorMessage,
-          },
-        });
-        
-        ctx.output.error(e instanceof Error ? e : new Error(errorMessage), {
-          code: MIND_ERROR_CODES.SYNC_FAILED,
-          suggestions: [
-            'Check your workspace and git status',
-            'Verify that Mind is initialized',
-            'Try: kb mind init',
-          ],
-        });
-        return 1;
-      }
-    }
-  )) as number;
-};
 
 function formatDelta(
   added?: number,
@@ -192,3 +42,172 @@ function formatDelta(
 
   return parts.join(' ');
 }
+
+type MindUpdateFlags = {
+  cwd: { type: 'string'; description?: string };
+  since: { type: 'string'; description?: string };
+  'time-budget': { type: 'number'; description?: string };
+  'no-cache': { type: 'boolean'; description?: string; default?: boolean };
+  json: { type: 'boolean'; description?: string; default?: boolean };
+  verbose: { type: 'boolean'; description?: string; default?: boolean };
+  quiet: { type: 'boolean'; description?: string; default?: boolean };
+};
+
+type MindUpdateResult = CommandResult & {
+  added?: number;
+  updated?: number;
+  removed?: number;
+  artifactId?: string;
+};
+
+export const run = defineCommand<MindUpdateFlags, MindUpdateResult>({
+  name: 'mind:update',
+  flags: {
+    cwd: {
+      type: 'string',
+      description: 'Working directory',
+    },
+    since: {
+      type: 'string',
+      description: 'Git reference to update since',
+    },
+    'time-budget': {
+      type: 'number',
+      description: 'Time budget in milliseconds',
+    },
+    'no-cache': {
+      type: 'boolean',
+      description: 'Disable cache',
+      default: false,
+    },
+    json: {
+      type: 'boolean',
+      description: 'Output in JSON format',
+      default: false,
+    },
+    verbose: {
+      type: 'boolean',
+      description: 'Verbose output',
+      default: false,
+    },
+    quiet: {
+      type: 'boolean',
+      description: 'Quiet output',
+      default: false,
+    },
+  },
+  analytics: {
+    startEvent: ANALYTICS_EVENTS.UPDATE_STARTED,
+    finishEvent: ANALYTICS_EVENTS.UPDATE_FINISHED,
+    actor: ANALYTICS_ACTOR.id,
+    includeFlags: true,
+  },
+  async handler(ctx, argv, flags) {
+    const cwd = flags.cwd || ctx.cwd;
+    const since = flags.since;
+    const noCache = flags['no-cache'];
+    const parsedTimeBudget = parseNumberFlag(flags['time-budget']);
+    const timeBudget = parsedTimeBudget ?? 5000;
+    
+    const spinner = ctx.output?.spinner('Indexing project');
+    
+    ctx.tracker.checkpoint('start');
+    if (!flags.quiet && !flags.json) {
+      spinner?.start();
+    }
+    
+    const updateOptions: any = {
+      cwd,
+      log: (entry: any) => {
+        if (!flags.quiet && !flags.json) {
+          ctx.output?.info(`Update: ${entry.msg || entry}`);
+        }
+      }
+    };
+    
+    if (since) {updateOptions.since = since;}
+    if (timeBudget) {updateOptions.timeBudgetMs = timeBudget;}
+    if (noCache) {updateOptions.noCache = noCache;}
+    
+    ctx.tracker.checkpoint('update-start');
+    const result = await updateIndexes(updateOptions);
+    ctx.tracker.checkpoint('update-complete');
+    
+    if (!flags.quiet && !flags.json) {
+      spinner?.succeed('Indexing complete');
+    }
+    
+    if (flags.json) {
+      ctx.output?.json({
+        ok: true,
+        delta: result,
+        budget: result.budget,
+        timingMs: ctx.tracker.total(),
+        produces: [UPDATE_ARTIFACT_ID]
+      });
+    } else {
+      if (!flags.quiet) {
+        const { ui } = ctx.output!;
+        const summaryLines: string[] = [];
+        summaryLines.push(
+          ...ui.keyValue({
+            'API Changes': formatDelta(result.api?.added, result.api?.updated, result.api?.removed),
+            'Dependencies': formatDelta(result.deps?.edgesAdded, undefined, result.deps?.edgesRemoved),
+            'Diff Files': result.diff ? String(result.diff.files || 0) : 'none',
+          }),
+        );
+
+        if (result.partial && result.budget) {
+          summaryLines.push('');
+          summaryLines.push(
+            ui.colors.muted('Partial update due to time budget'),
+            ui.colors.muted(`Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`),
+          );
+        }
+
+        const statusSymbol = result.partial ? ui.symbols.warning : ui.symbols.success;
+        const statusColor = result.partial ? ui.colors.warn : ui.colors.success;
+        const statusLabel = result.partial ? 'Partial update' : 'Update complete';
+        summaryLines.push(
+          '',
+          `${statusSymbol} ${statusColor(statusLabel)} · ${ui.colors.muted(formatTiming(ctx.tracker.total()))}`,
+        );
+
+        ctx.output?.write('\n' + ui.box('Mind Update', summaryLines));
+      }
+    }
+
+    ctx.logger?.info('Mind update completed', {
+      apiChanges: result.api ? result.api.added + result.api.updated + result.api.removed : 0,
+      depsChanges: result.deps ? result.deps.edgesAdded + result.deps.edgesRemoved : 0,
+      diffFiles: result.diff?.files || 0,
+      partial: result.partial,
+    });
+
+    return { ok: true, delta: result, budget: result.budget };
+  },
+  async onError(error, ctx, flags) {
+    const spinner = ctx.output?.spinner('Indexing project');
+    if (!flags.quiet && !flags.json) {
+      spinner?.fail('Update failed');
+    }
+    
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    ctx.logger?.error('Mind update failed', {
+      error: errorMessage,
+      cwd: flags.cwd || ctx.cwd,
+    });
+
+    ctx.output?.error(error instanceof Error ? error : new Error(errorMessage), {
+      code: MIND_ERROR_CODES.SYNC_FAILED,
+      suggestions: [
+        'Check your workspace and git status',
+        'Verify that Mind is initialized',
+        'Try: kb mind init',
+      ],
+    });
+
+    return { ok: false, exitCode: 1, error: errorMessage };
+  },
+});

@@ -2,165 +2,193 @@
  * Mind init command
  */
 
-import type { CommandModule } from '../types.js';
+import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
 import { initMindStructure } from '@kb-labs/mind-indexer';
 import {
-  TimingTracker,
   displayArtifacts,
 } from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
-import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 import { join } from 'node:path';
 import { promises as fsp } from 'node:fs';
 
-export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
-  const force = !!flags.force;
+type MindInitFlags = {
+  cwd: { type: 'string'; description?: string };
+  force: { type: 'boolean'; description?: string; default?: boolean };
+  json: { type: 'boolean'; description?: string; default?: boolean };
+  verbose: { type: 'boolean'; description?: string; default?: boolean };
+  quiet: { type: 'boolean'; description?: string; default?: boolean };
+};
 
-  return (await runScope(
-    {
-      actor: ANALYTICS_ACTOR,
-      ctx: { workspace: cwd },
+type MindInitResult = CommandResult & {
+  mindDir?: string;
+};
+
+export const run = defineCommand<MindInitFlags, MindInitResult>({
+  name: 'mind:init',
+  flags: {
+    cwd: {
+      type: 'string',
+      description: 'Working directory',
     },
-    async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
-      const tracker = new TimingTracker();
+    force: {
+      type: 'boolean',
+      description: 'Force initialization even if already exists',
+      default: false,
+    },
+    json: {
+      type: 'boolean',
+      description: 'Output in JSON format',
+      default: false,
+    },
+    verbose: {
+      type: 'boolean',
+      description: 'Verbose output',
+      default: false,
+    },
+    quiet: {
+      type: 'boolean',
+      description: 'Quiet output',
+      default: false,
+    },
+  },
+  analytics: {
+    startEvent: ANALYTICS_EVENTS.INIT_STARTED,
+    finishEvent: ANALYTICS_EVENTS.INIT_FINISHED,
+    actor: ANALYTICS_ACTOR.id,
+    includeFlags: true,
+  },
+  async handler(ctx, argv, flags) {
+    const cwd = flags.cwd || ctx.cwd;
+    
+    ctx.tracker.checkpoint('start');
 
+    ctx.logger?.info('Mind init started', {
+      cwd,
+      command: 'mind:init',
+      force: flags.force,
+    });
+
+    ctx.logger?.debug('Initializing mind structure', { cwd, force: flags.force });
+
+    // Initialize Mind structure
+    const mindDir = await initMindStructure({
+      cwd,
+      force: flags.force,
+      log: (entry: any) => {
+        if (!flags.quiet && !flags.json) {
+          ctx.output?.info(`Init: ${entry.msg || entry}`);
+        }
+        // Also log via logger
+        ctx.logger?.debug(`Init: ${entry.msg || entry}`, { step: 'init-structure' });
+      },
+    });
+
+    ctx.tracker.checkpoint('init-complete');
+
+    ctx.logger?.info('Mind structure initialized', {
+      mindDir,
+      cwd,
+    });
+
+    // Discover created artifacts
+    const artifacts: Array<{
+      name: string;
+      path: string;
+      size: number;
+      modified: Date;
+      description: string;
+    }> = [];
+
+    const artifactPatterns = [
+      { name: 'Index', pattern: 'index.json', description: 'Main Mind index' },
+      { name: 'API Index', pattern: 'api-index.json', description: 'API index' },
+      { name: 'Dependencies', pattern: 'deps.json', description: 'Dependencies graph' },
+      { name: 'Recent Diff', pattern: 'recent-diff.json', description: 'Recent changes diff' },
+    ];
+
+    for (const { name, pattern, description } of artifactPatterns) {
+      const artifactPath = join(mindDir, pattern);
       try {
-        tracker.checkpoint('start');
-
-        // Track command start
-        await emit({
-          type: ANALYTICS_EVENTS.INIT_STARTED,
-          payload: {
-            force,
-          },
+        const stats = await fsp.stat(artifactPath);
+        artifacts.push({
+          name,
+          path: artifactPath,
+          size: stats.size,
+          modified: stats.mtime,
+          description,
         });
-
-        // Initialize Mind structure
-        const mindDir = await initMindStructure({
-          cwd,
-          force,
-          log: (entry: any) => {
-            if (!ctx.output.isQuiet && !ctx.output.isJSON) {
-              ctx.output.info(`Init: ${entry.msg || entry}`);
-            }
-          },
-        });
-
-        tracker.checkpoint('init-complete');
-
-        // Discover created artifacts
-        const artifacts: Array<{
-          name: string;
-          path: string;
-          size: number;
-          modified: Date;
-          description: string;
-        }> = [];
-
-        const artifactPatterns = [
-          { name: 'Index', pattern: 'index.json', description: 'Main Mind index' },
-          { name: 'API Index', pattern: 'api-index.json', description: 'API index' },
-          { name: 'Dependencies', pattern: 'deps.json', description: 'Dependencies graph' },
-          { name: 'Recent Diff', pattern: 'recent-diff.json', description: 'Recent changes diff' },
-        ];
-
-        for (const { name, pattern, description } of artifactPatterns) {
-          const artifactPath = join(mindDir, pattern);
-          try {
-            const stats = await fsp.stat(artifactPath);
-            artifacts.push({
-              name,
-              path: artifactPath,
-              size: stats.size,
-              modified: stats.mtime,
-              description,
-            });
-          } catch {
-            // Artifact doesn't exist, skip
-          }
-        }
-
-        const duration = tracker.total();
-
-        // Track command completion
-        await emit({
-          type: ANALYTICS_EVENTS.INIT_FINISHED,
-          payload: {
-            force,
-            durationMs: duration,
-            result: 'success',
-            artifactsCount: artifacts.length,
-          },
-        });
-
-        // Output result
-        if (ctx.output.isJSON) {
-          ctx.output.json({
-            ok: true,
-            summary: {
-              Workspace: mindDir,
-              Status: 'Initialized',
-            },
-            artifacts,
-            timing: duration,
-            data: {
-              mindDir,
-              cwd,
-            },
-          });
-        } else if (!ctx.output.isQuiet) {
-          const { ui } = ctx.output;
-          const summaryLines: string[] = [];
-          summaryLines.push(
-            ...ui.keyValue({
-              Workspace: mindDir,
-              Status: 'Initialized',
-            }),
-          );
-
-          if (artifacts.length > 0) {
-            summaryLines.push('');
-            summaryLines.push(
-              ...displayArtifacts(artifacts, {
-                title: 'Created Artifacts',
-                showDescription: true,
-                showTime: false,
-              }),
-            );
-          }
-
-          ctx.output.write('\n' + ui.box(`${ui.symbols.success} Mind Init`, summaryLines));
-        }
-
-        return 0;
-      } catch (error: unknown) {
-        const duration = tracker.total();
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        // Track command failure
-        await emit({
-          type: ANALYTICS_EVENTS.INIT_FINISHED,
-          payload: {
-            force,
-            durationMs: duration,
-            result: 'error',
-            error: errorMessage,
-          },
-        });
-
-        ctx.output.error(error instanceof Error ? error : new Error(errorMessage), {
-          code: MIND_ERROR_CODES.INIT_FAILED,
-          suggestions: [
-            'Check file permissions',
-            'Verify workspace is writable',
-            'Try with --force flag to overwrite existing structure',
-          ],
-        });
-
-        return 1;
+      } catch {
+        // Artifact doesn't exist, skip
       }
     }
-  )) as number | void;
-};
+
+    ctx.tracker.checkpoint('complete');
+
+    ctx.logger?.info('Mind init completed', {
+      mindDir,
+      artifactsCount: artifacts.length,
+    });
+
+    // Output result
+    if (flags.json) {
+      ctx.output?.json({
+        ok: true,
+        summary: {
+          Workspace: mindDir,
+          Status: 'Initialized',
+        },
+        artifacts,
+        timingMs: ctx.tracker.total(),
+        data: {
+          mindDir,
+          cwd,
+        },
+      });
+    } else if (!flags.quiet) {
+      const { ui } = ctx.output!;
+      const summaryLines: string[] = [];
+      summaryLines.push(
+        ...ui.keyValue({
+          Workspace: mindDir,
+          Status: 'Initialized',
+        }),
+      );
+
+      if (artifacts.length > 0) {
+        summaryLines.push('');
+        summaryLines.push(
+          ...displayArtifacts(artifacts, {
+            title: 'Created Artifacts',
+            showDescription: true,
+            showTime: false,
+          }),
+        );
+      }
+
+      ctx.output?.write('\n' + ui.box(`${ui.symbols.success} Mind Init`, summaryLines));
+    }
+
+    return { ok: true, mindDir, artifacts };
+  },
+  async onError(error, ctx, flags) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    ctx.logger?.error('Mind init failed', {
+      error: errorMessage,
+      cwd: flags.cwd || ctx.cwd,
+      force: flags.force,
+    });
+
+    ctx.output?.error(error instanceof Error ? error : new Error(errorMessage), {
+      code: MIND_ERROR_CODES.INIT_FAILED,
+      suggestions: [
+        'Check file permissions',
+        'Verify workspace is writable',
+        'Try with --force flag to overwrite existing structure',
+      ],
+    });
+
+    return { ok: false, exitCode: 1, error: errorMessage };
+  },
+});
