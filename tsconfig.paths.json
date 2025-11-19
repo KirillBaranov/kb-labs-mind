@@ -339,6 +339,12 @@
       "@kb-labs/plugin-adapter-studio/*": [
         "../kb-labs-plugin/packages/adapters/studio/src/*"
       ],
+      "@kb-labs/plugin-contracts": [
+        "../kb-labs-plugin/packages/plugin-contracts/src/index.ts"
+      ],
+      "@kb-labs/plugin-contracts/*": [
+        "../kb-labs-plugin/packages/plugin-contracts/src/*"
+      ],
       "@kb-labs/plugin-devtools": [
         "../kb-labs-plugin/packages/devtools/src/index.ts"
       ],
