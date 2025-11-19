@@ -154,7 +154,7 @@ export const MindVerifyCommandOutputSchema = z.object({
 
 export const MindQueryRequestSchema = z.object({
   query: z.string().min(1),
-  params: z.record(z.unknown()),
+  params: z.record(z.unknown()).optional().default({}),
   options: z
     .object({
       cwd: z.string().optional(),

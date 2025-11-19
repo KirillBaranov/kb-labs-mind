@@ -39,7 +39,77 @@ export async function handleQuery(
   }
 ): Promise<MindQueryResponse | MindGatewayError> {
   try {
-    const request = input as MindQueryRequest;
+    // Transform widget data to MindQueryRequest format
+    // Widgets send data as-is, we need to normalize it
+    let request: MindQueryRequest;
+    
+    if (typeof input === 'string') {
+      // InputDisplay widget sends just a string
+      request = {
+        query: input,
+        params: {},
+        options: {},
+      };
+    } else if (input && typeof input === 'object') {
+      const data = input as Record<string, unknown>;
+      
+      // Check if it's already in MindQueryRequest format
+      if ('query' in data && typeof data.query === 'string') {
+        request = {
+          query: data.query,
+          params: (data.params as Record<string, unknown>) || {},
+          options: (data.options as MindQueryRequest['options']) || {},
+        };
+      } else {
+        // Form widget sends flat object with fields
+        // Transform to MindQueryRequest format
+        const query = (data.query as string) || '';
+        const params: Record<string, unknown> = {};
+        const options: MindQueryRequest['options'] = {};
+        
+        // Extract intent if present
+        if (data.intent) {
+          params.intent = data.intent;
+        }
+        
+        // Extract options
+        if (data.aiMode) {
+          options.aiMode = Boolean(data.aiMode);
+        }
+        if (data.limit) {
+          options.limit = Number(data.limit);
+        }
+        if (data.depth) {
+          options.depth = Number(data.depth);
+        }
+        if (data.cacheTtl) {
+          options.cacheTtl = Number(data.cacheTtl);
+        }
+        if (data.noCache) {
+          options.noCache = Boolean(data.noCache);
+        }
+        if (data.pathMode) {
+          options.pathMode = data.pathMode as 'id' | 'absolute';
+        }
+        if (data.cwd) {
+          options.cwd = String(data.cwd);
+        }
+        
+        request = {
+          query,
+          params,
+          options: Object.keys(options).length > 0 ? options : undefined,
+        };
+      }
+    } else {
+      return {
+        ok: false,
+        code: 'MIND_BAD_REQUEST',
+        message: 'Invalid request format',
+        hint: 'Request must be a string or an object with query field',
+      } as MindGatewayError;
+    }
+    
     const log = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
       console.log(`[${level}] ${msg}`, meta || '');
     });

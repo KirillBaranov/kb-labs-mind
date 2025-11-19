@@ -29,6 +29,10 @@ export interface MindKnowledgeRuntimeOptions {
   cwd: string;
   logger?: KnowledgeLogger;
   /**
+   * Progress callback for tracking query execution stages
+   */
+  onProgress?: (event: { stage: string; details?: string; metadata?: Record<string, unknown>; timestamp: number }) => void;
+  /**
    * Runtime adapter for sandbox Runtime API
    * If provided, will be passed to MindKnowledgeEngine through config options
    */
@@ -92,6 +96,7 @@ export async function createMindKnowledgeRuntime(
   const logger = options.logger ?? defaultLogger;
   
   // Inject runtime into mind engine options if provided, or create one with logger
+  // Use the logger passed in options, or create one that uses the logger
   const logFn = (level: 'debug' | 'info' | 'warn' | 'error', msg: string, meta?: Record<string, unknown>) => {
     if (level === 'debug' && logger.debug) logger.debug(msg, meta);
     else if (level === 'info' && logger.info) logger.info(msg, meta);
@@ -99,6 +104,8 @@ export async function createMindKnowledgeRuntime(
     else if (logger.error) logger.error(msg, meta);
   };
   
+  // If runtime is provided, use its log function, otherwise use logger-based logFn
+  // This ensures that wrappedRuntime.log from rag.ts is used
   const runtimeWithLogger = options.runtime
     ? {
         ...options.runtime,
@@ -108,6 +115,7 @@ export async function createMindKnowledgeRuntime(
         log: logFn,
       };
   
+  // Add onProgress to mind engine options if present
   const configWithRuntime: KnowledgeConfigInput = {
         ...config,
         engines: config.engines?.map((engine: any) => {
@@ -116,7 +124,8 @@ export async function createMindKnowledgeRuntime(
               ...engine,
               options: {
                 ...engine.options,
-            _runtime: runtimeWithLogger,
+                onProgress: options.onProgress,
+                _runtime: runtimeWithLogger,
               },
             };
           }

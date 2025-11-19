@@ -6,15 +6,11 @@ import type { CommandModule } from '../types.js';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
-  createSpinner,
-  box,
-  keyValue,
-  safeColors,
-  safeSymbols,
   TimingTracker,
   formatTiming,
   parseNumberFlag,
 } from '@kb-labs/shared-cli-ui';
+import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
@@ -22,9 +18,6 @@ const UPDATE_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const jsonMode = !!flags.json;
-  const quiet = !!flags.quiet;
-  
   // Parse flags with defaults
   const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
   const since = typeof flags.since === 'string' ? flags.since : undefined;
@@ -39,9 +32,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
       ctx: { workspace: cwd },
     },
     async (emit: (event: Partial<AnalyticsEventV1>) => Promise<EmitResult>) => {
-      // Create loader and timing tracker outside try block for use in catch
-      const loader = createSpinner('Indexing project', jsonMode);
       const tracker = new TimingTracker();
+      const spinner = ctx.output.spinner('Indexing project');
       
       try {
         // Track command start
@@ -55,15 +47,15 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         });
         
         tracker.checkpoint('start');
-        if (!jsonMode && !quiet) {
-          loader.start();
+        if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+          spinner.start();
         }
         
         const updateOptions: any = {
           cwd,
           log: (entry: any) => {
-            if (!quiet && !jsonMode) {
-              ctx.presenter.info(`Update: ${entry.msg || entry}`);
+            if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+              ctx.output.info(`Update: ${entry.msg || entry}`);
             }
           }
         };
@@ -76,13 +68,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         const result = await updateIndexes(updateOptions);
         tracker.checkpoint('update-complete');
         
-        if (!jsonMode && !quiet) {
-          loader.stop();
+        if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+          spinner.succeed('Indexing complete');
         }
         const duration = tracker.total();
         
-        if (jsonMode) {
-          ctx.presenter.json({
+        if (ctx.output.isJSON) {
+          ctx.output.json({
             ok: true,
             delta: result,
             budget: result.budget,
@@ -90,10 +82,11 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             produces: [UPDATE_ARTIFACT_ID]
           });
         } else {
-          if (!quiet) {
+          if (!ctx.output.isQuiet) {
+            const { ui } = ctx.output;
             const summaryLines: string[] = [];
             summaryLines.push(
-              ...keyValue({
+              ...ui.keyValue({
                 'API Changes': formatDelta(result.api?.added, result.api?.updated, result.api?.removed),
                 'Dependencies': formatDelta(result.deps?.edgesAdded, undefined, result.deps?.edgesRemoved),
                 'Diff Files': result.diff ? String(result.diff.files || 0) : 'none',
@@ -103,20 +96,20 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             if (result.partial && result.budget) {
               summaryLines.push('');
               summaryLines.push(
-                safeColors.muted('Partial update due to time budget'),
-                safeColors.muted(`Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`),
+                ui.colors.muted('Partial update due to time budget'),
+                ui.colors.muted(`Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`),
               );
             }
 
-            const statusSymbol = result.partial ? safeSymbols.warning : safeSymbols.success;
-            const statusColor = result.partial ? safeColors.warning : safeColors.success;
+            const statusSymbol = result.partial ? ui.symbols.warning : ui.symbols.success;
+            const statusColor = result.partial ? ui.colors.warn : ui.colors.success;
             const statusLabel = result.partial ? 'Partial update' : 'Update complete';
             summaryLines.push(
               '',
-              `${statusSymbol} ${statusColor(statusLabel)} · ${safeColors.muted(formatTiming(duration))}`,
+              `${statusSymbol} ${statusColor(statusLabel)} · ${ui.colors.muted(formatTiming(duration))}`,
             );
 
-            ctx.presenter.write('\n' + box('Mind Update', summaryLines));
+            ctx.output.write('\n' + ui.box('Mind Update', summaryLines));
           }
         }
 
@@ -138,12 +131,11 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
         
         return 0;
       } catch (e: unknown) {
-        if (!jsonMode && !quiet) {
-          loader.stop();
+        if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+          spinner.fail('Update failed');
         }
         
         const errorMessage = e instanceof Error ? e.message : String(e);
-        const errorCode = e instanceof Error && 'code' in e ? (e as any).code : 'MIND_UPDATE_ERROR';
         const duration = tracker.total();
 
         // Track command failure
@@ -159,25 +151,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           },
         });
         
-        const errorData = {
-          ok: false,
-          code: errorCode,
-          message: errorMessage,
-          hint: 'Check your workspace and git status',
-          timing: duration
-        };
-        
-        if (jsonMode) {
-          ctx.presenter.json(errorData);
-        } else {
-          if (!quiet) {
-            loader.fail('Update failed');
-          }
-          ctx.presenter.error(errorMessage);
-          if (!quiet) {
-            ctx.presenter.info(`Code: ${errorCode}`);
-          }
-        }
+        ctx.output.error(e instanceof Error ? e : new Error(errorMessage), {
+          code: MIND_ERROR_CODES.SYNC_FAILED,
+          suggestions: [
+            'Check your workspace and git status',
+            'Verify that Mind is initialized',
+            'Try: kb mind init',
+          ],
+        });
         return 1;
       }
     }

@@ -1,12 +1,6 @@
 import type { CommandModule } from '../types.js';
 import { runRagQuery } from '../../application/rag.js';
-import {
-  box,
-  createSpinner,
-  keyValue,
-  safeColors,
-  safeSymbols,
-} from '@kb-labs/shared-cli-ui';
+import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 
 const VALID_INTENTS = ['summary', 'search', 'similar', 'nav'] as const;
 
@@ -25,24 +19,46 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       : undefined;
   const profileId =
     typeof flags.profile === 'string' && flags.profile ? flags.profile : undefined;
-  const jsonMode = Boolean(flags.json);
-  const quiet = Boolean(flags.quiet);
 
   if (!text) {
-    const message = 'Provide --text "<query>" to run rag:query.';
-    if (jsonMode) {
-      ctx.presenter.json({ ok: false, error: message });
-    } else {
-      ctx.presenter.error(message);
-    }
+    ctx.output.error(new Error('Provide --text "<query>" to run rag:query.'), {
+      code: MIND_ERROR_CODES.RAG_QUERY_MISSING_TEXT,
+      suggestions: [
+        'Use: kb mind rag-query --text "your query"',
+        'Add --scope to search in specific scope',
+        'Add --intent to specify intent (summary, search, similar, nav)',
+      ],
+    });
     return 1;
   }
 
-  const loader = createSpinner('Running Mind RAG query', jsonMode);
+  const spinner = ctx.output.spinner('Initializing...');
+  const startTime = Date.now();
 
+  // Helper to format elapsed time
+  const formatElapsedTime = (ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  // Set up interval to update spinner with elapsed time
+  let timeUpdateInterval: NodeJS.Timeout | null = null;
+  
   try {
-    if (!jsonMode && !quiet) {
-      loader.start();
+    if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+      spinner.start();
+      // Update spinner with elapsed time every second
+      timeUpdateInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const elapsedStr = formatElapsedTime(elapsed);
+        const { ui } = ctx.output;
+        spinner.update({ text: `Querying... ${ui.colors.muted(`[${elapsedStr}]`)}` });
+      }, 1000);
     }
 
     const result = await runRagQuery({
@@ -52,24 +68,37 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       intent,
       limit,
       profileId,
+      onProgress: (stage: string, details?: string) => {
+        if (ctx.output.isQuiet || ctx.output.isJSON) return;
+        
+        ctx.output.progress('RAG Query', {
+          message: details ? `${stage}: ${details}` : stage,
+        });
+      },
     });
 
-    if (!jsonMode && !quiet) {
-      loader.stop();
+    if (timeUpdateInterval) {
+      clearInterval(timeUpdateInterval);
     }
 
-    if (jsonMode) {
-      ctx.presenter.json({
+    if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+      spinner.succeed('Query completed');
+    }
+
+    // Output result
+    if (ctx.output.isJSON) {
+      ctx.output.json({
         ok: true,
         scopeId: result.scopeId,
         intent: result.knowledge.query.intent,
         chunks: result.knowledge.chunks,
         contextText: result.knowledge.contextText,
       });
-    } else if (!quiet) {
+    } else if (!ctx.output.isQuiet) {
+      const { ui } = ctx.output;
       const topChunk = result.knowledge.chunks[0];
       const summaryLines = [
-        ...keyValue({
+        ...ui.keyValue({
           Scope: result.scopeId,
           Intent: result.knowledge.query.intent,
           'Chunks returned': String(result.knowledge.chunks.length),
@@ -79,34 +108,53 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       if (topChunk) {
         summaryLines.push(
           '',
-          safeColors.bold('Top chunk:'),
-          `${topChunk.path} ${safeColors.muted(
+          ui.colors.bold('Top chunk:'),
+          `${topChunk.path} ${ui.colors.muted(
             `#${topChunk.span.startLine}-${topChunk.span.endLine}`,
           )}`,
           truncateText(topChunk.text, 400),
         );
       } else {
-        summaryLines.push('', safeColors.muted('No matching chunks found.'));
+        summaryLines.push('', ui.colors.muted('No matching chunks found.'));
       }
 
-      ctx.presenter.write(
-        '\n' +
-          box(`${safeSymbols.info} Mind RAG query`, summaryLines),
+      // Show synthesized context if available (from reasoning chain)
+      if (result.knowledge.contextText && result.knowledge.contextText.length > 0) {
+        const contextPreview = result.knowledge.contextText.length > 2000
+          ? result.knowledge.contextText.substring(0, 2000) + '...'
+          : result.knowledge.contextText;
+        summaryLines.push(
+          '',
+          ui.colors.bold('Synthesized context:'),
+          ui.colors.muted(`(${result.knowledge.contextText.length} chars)`),
+          contextPreview,
+        );
+      }
+
+      ctx.output.write(
+        '\n' + ui.box(`${ui.symbols.info} Mind RAG query`, summaryLines),
       );
     }
 
     return 0;
   } catch (error) {
-    if (!jsonMode && !quiet) {
-      loader.fail('Mind RAG query failed');
+    if (timeUpdateInterval) {
+      clearInterval(timeUpdateInterval);
+    }
+    if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+      spinner.fail('Mind RAG query failed');
     }
 
     const message = error instanceof Error ? error.message : String(error);
-    if (jsonMode) {
-      ctx.presenter.json({ ok: false, error: message });
-    } else {
-      ctx.presenter.error(`${safeSymbols.error} ${message}`);
-    }
+    ctx.output.error(error instanceof Error ? error : new Error(message), {
+      code: MIND_ERROR_CODES.RAG_QUERY_FAILED,
+      suggestions: [
+        'Check that Mind is initialized',
+        'Verify that index exists: kb mind rag-index',
+        'Try with --scope flag to search in specific scope',
+      ],
+    });
+
     return 1;
   }
 };

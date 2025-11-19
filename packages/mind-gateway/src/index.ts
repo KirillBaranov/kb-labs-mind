@@ -4,6 +4,7 @@
 
 export * from './handlers/query.js';
 export * from './handlers/verify.js';
+// Sync handlers moved to mind-cli to avoid circular dependency
 export { verifyIndexes } from './handlers/verify-utils.js';
 export * from './types/request.js';
 

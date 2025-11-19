@@ -1,4 +1,4 @@
-import path from 'node:path';
+import * as path from 'node:path';
 import fs from 'fs-extra';
 import fg from 'fast-glob';
 // @ts-expect-error - picomatch doesn't have types
@@ -9,6 +9,7 @@ import type {
   KnowledgeChunk,
   KnowledgeEngineConfig,
   KnowledgeQuery,
+  KnowledgeResult,
   KnowledgeScope,
   KnowledgeSource,
   SpanRange,
@@ -31,6 +32,7 @@ import {
 } from '@kb-labs/mind-embeddings';
 import {
   createLocalStubLLMEngine,
+  createOpenAILLMEngine,
   type MindLLMEngine,
 } from '@kb-labs/mind-llm';
 import {
@@ -49,6 +51,15 @@ import { keywordSearch } from './search/keyword.js';
 import { createReranker, type RerankerConfig } from './reranking/index.js';
 import type { Reranker } from './reranking/reranker.js';
 import { ContextOptimizer, type ContextOptimizationOptions } from './optimization/index.js';
+import type { LLMCompressor } from './compression/llm-compressor.js';
+import { OpenAILLMCompressor } from './compression/openai-compressor.js';
+import { ChunkSummarizer } from './compression/summarizer.js';
+import { ComplexityDetector } from './reasoning/complexity-detector.js';
+import { QueryPlanner } from './reasoning/query-planner.js';
+import { ParallelExecutor } from './reasoning/parallel-executor.js';
+import { ResultSynthesizer } from './reasoning/synthesizer.js';
+import { ReasoningEngine } from './reasoning/reasoning-engine.js';
+import type { ReasoningResult } from './reasoning/types.js';
 import {
   type QueryHistoryStore,
   QdrantQueryHistoryStore,
@@ -80,6 +91,20 @@ const DEFAULT_INDEX_DIR = '.kb/mind/rag';
 const DEFAULT_CODE_CHUNK_LINES = 120;
 const DEFAULT_DOC_CHUNK_LINES = 80;
 const DEFAULT_CHUNK_OVERLAP = 20;
+
+/**
+ * Progress event for tracking query execution stages
+ */
+export interface ProgressEvent {
+  /** Stage name (e.g., 'generating_embedding', 'searching_vector_store') */
+  stage: string;
+  /** Human-readable details (e.g., '15 matches', '3 subqueries') */
+  details?: string;
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+  /** Timestamp in milliseconds */
+  timestamp: number;
+}
 
 export interface MindEngineChunkOptions {
   codeLines?: number;
@@ -332,6 +357,188 @@ export interface MindEngineSearchOptions {
       };
     };
   };
+
+  /**
+   * Reasoning chain configuration
+   */
+  reasoning?: {
+    /**
+     * Enable reasoning chain for complex queries
+     * Default: false
+     */
+    enabled?: boolean;
+
+    /**
+     * Complexity threshold above which reasoning is triggered (0-1)
+     * Default: 0.6
+     */
+    complexityThreshold?: number;
+
+    /**
+     * Maximum depth for recursive reasoning
+     * Default: 3
+     */
+    maxDepth?: number;
+
+    /**
+     * Complexity detection configuration
+     */
+    complexityDetection?: {
+      /**
+       * Enable heuristic-based detection
+       * Default: true
+       */
+      heuristics?: boolean;
+
+      /**
+       * Enable LLM-based detection
+       * Default: false
+       */
+      llmBased?: boolean;
+
+      /**
+       * LLM model for complexity detection
+       */
+      llmModel?: string;
+    };
+
+    /**
+     * Query planning configuration
+     */
+    planning?: {
+      /**
+       * Maximum number of sub-queries to generate
+       * Default: 5
+       */
+      maxSubqueries?: number;
+
+      /**
+       * LLM model for planning
+       */
+      model?: string;
+
+      /**
+       * Temperature for LLM
+       * Default: 0.3
+       */
+      temperature?: number;
+
+      /**
+       * Minimum similarity threshold for sub-queries
+       * Default: 0.85
+       */
+      minSimilarity?: number;
+    };
+
+    /**
+     * Execution configuration
+     */
+    execution?: {
+      /**
+       * Enable parallel execution
+       * Default: true
+       */
+      parallel?: boolean;
+
+      /**
+       * Maximum concurrent queries
+       * Default: 3
+       */
+      maxConcurrency?: number;
+
+      /**
+       * Timeout per query in milliseconds
+       * Default: 30000
+       */
+      timeoutMs?: number;
+
+      /**
+       * Early stopping configuration
+       */
+      earlyStopping?: {
+        /**
+         * Enable early stopping
+         * Default: true
+         */
+        enabled?: boolean;
+
+        /**
+         * Minimum confidence score to stop early
+         * Default: 0.8
+         */
+        minConfidence?: number;
+
+        /**
+         * Minimum chunks found to stop early
+         * Default: 5
+         */
+        minChunksFound?: number;
+      };
+    };
+
+    /**
+     * Synthesis configuration
+     */
+    synthesis?: {
+      /**
+       * Enable synthesis
+       * Default: true
+       */
+      enabled?: boolean;
+
+      /**
+       * Enable deduplication
+       * Default: true
+       */
+      deduplication?: boolean;
+
+      /**
+       * Maximum tokens for synthesized output
+       * Default: 4000
+       */
+      maxTokens?: number;
+
+      /**
+       * LLM model for synthesis
+       */
+      model?: string;
+
+      /**
+       * Temperature for LLM
+       * Default: 0.2
+       */
+      temperature?: number;
+
+      /**
+       * Enable progressive refinement
+       * Default: true
+       */
+      progressiveRefinement?: boolean;
+    };
+
+    /**
+     * Safety limits
+     */
+    safetyLimits?: {
+      /**
+       * Maximum total queries across all depths
+       * Default: 20
+       */
+      maxTotalQueries?: number;
+
+      /**
+       * Maximum tokens per depth level
+       * Default: 10000
+       */
+      maxTokensPerDepth?: number;
+
+      /**
+       * Enable cyclic detection
+       * Default: true
+       */
+      cyclicDetection?: boolean;
+    };
+  };
 }
 
 export interface MindEngineOptions {
@@ -342,6 +549,10 @@ export interface MindEngineOptions {
   search?: MindEngineSearchOptions;
   learning?: MindEngineSearchOptions['learning'];
   llmEngineId?: string;
+  /**
+   * Progress callback for tracking query execution stages
+   */
+  onProgress?: (event: ProgressEvent) => void;
   /**
    * Runtime adapter for sandbox Runtime API
    * Passed through options to avoid changing knowledge-core interfaces
@@ -418,6 +629,45 @@ interface NormalizedOptions {
         };
       };
     };
+    reasoning: {
+      enabled: boolean;
+      complexityThreshold: number;
+      maxDepth: number;
+      complexityDetection: {
+        heuristics: boolean;
+        llmBased: boolean;
+        llmModel?: string;
+      };
+      planning: {
+        maxSubqueries: number;
+        model?: string;
+        temperature: number;
+        minSimilarity: number;
+      };
+      execution: {
+        parallel: boolean;
+        maxConcurrency: number;
+        timeoutMs: number;
+        earlyStopping: {
+          enabled: boolean;
+          minConfidence: number;
+          minChunksFound: number;
+        };
+      };
+      synthesis: {
+        enabled: boolean;
+        deduplication: boolean;
+        maxTokens: number;
+        model?: string;
+        temperature: number;
+        progressiveRefinement: boolean;
+      };
+      safetyLimits: {
+        maxTotalQueries: number;
+        maxTokensPerDepth: number;
+        cyclicDetection: boolean;
+      };
+    };
   };
   learning: {
     enabled: boolean;
@@ -450,6 +700,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   private readonly runtime: RuntimeAdapter;
   private readonly reranker: Reranker | null;
   private readonly contextOptimizer: ContextOptimizer;
+  private readonly llmCompressor: LLMCompressor | null;
+  private readonly summarizer: ChunkSummarizer | null;
   
   // Self-learning components
   private readonly queryHistory: QueryHistoryStore | null;
@@ -458,6 +710,33 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   private readonly queryPatternMatcher: IQueryPatternMatcher | null;
   private readonly adaptiveWeights: AdaptiveWeights | null;
   private readonly selfFeedbackGenerator: SelfFeedbackGenerator | null;
+  
+  // Reasoning components
+  private readonly reasoningEngine: ReasoningEngine | null;
+  
+  // Progress tracking
+  private readonly onProgress?: (event: ProgressEvent) => void;
+
+  /**
+   * Safely call onProgress callback with error handling
+   */
+  private reportProgress(stage: string, details?: string, metadata?: Record<string, unknown>): void {
+    if (!this.onProgress) return;
+    try {
+      this.onProgress({
+        stage,
+        details,
+        metadata,
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      // Log error but don't break the query
+      this.runtime.log?.('warn', 'Progress callback failed', {
+        error: error instanceof Error ? error.message : String(error),
+        stage,
+      });
+    }
+  }
 
   constructor(
     config: KnowledgeEngineConfig,
@@ -467,6 +746,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     this.workspaceRoot = context.workspaceRoot ?? (typeof process !== 'undefined' && process.cwd ? process.cwd() : '/');
     const rawOptions = (config.options ?? {}) as MindEngineOptions;
     this.options = normalizeOptions(rawOptions);
+    this.onProgress = rawOptions.onProgress;
     
     // Extract runtime adapter from options (passed through from handlers)
     const runtimeInput = rawOptions._runtime;
@@ -555,9 +835,42 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     
     this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
     
-    this.llmEngine = createLocalStubLLMEngine({
-      id: rawOptions.llmEngineId,
-    });
+    // Create LLM engine: use OpenAI if API key is available, otherwise use stub
+    const openaiApiKey = this.runtime.env.get('OPENAI_API_KEY');
+    if (openaiApiKey && this.options.search.optimization.compression.llm.enabled) {
+      this.llmEngine = createOpenAILLMEngine({
+        apiKey: openaiApiKey,
+        model: this.options.search.optimization.compression.llm.model ?? 'gpt-4o-mini',
+      });
+      this.runtime.log?.('info', 'Using OpenAI LLM engine for compression', {
+        model: this.options.search.optimization.compression.llm.model ?? 'gpt-4o-mini',
+      });
+    } else {
+      this.llmEngine = createLocalStubLLMEngine({
+        id: rawOptions.llmEngineId,
+      });
+      if (this.options.search.optimization.compression.llm.enabled && !openaiApiKey) {
+        this.runtime.log?.('warn', 'LLM compression enabled but OPENAI_API_KEY not found, using stub');
+      }
+    }
+    
+    // Create LLM compressor if enabled
+    if (this.options.search.optimization.compression.llm.enabled && openaiApiKey) {
+      this.llmCompressor = new OpenAILLMCompressor({
+        llmEngine: this.llmEngine,
+        maxTokens: this.options.search.optimization.compression.llm.maxTokens,
+        compressionRatio: 0.5, // Compress to 50% of original
+        temperature: 0.2, // Low temperature for deterministic compression
+      });
+      this.summarizer = new ChunkSummarizer({
+        llmEngine: this.llmEngine,
+        maxTokens: 150,
+        temperature: 0.3,
+      });
+    } else {
+      this.llmCompressor = null;
+      this.summarizer = null;
+    }
 
     // Create reranker if enabled
     if (this.options.search.reranking.enabled && this.options.search.reranking.config) {
@@ -648,6 +961,75 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       this.queryPatternMatcher = null;
       this.adaptiveWeights = null;
       this.selfFeedbackGenerator = null;
+    }
+
+    // Initialize reasoning engine if enabled
+    if (this.options.search.reasoning.enabled) {
+      const complexityDetector = new ComplexityDetector(
+        {
+          threshold: this.options.search.reasoning.complexityThreshold,
+          heuristics: this.options.search.reasoning.complexityDetection.heuristics,
+          llmBased: this.options.search.reasoning.complexityDetection.llmBased,
+          llmModel: this.options.search.reasoning.complexityDetection.llmModel,
+        },
+        openaiApiKey ? this.llmEngine : null,
+      );
+
+      const queryPlanner = new QueryPlanner(
+        {
+          maxSubqueries: this.options.search.reasoning.planning.maxSubqueries,
+          model: this.options.search.reasoning.planning.model,
+          temperature: this.options.search.reasoning.planning.temperature,
+          minSimilarity: this.options.search.reasoning.planning.minSimilarity,
+        },
+        openaiApiKey ? this.llmEngine : null,
+      );
+
+      const parallelExecutor = new ParallelExecutor({
+        parallel: this.options.search.reasoning.execution.parallel,
+        maxConcurrency: this.options.search.reasoning.execution.maxConcurrency,
+        timeoutMs: this.options.search.reasoning.execution.timeoutMs,
+        earlyStopping: this.options.search.reasoning.execution.earlyStopping,
+      });
+
+      const synthesizer = new ResultSynthesizer(
+        {
+          enabled: this.options.search.reasoning.synthesis.enabled,
+          deduplication: this.options.search.reasoning.synthesis.deduplication,
+          maxTokens: this.options.search.reasoning.synthesis.maxTokens,
+          model: this.options.search.reasoning.synthesis.model,
+          temperature: this.options.search.reasoning.synthesis.temperature,
+          progressiveRefinement: this.options.search.reasoning.synthesis.progressiveRefinement,
+        },
+        openaiApiKey ? this.llmEngine : null,
+      );
+
+      this.reasoningEngine = new ReasoningEngine(
+        {
+          maxDepth: this.options.search.reasoning.maxDepth,
+          maxTotalQueries: this.options.search.reasoning.safetyLimits.maxTotalQueries,
+          maxTokensPerDepth: this.options.search.reasoning.safetyLimits.maxTokensPerDepth,
+          cyclicDetection: this.options.search.reasoning.safetyLimits.cyclicDetection,
+          onProgress: this.onProgress,
+        },
+        complexityDetector,
+        queryPlanner,
+        parallelExecutor,
+        synthesizer,
+        this.contextOptimizer,
+        this.llmCompressor,
+        this.queryHistory,
+        this.runtime,
+      );
+
+      this.runtime.log?.('info', 'Reasoning engine initialized', {
+        maxDepth: this.options.search.reasoning.maxDepth,
+        complexityThreshold: this.options.search.reasoning.complexityThreshold,
+        maxSubqueries: this.options.search.reasoning.planning.maxSubqueries,
+        maxConcurrency: this.options.search.reasoning.execution.maxConcurrency,
+      });
+    } else {
+      this.reasoningEngine = null;
     }
   }
 
@@ -745,7 +1127,63 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   async query(
     query: KnowledgeQuery,
     context: KnowledgeExecutionContext,
-  ) {
+  ): Promise<KnowledgeResult> {
+    // Check if reasoning is enabled and should be used
+    if (this.options.search.reasoning.enabled && this.reasoningEngine) {
+      try {
+        this.reportProgress('using_reasoning_engine');
+        // Use reasoning engine for complex queries
+        const reasoningResult = await this.reasoningEngine.execute(
+          query,
+          context,
+          // Executor function that calls this.query recursively (but without reasoning to avoid infinite loop)
+          async (q: KnowledgeQuery, ctx: KnowledgeExecutionContext) => {
+            // Temporarily disable reasoning to avoid recursion
+            const originalReasoningEnabled = this.options.search.reasoning.enabled;
+            this.options.search.reasoning.enabled = false;
+            try {
+              return await this.executeQuery(q, ctx);
+            } finally {
+              this.options.search.reasoning.enabled = originalReasoningEnabled;
+            }
+          },
+        );
+        
+        this.reportProgress('reasoning_completed', `${reasoningResult.chunks.length} chunks`, {
+          chunks: reasoningResult.chunks.length,
+          subqueries: reasoningResult.metadata?.subqueries,
+        });
+        
+        // Convert ReasoningResult to KnowledgeResult
+        return {
+          query,
+          chunks: reasoningResult.chunks,
+          contextText: reasoningResult.contextText,
+          engineId: this.id,
+          generatedAt: new Date().toISOString(),
+          metadata: reasoningResult.metadata,
+        };
+      } catch (error) {
+        // Fallback to regular query if reasoning fails
+        this.runtime.log?.('warn', 'Reasoning failed, falling back to regular query', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Continue to regular query execution
+      }
+    }
+
+    // Regular query execution (or fallback from reasoning)
+    return await this.executeQuery(query, context);
+  }
+
+  /**
+   * Internal query execution method (without reasoning)
+   */
+  private async executeQuery(
+    query: KnowledgeQuery,
+    context: KnowledgeExecutionContext,
+  ): Promise<KnowledgeResult> {
+    this.reportProgress('generating_embedding');
     const [queryVector] = await this.embeddingProvider.embed([query.text]);
     if (!queryVector) {
       throw createKnowledgeError(
@@ -786,6 +1224,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     // Use hybrid search if enabled
     if (this.options.search.hybrid && this.vectorStore.getAllChunks) {
+      this.reportProgress('performing_hybrid_search');
       // Get all chunks for keyword search
       const allChunks = await this.vectorStore.getAllChunks(context.scope.id, filters);
 
@@ -809,6 +1248,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       );
     } else {
       // Vector search only
+      this.reportProgress('searching_vector_store');
       matches = await this.vectorStore.search(
       context.scope.id,
       queryVector,
@@ -816,9 +1256,12 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       filters,
     );
     }
+    
+    this.reportProgress('search_completed', `${matches.length} matches`, { matches: matches.length });
 
     // Apply popularity boost if enabled
     if (this.options.learning.enabled && this.popularityBoost) {
+      this.reportProgress('applying_popularity_boost');
       matches = await Promise.all(
         matches.map(async (match) => {
           const boost = await this.popularityBoost!.getBoost(match.chunk.chunkId, context.scope.id);
@@ -835,6 +1278,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // Apply query pattern boost if enabled
     if (this.options.learning.enabled && this.queryPatternMatcher) {
       try {
+        this.reportProgress('applying_query_pattern_boost');
         const recommendedChunkIds = await this.queryPatternMatcher.getRecommendedChunks(
           query.text,
           queryVector.values,
@@ -855,10 +1299,12 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // Apply re-ranking if enabled
     let finalMatches = matches;
     if (this.reranker) {
+      this.reportProgress('re_ranking_results');
       finalMatches = await this.reranker.rerank(query.text, matches, {
         topK: this.options.search.reranking.topK,
         minScore: this.options.search.reranking.minScore,
       });
+      this.reportProgress('re_ranking_completed', `${finalMatches.length} reranked`, { reranked: finalMatches.length });
     }
 
     // Convert to chunks
@@ -899,39 +1345,42 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     
     // Format chunks with compression
     const compressionOptions = this.options.search.optimization.compression;
-    const formattedChunks = chunks.map(chunk => {
-      // Check cache first (if cache is enabled and using memory)
-      if (compressionOptions.enabled && compressionOptions.cache === 'memory') {
-        const cached = compressionCache.get(chunk.id);
-        if (cached) {
-          return cached;
+    const formattedChunks = await Promise.all(
+      chunks.map(async (chunk) => {
+        // Check cache first (if cache is enabled and using memory)
+        if (compressionOptions.enabled && compressionOptions.cache === 'memory') {
+          const cached = compressionCache.get(chunk.id);
+          if (cached) {
+            return cached;
+          }
         }
-      }
-      
-      // Count metadata-only chunks
-      if (
-        compressionOptions.enabled &&
-        compressionOptions.metadataOnly.enabled &&
-        chunk.score !== undefined &&
-        chunk.score < compressionOptions.metadataOnly.scoreThreshold
-      ) {
-        metadataOnlyCount++;
-      }
-      
-      // Format chunk with compression
-      const formatted = formatChunkForContext(
-        chunk,
-        compressionOptions.enabled ? compressionOptions : undefined,
-        chunk.score,
-      );
-      
-      // Cache the result
-      if (compressionOptions.enabled && compressionOptions.cache === 'memory') {
-        compressionCache.set(chunk.id, formatted);
-      }
-      
-      return formatted;
-    });
+        
+        // Count metadata-only chunks
+        if (
+          compressionOptions.enabled &&
+          compressionOptions.metadataOnly.enabled &&
+          chunk.score !== undefined &&
+          chunk.score < compressionOptions.metadataOnly.scoreThreshold
+        ) {
+          metadataOnlyCount++;
+        }
+        
+        // Format chunk with compression
+        const formatted = await this.formatChunkForContext(
+          chunk,
+          query.text,
+          compressionOptions.enabled ? compressionOptions : undefined,
+          chunk.score,
+        );
+        
+        // Cache the result
+        if (compressionOptions.enabled && compressionOptions.cache === 'memory') {
+          compressionCache.set(chunk.id, formatted);
+        }
+        
+        return formatted;
+      }),
+    );
     
     const contextText = formattedChunks.join('\n\n---\n\n');
     
@@ -944,7 +1393,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     
     // Log compression metrics if compression is enabled
     if (compressionOptions.enabled) {
-      this.runtime.log?.('info', 'Compression metrics', {
+      this.reportProgress('compression_applied', `${compressionRate}% saved`, {
         totalChunks: chunks.length,
         metadataOnlyChunks: metadataOnlyCount,
         tokensBeforeCompression,
@@ -956,6 +1405,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     // Save query history if enabled (async, don't wait)
     if (this.options.learning.enabled && this.queryHistory) {
+      this.reportProgress('saving_query_history');
       const queryId = createHash('sha256')
         .update(`${context.scope.id}:${query.text}:${Date.now()}`)
         .digest('hex')
@@ -1059,14 +1509,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       engineId: this.id,
       generatedAt: new Date().toISOString(),
       // Add learning metadata for agent to use
-      _learning: this.options.learning.enabled ? {
-        queryId: createHash('sha256')
-          .update(`${context.scope.id}:${query.text}:${Date.now()}`)
-          .digest('hex')
-          .substring(0, 16),
-        feedbackStore: this.feedbackStore ? {
-          // Method for agent to provide implicit feedback
-          recordUsage: async (chunkIds: string[], usedInResponse: boolean = true) => {
+      metadata: {
+        ...(this.options.learning.enabled ? {
+          _learning: {
+            queryId: createHash('sha256')
+              .update(`${context.scope.id}:${query.text}:${Date.now()}`)
+              .digest('hex')
+              .substring(0, 16),
+            feedbackStore: this.feedbackStore ? {
+              // Method for agent to provide implicit feedback
+              recordUsage: async (chunkIds: string[], usedInResponse: boolean = true) => {
             if (!this.feedbackStore) return;
             
             const queryId = createHash('sha256')
@@ -1101,10 +1553,111 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
                 }
               }),
             );
+              },
+            } : undefined,
           },
-        } : undefined,
-      } : undefined,
+        } : {}),
+      },
     };
+  }
+
+  /**
+   * Format chunk for context with compression support
+   */
+  private async formatChunkForContext(
+    chunk: KnowledgeChunk,
+    query: string,
+    compressionOptions?: NormalizedOptions['search']['optimization']['compression'],
+    score?: number,
+  ): Promise<string> {
+    const parts: string[] = [];
+    
+    // File path and location
+    parts.push(`File: ${chunk.path}`);
+    parts.push(`Lines: ${chunk.span.startLine}-${chunk.span.endLine}`);
+    
+    // Add function/class context if available in metadata
+    if (chunk.metadata) {
+      const functionName = chunk.metadata.functionName as string | undefined;
+      const className = chunk.metadata.className as string | undefined;
+      const typeName = chunk.metadata.typeName as string | undefined;
+      
+      if (className) {
+        parts.push(`Class: ${className}`);
+      }
+      if (functionName) {
+        parts.push(`Function: ${functionName}`);
+      }
+      if (typeName) {
+        parts.push(`Type: ${typeName}`);
+      }
+      
+      // Add heading context for markdown
+      const headingTitle = chunk.metadata.headingTitle as string | undefined;
+      const headingLevel = chunk.metadata.headingLevel as number | undefined;
+      if (headingTitle) {
+        const headingPrefix = headingLevel ? '#'.repeat(headingLevel) + ' ' : '';
+        parts.push(`Section: ${headingPrefix}${headingTitle}`);
+      }
+    }
+    
+    // Add chunk type if available
+    const chunkType = chunk.metadata?.chunkType as string | undefined;
+    if (chunkType) {
+      parts.push(`Type: ${chunkType}`);
+    }
+    
+    parts.push(''); // Empty line before content
+    
+    // Apply compression if enabled
+    let chunkText = chunk.text;
+    
+    if (compressionOptions?.enabled) {
+      // Metadata-only mode for low-score chunks
+      if (
+        compressionOptions.metadataOnly.enabled &&
+        score !== undefined &&
+        score < compressionOptions.metadataOnly.scoreThreshold
+      ) {
+        return formatMetadataOnly(chunk);
+      }
+      
+      // LLM compression (if enabled and available)
+      if (
+        compressionOptions.llm.enabled &&
+        this.llmCompressor &&
+        chunkText.length > 500 // Only compress longer chunks
+      ) {
+        try {
+          chunkText = await this.llmCompressor.compress(chunk, query);
+          this.runtime.log?.('debug', 'LLM compression applied', {
+            chunkId: chunk.id,
+            originalLength: chunk.text.length,
+            compressedLength: chunkText.length,
+            compressionRatio: ((chunkText.length / chunk.text.length) * 100).toFixed(1) + '%',
+          });
+        } catch (error) {
+          this.runtime.log?.('warn', 'LLM compression failed, using original', {
+            chunkId: chunk.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Fall through to smart truncation
+        }
+      }
+      
+      // Smart truncation (fallback or additional compression)
+      if (compressionOptions.smartTruncation.enabled) {
+        chunkText = smartTruncate(
+          chunkText,
+          compressionOptions.smartTruncation.maxLength,
+          compressionOptions.smartTruncation.preserveStructure,
+        );
+      }
+    }
+    
+    parts.push(chunkText);
+    
+    return parts.join('\n');
   }
 
   private async collectChunks(
@@ -1362,6 +1915,45 @@ function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
           },
         },
       },
+      reasoning: {
+        enabled: raw.search?.reasoning?.enabled ?? false,
+        complexityThreshold: raw.search?.reasoning?.complexityThreshold ?? 0.6,
+        maxDepth: raw.search?.reasoning?.maxDepth ?? 3,
+        complexityDetection: {
+          heuristics: raw.search?.reasoning?.complexityDetection?.heuristics ?? true,
+          llmBased: raw.search?.reasoning?.complexityDetection?.llmBased ?? false,
+          llmModel: raw.search?.reasoning?.complexityDetection?.llmModel,
+        },
+        planning: {
+          maxSubqueries: raw.search?.reasoning?.planning?.maxSubqueries ?? 5,
+          model: raw.search?.reasoning?.planning?.model,
+          temperature: raw.search?.reasoning?.planning?.temperature ?? 0.3,
+          minSimilarity: raw.search?.reasoning?.planning?.minSimilarity ?? 0.85,
+        },
+        execution: {
+          parallel: raw.search?.reasoning?.execution?.parallel ?? true,
+          maxConcurrency: raw.search?.reasoning?.execution?.maxConcurrency ?? 3,
+          timeoutMs: raw.search?.reasoning?.execution?.timeoutMs ?? 30000,
+          earlyStopping: {
+            enabled: raw.search?.reasoning?.execution?.earlyStopping?.enabled ?? true,
+            minConfidence: raw.search?.reasoning?.execution?.earlyStopping?.minConfidence ?? 0.8,
+            minChunksFound: raw.search?.reasoning?.execution?.earlyStopping?.minChunksFound ?? 5,
+          },
+        },
+        synthesis: {
+          enabled: raw.search?.reasoning?.synthesis?.enabled ?? true,
+          deduplication: raw.search?.reasoning?.synthesis?.deduplication ?? true,
+          maxTokens: raw.search?.reasoning?.synthesis?.maxTokens ?? 4000,
+          model: raw.search?.reasoning?.synthesis?.model,
+          temperature: raw.search?.reasoning?.synthesis?.temperature ?? 0.2,
+          progressiveRefinement: raw.search?.reasoning?.synthesis?.progressiveRefinement ?? true,
+        },
+        safetyLimits: {
+          maxTotalQueries: raw.search?.reasoning?.safetyLimits?.maxTotalQueries ?? 20,
+          maxTokensPerDepth: raw.search?.reasoning?.safetyLimits?.maxTokensPerDepth ?? 10000,
+          cyclicDetection: raw.search?.reasoning?.safetyLimits?.cyclicDetection ?? true,
+        },
+      },
     },
     learning: {
       enabled: raw.learning?.enabled ?? false,
@@ -1500,78 +2092,6 @@ function formatMetadataOnly(chunk: KnowledgeChunk): string {
   return parts.join('\n');
 }
 
-function formatChunkForContext(
-  chunk: KnowledgeChunk,
-  compressionOptions?: NormalizedOptions['search']['optimization']['compression'],
-  score?: number,
-): string {
-  const parts: string[] = [];
-  
-  // File path and location
-  parts.push(`File: ${chunk.path}`);
-  parts.push(`Lines: ${chunk.span.startLine}-${chunk.span.endLine}`);
-  
-  // Add function/class context if available in metadata
-  if (chunk.metadata) {
-    const functionName = chunk.metadata.functionName as string | undefined;
-    const className = chunk.metadata.className as string | undefined;
-    const typeName = chunk.metadata.typeName as string | undefined;
-    
-    if (className) {
-      parts.push(`Class: ${className}`);
-    }
-    if (functionName) {
-      parts.push(`Function: ${functionName}`);
-    }
-    if (typeName) {
-      parts.push(`Type: ${typeName}`);
-    }
-    
-    // Add heading context for markdown
-    const headingTitle = chunk.metadata.headingTitle as string | undefined;
-    const headingLevel = chunk.metadata.headingLevel as number | undefined;
-    if (headingTitle) {
-      const headingPrefix = headingLevel ? '#'.repeat(headingLevel) + ' ' : '';
-      parts.push(`Section: ${headingPrefix}${headingTitle}`);
-    }
-  }
-  
-  // Add chunk type if available
-  const chunkType = chunk.metadata?.chunkType as string | undefined;
-  if (chunkType) {
-    parts.push(`Type: ${chunkType}`);
-  }
-  
-  parts.push(''); // Empty line before content
-  
-  // Apply compression if enabled
-  let chunkText = chunk.text;
-  
-  if (compressionOptions?.enabled) {
-    // Metadata-only mode for low-score chunks
-    if (
-      compressionOptions.metadataOnly.enabled &&
-      score !== undefined &&
-      score < compressionOptions.metadataOnly.scoreThreshold
-    ) {
-      return formatMetadataOnly(chunk);
-    }
-    
-    // Smart truncation
-    if (compressionOptions.smartTruncation.enabled) {
-      chunkText = smartTruncate(
-        chunkText,
-        compressionOptions.smartTruncation.maxLength,
-        compressionOptions.smartTruncation.preserveStructure,
-      );
-    }
-  }
-  
-  parts.push(chunkText);
-  
-  return parts.join('\n');
-}
-
 export function createMindKnowledgeEngineFactory(): KnowledgeEngineFactory {
   return (config: KnowledgeEngineConfig, context: KnowledgeEngineFactoryContext) => 
     new MindKnowledgeEngine(config, context);
@@ -1590,6 +2110,11 @@ export { createRuntimeAdapter } from './adapters/runtime-adapter.js';
 // Export compression types
 export type { LLMCompressor } from './compression/llm-compressor.js';
 export { NullLLMCompressor } from './compression/llm-compressor.js';
+export { OpenAILLMCompressor } from './compression/openai-compressor.js';
+export { ChunkSummarizer } from './compression/summarizer.js';
 
 // Export compression options type
 export type CompressionOptions = NormalizedOptions['search']['optimization']['compression'];
+
+// Export sync API
+export * from './sync/index.js';

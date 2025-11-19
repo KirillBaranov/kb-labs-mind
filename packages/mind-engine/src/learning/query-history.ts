@@ -16,6 +16,31 @@ export interface QueryHistoryEntry {
   resultChunkIds: string[];
   topChunkIds: string[]; // Top 10 chunks returned
   queryVector?: number[]; // Optional: store query embedding for pattern matching
+  reasoningPlan?: ReasoningPlanMetadata; // Optional: reasoning plan metadata
+}
+
+export interface ReasoningPlanMetadata {
+  queryHash: string;
+  scopeId: string;
+  plan: {
+    originalQuery: string;
+    subqueries: Array<{
+      text: string;
+      priority: number;
+      groupId: number;
+      relevance: number;
+    }>;
+    complexityScore: number;
+  };
+  complexityScore: number;
+  subqueriesCount: number;
+  parallelExecuted: number;
+  timing: {
+    planningTimeMs: number;
+    executionTimeMs: number;
+    synthesisTimeMs: number;
+    totalTimeMs: number;
+  };
 }
 
 export interface QueryHistoryStore {
@@ -23,6 +48,7 @@ export interface QueryHistoryStore {
   findByQuery(queryText: string, scopeId: string): Promise<QueryHistoryEntry[]>;
   findBySimilarQuery(queryVector: number[], scopeId: string, limit?: number): Promise<QueryHistoryEntry[]>;
   getPopularQueries(scopeId: string, limit?: number): Promise<Array<{ query: string; count: number }>>;
+  saveReasoningPlan(metadata: ReasoningPlanMetadata): Promise<void>;
 }
 
 /**
@@ -89,6 +115,36 @@ export class MemoryQueryHistoryStore implements QueryHistoryStore {
       .map(([query, count]) => ({ query, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
+  }
+
+  async saveReasoningPlan(metadata: ReasoningPlanMetadata): Promise<void> {
+    // Find existing entry by queryHash and scopeId
+    const existingEntries = this.entries.filter(
+      entry => entry.queryHash === metadata.queryHash && entry.scopeId === metadata.scopeId
+    );
+    
+    if (existingEntries.length > 0) {
+      // Update existing entry with reasoning plan
+      for (const entry of existingEntries) {
+        entry.reasoningPlan = metadata;
+      }
+    } else {
+      // Create new entry with reasoning plan
+      const entry: QueryHistoryEntry = {
+        queryId: createHash('sha256')
+          .update(`${metadata.scopeId}:${metadata.queryHash}:${Date.now()}`)
+          .digest('hex')
+          .substring(0, 16),
+        queryText: metadata.plan.originalQuery,
+        queryHash: metadata.queryHash,
+        scopeId: metadata.scopeId,
+        timestamp: Date.now(),
+        resultChunkIds: [],
+        topChunkIds: [],
+        reasoningPlan: metadata,
+      };
+      await this.save(entry);
+    }
   }
 
   private cosineSimilarity(vec1: number[], vec2: number[]): number {
@@ -172,6 +228,7 @@ export class QdrantQueryHistoryStore implements QueryHistoryStore {
         timestamp: entry.timestamp,
         resultChunkIds: entry.resultChunkIds,
         topChunkIds: entry.topChunkIds,
+        reasoningPlan: entry.reasoningPlan,
       },
     };
 
@@ -370,6 +427,41 @@ export class QdrantQueryHistoryStore implements QueryHistoryStore {
       .map(([query, count]) => ({ query, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, limit);
+  }
+
+  async saveReasoningPlan(metadata: ReasoningPlanMetadata): Promise<void> {
+    // Find existing entry by queryHash and scopeId
+    const existingEntries = await this.findByQuery(
+      metadata.plan.originalQuery,
+      metadata.scopeId
+    );
+    
+    if (existingEntries.length > 0) {
+      // Update existing entry with reasoning plan
+      const entry = existingEntries[0]!;
+      entry.reasoningPlan = metadata;
+      await this.save(entry);
+    } else {
+      // Create new entry with reasoning plan
+      const queryHash = createHash('sha256')
+        .update(metadata.plan.originalQuery.toLowerCase().trim())
+        .digest('hex');
+      
+      const entry: QueryHistoryEntry = {
+        queryId: createHash('sha256')
+          .update(`${metadata.scopeId}:${queryHash}:${Date.now()}`)
+          .digest('hex')
+          .substring(0, 16),
+        queryText: metadata.plan.originalQuery,
+        queryHash,
+        scopeId: metadata.scopeId,
+        timestamp: Date.now(),
+        resultChunkIds: [],
+        topChunkIds: [],
+        reasoningPlan: metadata,
+      };
+      await this.save(entry);
+    }
   }
 
   private async ensureCollection(): Promise<void> {

@@ -9,14 +9,11 @@ import { DEFAULT_BUDGET, createMindError, wrapError, getExitCode } from '@kb-lab
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
   TimingTracker,
-  box,
-  keyValue,
   formatTiming,
-  safeColors,
-  safeSymbols,
   parseNumberFlag,
   displayArtifacts,
 } from '@kb-labs/shared-cli-ui';
+import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, dirname, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
@@ -28,9 +25,6 @@ const UPDATE_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const jsonMode = !!flags.json;
-  const quiet = !!flags.quiet;
-  
   // Parse flags with defaults
   const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
 
@@ -123,20 +117,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             },
           });
           
-          if (jsonMode) {
-            ctx.presenter.json({
-              ok: false,
-              code: error.code,
-              message: error.message,
-              hint: error.hint,
-              timing: duration
-            });
-          } else {
-            ctx.presenter.error(error.message);
-            if (!quiet && error.hint) {
-              ctx.presenter.info(error.hint);
-            }
-          }
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorCode = (error as any).code || MIND_ERROR_CODES.FEED_FAILED;
+          const errorHint = (error as any).hint;
+          ctx.output.error(error instanceof Error ? error : new Error(errorMessage), {
+            code: errorCode,
+            suggestions: errorHint ? [errorHint] : undefined,
+          });
           return getExitCode(error);
         }
         let updateResult: any = null;
@@ -147,8 +134,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           const updateOptions: any = {
             cwd,
             log: (entry: any) => {
-              if (!quiet && !jsonMode) {
-                ctx.presenter.info(`Update: ${entry.msg || entry}`);
+              if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+                ctx.output.info(`Update: ${entry.msg || entry}`);
               }
             }
           };
@@ -167,8 +154,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           intent,
           budget: { totalTokens: budget, caps: {}, truncation: 'end' as const },
           log: (entry: any) => {
-            if (!quiet && !jsonMode) {
-              ctx.presenter.info(`Pack: ${entry.msg || entry}`);
+            if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+              ctx.output.info(`Pack: ${entry.msg || entry}`);
             }
           }
         };
@@ -193,7 +180,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           : undefined;
         
         // Step 3: Handle output
-        if (jsonMode) {
+        if (ctx.output.isJSON) {
           const jsonOutput = {
             ok: true,
             mode: doUpdate ? 'update-and-pack' : 'pack-only',
@@ -215,17 +202,18 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             ...(artifactData || {}),
           };
           
-          ctx.presenter.json(jsonOutput);
+          ctx.output.json(jsonOutput);
         } else {
+          const { ui } = ctx.output;
           // Handle output to file or stdout
           if (outFile) {
             const absPath = isAbsolute(outFile) ? outFile : join(cwd, outFile);
             await writeFile(absPath, packResult.markdown, 'utf8');
             
-            if (!quiet) {
+            if (!ctx.output.isQuiet) {
               const summaryLines: string[] = [];
               summaryLines.push(
-                ...keyValue({
+                ...ui.keyValue({
                   File: absPath,
                   Intent: intent,
                   Product: product || 'none',
@@ -236,7 +224,7 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
               if (ignoredFlags.length > 0) {
                 summaryLines.push('');
-                summaryLines.push(safeColors.muted(`Ignored flags: ${ignoredFlags.join(', ')}`));
+                summaryLines.push(ui.colors.muted(`Ignored flags: ${ignoredFlags.join(', ')}`));
               }
 
               summaryLines.push('');
@@ -260,18 +248,18 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
                 ),
               );
 
-              const statusLine = renderStatusLine('Pack saved', 'success', duration);
+              const statusLine = renderStatusLine('Pack saved', 'success', duration, ctx.output);
               summaryLines.push('', statusLine);
 
-              ctx.presenter.write('\n' + box('Mind Feed', summaryLines));
+              ctx.output.write('\n' + ui.box('Mind Feed', summaryLines));
             }
           } else {
             // Default: stream Markdown to stdout
             // Show summary to stderr if not quiet
-            if (!quiet) {
+            if (!ctx.output.isQuiet) {
               const summaryLines: string[] = [];
               summaryLines.push(
-                ...keyValue({
+                ...ui.keyValue({
                   Intent: intent,
                   Product: product || 'none',
                   Tokens: String(packResult.tokensEstimate),
@@ -281,16 +269,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
               if (ignoredFlags.length > 0) {
                 summaryLines.push('');
-                summaryLines.push(safeColors.muted(`Ignored flags: ${ignoredFlags.join(', ')}`));
+                summaryLines.push(ui.colors.muted(`Ignored flags: ${ignoredFlags.join(', ')}`));
               }
 
-              const statusLine = renderStatusLine('Pack ready', 'success', duration);
+              const statusLine = renderStatusLine('Pack ready', 'success', duration, ctx.output);
               summaryLines.push('', statusLine);
 
-              ctx.presenter.write('\n' + box('Mind Feed', summaryLines));
+              ctx.output.write('\n' + ui.box('Mind Feed', summaryLines));
             }
             // Stream markdown to stdout
-            ctx.presenter.write(packResult.markdown);
+            ctx.output.write(packResult.markdown);
           }
         }
         
@@ -330,23 +318,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           },
         });
         
-        if (jsonMode) {
-          ctx.presenter.json({
-            ok: false,
-            code: error.code,
-            message: error.message,
-            hint: error.hint,
-            timing: duration
-          });
-        } else {
-          ctx.presenter.error(error.message);
-          if (!quiet) {
-            ctx.presenter.info(`Code: ${error.code}`);
-            if (error.hint) {
-              ctx.presenter.info(error.hint);
-            }
-          }
-        }
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorCode = (error as any).code || MIND_ERROR_CODES.FEED_FAILED;
+        const errorHint = (error as any).hint;
+        ctx.output.error(error instanceof Error ? error : new Error(errorMessage), {
+          code: errorCode,
+          suggestions: errorHint ? [errorHint] : undefined,
+        });
         return getExitCode(error);
       }
     }
@@ -355,11 +333,12 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
 type StatusKind = 'success' | 'warning' | 'error';
 
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
+  const { ui } = output;
   const symbol =
-    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
   const color =
-    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
 
-  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
 }

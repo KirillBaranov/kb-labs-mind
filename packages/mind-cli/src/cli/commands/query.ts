@@ -9,12 +9,9 @@ import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
   TimingTracker,
   formatTiming,
-  box,
-  keyValue,
-  safeSymbols,
-  safeColors,
   displayArtifacts,
 } from '@kb-labs/shared-cli-ui';
+import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { resolve, join } from 'node:path';
 import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { encode } from '@byjohann/toon';
@@ -31,8 +28,6 @@ const QUERY_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.query.output']?.id ?? 'mind.query.output';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags) => {
-  const jsonMode = !!flags.json;
-  const quiet = !!flags.quiet;
   const compact = !!flags.compact;
   const toonMode = !!flags.toon;
   const toonSidecar = !!flags['toon-sidecar'];
@@ -50,16 +45,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
       try {
   
         if (!queryName || !['impact', 'scope', 'exports', 'externals', 'chain', 'meta', 'docs'].includes(queryName)) {
-          if (jsonMode) {
-            ctx.presenter.json({
-              ok: false,
-              code: 'MIND_BAD_FLAGS',
-              message: 'Invalid query name. Use: impact, scope, exports, externals, chain, meta, docs'
-            });
-          } else {
-            ctx.presenter.error('Invalid query name');
-            ctx.presenter.info('Available queries: impact, scope, exports, externals, chain, meta, docs');
-          }
+          ctx.output.error(new Error('Invalid query name'), {
+            code: MIND_ERROR_CODES.QUERY_INVALID_NAME,
+            suggestions: [
+              'Available queries: impact, scope, exports, externals, chain, meta, docs',
+              'Use: kb mind query <query-name> --help for more info',
+            ],
+          });
           return 1;
         }
         
@@ -80,13 +72,23 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
         const params: Record<string, any> = {};
         if (queryName === 'impact' || queryName === 'exports' || queryName === 'chain') {
           if (!flags.file) {
-            ctx.presenter.error(`Query '${queryName}' requires --file flag`);
+            ctx.output.error(new Error(`Query '${queryName}' requires --file flag`), {
+              code: MIND_ERROR_CODES.QUERY_MISSING_FILE,
+              suggestions: [
+                `Use: kb mind query ${queryName} --file <path>`,
+              ],
+            });
             return 1;
           }
           params.file = resolve(cwd, flags.file);
         } else if (queryName === 'scope') {
           if (!flags.path) {
-            ctx.presenter.error(`Query 'scope' requires --path flag`);
+            ctx.output.error(new Error(`Query 'scope' requires --path flag`), {
+              code: MIND_ERROR_CODES.QUERY_MISSING_PATH,
+              suggestions: [
+                'Use: kb mind query scope --path <path>',
+              ],
+            });
             return 1;
           }
           params.path = resolve(cwd, flags.path);
@@ -140,8 +142,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             },
           },
           log: (level, message) => {
-            if (!quiet && !jsonMode) {
-              ctx.presenter.info(`[${level.toUpperCase()}] ${message}`);
+            if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+              ctx.output.debug(message, { level });
             }
           },
         };
@@ -194,19 +196,20 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
 
           // Output TOON format
           if (toonMode) {
-            if (jsonMode) {
+            if (ctx.output.isJSON) {
               // Output as JSON with toon content
-              ctx.presenter.json({
+              ctx.output.json({
                 ok: true,
                 format: 'toon',
                 content: toonOutput,
                 produces: [QUERY_ARTIFACT_ID],
               });
             } else {
-              if (!quiet) {
+              if (!ctx.output.isQuiet) {
+                const { ui } = ctx.output;
                 const summaryLines: string[] = [];
                 summaryLines.push(
-                  ...keyValue({
+                  ...ui.keyValue({
                     Query: queryName,
                     Format: 'TOON',
                   }),
@@ -224,10 +227,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
                   );
                 }
 
-                summaryLines.push('', renderStatusLine('Query ready', 'success', tracker.total()));
-                ctx.presenter.write('\n' + box('Mind Query (TOON)', summaryLines));
+                summaryLines.push('', renderStatusLine('Query ready', 'success', tracker.total(), ctx.output));
+                ctx.output.write('\n' + ui.box('Mind Query (TOON)', summaryLines));
               }
-              ctx.presenter.write(toonOutput);
+              ctx.output.write(toonOutput);
             }
 
             // Track command completion
@@ -254,15 +257,15 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           // Non-TOON mode but sidecar requested -> just record artifact info
           if (artifactData) {
             if (sidecarArtifact) {
-              ctx.presenter.info(`TOON sidecar written to ${sidecarArtifact.path}`);
+              ctx.output.info(`TOON sidecar written to ${sidecarArtifact.path}`);
             }
           }
         }
 
         const { meta, result: queryData } = queryResult;
         
-        if (jsonMode) {
-          ctx.presenter.json({
+        if (ctx.output.isJSON) {
+          ctx.output.json({
             ok: true,
             query: queryName,
             params,
@@ -270,10 +273,11 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
             meta,
           });
         } else {
-          if (!quiet) {
+          if (!ctx.output.isQuiet) {
+            const { ui } = ctx.output;
             const summaryLines: string[] = [];
             summaryLines.push(
-              ...keyValue({
+              ...ui.keyValue({
                 Query: queryName,
                 Duration: formatTiming(tracker.total()),
                 Cached: meta?.cached ? 'Yes' : 'No',
@@ -288,13 +292,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
               summaryLines.push(`Files Scanned: ${meta.filesScanned}`);
             }
 
-            ctx.presenter.write('\n' + box('Mind Query', summaryLines));
+            ctx.output.write('\n' + ui.box('Mind Query', summaryLines));
           }
 
           if (compact) {
-            ctx.presenter.write(JSON.stringify(queryData, null, 2));
+            ctx.output.write(JSON.stringify(queryData, null, 2));
           } else {
-            ctx.presenter.write(JSON.stringify(queryData, null, 2));
+            ctx.output.write(JSON.stringify(queryData, null, 2));
           }
         }
 
@@ -329,16 +333,14 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
           },
         });
 
-        if (jsonMode) {
-          ctx.presenter.json({
-            ok: false,
-            code: 'MIND_QUERY_ERROR',
-            message: error.message,
-            timing: duration
-          });
-        } else {
-          ctx.presenter.error(error.message);
-        }
+        ctx.output.error(error, {
+          code: MIND_ERROR_CODES.QUERY_EXECUTION_FAILED,
+          suggestions: [
+            'Check that Mind is initialized',
+            'Verify query parameters are correct',
+            'Try: kb mind verify to check workspace consistency',
+          ],
+        });
         return 1;
       }
     }
@@ -347,12 +349,13 @@ export const run: CommandModule['run'] = async (ctx, argv, flags) => {
 
 type StatusKind = 'success' | 'warning' | 'error';
 
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
+  const { ui } = output;
   const symbol =
-    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
   const color =
-    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
 
-  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
 }
 

@@ -2,16 +2,18 @@
  * CLI command module type definition
  */
 
-export type CommandContext = {
-  presenter: {
-    write: (text: string) => void;
-    error: (text: string) => void;
-    info: (text: string) => void;
-    json: (data: any) => void;
-  };
-  cwd: string;
-  flags: Record<string, any>;
-  argv: string[];
+import type { CliHandlerContext } from '@kb-labs/sandbox';
+import type { Output } from '@kb-labs/core-sys';
+
+/**
+ * CommandContext extends CliHandlerContext with output support
+ * presenter is kept for backwards compatibility but output is preferred
+ */
+export type CommandContext = CliHandlerContext & {
+  // output is available via CliHandlerContext, but we ensure it's typed here
+  output: Output;
+  // presenter is kept for backwards compatibility (deprecated)
+  presenter: CliHandlerContext['presenter'];
 };
 
 export type CommandModule = {

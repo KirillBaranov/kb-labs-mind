@@ -722,9 +722,23 @@ export class QdrantVectorStore implements VectorStore {
   private async deletePoints(filter: {
     must: Array<{
       key: string;
-      match?: { value: string | string[] };
+      match?: { value?: string | string[]; any?: string | string[] };
     }>;
   }): Promise<void> {
+    // Convert match.value arrays to match.any format for Qdrant API compatibility
+    const normalizedFilter = {
+      must: filter.must.map((condition) => {
+        if (condition.match?.value && Array.isArray(condition.match.value)) {
+          return {
+            ...condition,
+            match: {
+              any: condition.match.value,
+            },
+          };
+        }
+        return condition;
+      }),
+    };
     const url = `${this.options.url}/collections/${this.collectionName}/points/delete`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -734,7 +748,10 @@ export class QdrantVectorStore implements VectorStore {
       headers['api-key'] = this.options.apiKey;
     }
 
-    const body = { filter };
+    // Qdrant API expects filter directly (not wrapped in points)
+    // Format: { filter: {...} }
+    // Note: Arrays in match.value must be converted to match.any
+    const body = { filter: normalizedFilter };
 
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = typeof setTimeout !== 'undefined' ? setTimeout(() => controller?.abort(), this.options.timeout) : null;

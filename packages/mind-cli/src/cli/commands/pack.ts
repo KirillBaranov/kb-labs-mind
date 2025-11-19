@@ -8,14 +8,11 @@ import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import {
   TimingTracker,
-  box,
-  keyValue,
   formatTiming,
-  safeColors,
-  safeSymbols,
   parseNumberFlag,
   displayArtifacts,
 } from '@kb-labs/shared-cli-ui';
+import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { writeFile } from 'node:fs/promises';
 import { join, isAbsolute } from 'node:path';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
@@ -25,9 +22,6 @@ const PACK_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
 
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
-  const jsonMode = !!flags.json;
-  const quiet = !!flags.quiet;
-  
   // Parse flags with defaults
   const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
   const intent = typeof flags.intent === 'string' && flags.intent ? flags.intent : undefined;
@@ -68,14 +62,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             },
           });
           
-          if (jsonMode) {
-            ctx.presenter.json(errorData);
-          } else {
-            ctx.presenter.error(errorData.message);
-            if (!quiet) {
-              ctx.presenter.info(errorData.hint);
-            }
-          }
+          ctx.output.error(new Error(errorData.message), {
+            code: MIND_ERROR_CODES.PACK_MISSING_SOURCE,
+            suggestions: [errorData.hint],
+          });
           return 1;
         }
         
@@ -97,14 +87,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             },
           });
           
-          if (jsonMode) {
-            ctx.presenter.json(errorData);
-          } else {
-            ctx.presenter.error(errorData.message);
-            if (!quiet) {
-              ctx.presenter.info(errorData.hint);
-            }
-          }
+          ctx.output.error(new Error(errorData.message), {
+            code: MIND_ERROR_CODES.PACK_MISSING_SOURCE,
+            suggestions: [errorData.hint],
+          });
           return 1;
         }
 
@@ -127,8 +113,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           intent,
           budget: { totalTokens: budget, caps: {}, truncation: 'end' as const },
           log: (entry: any) => {
-            if (!quiet && !jsonMode) {
-              ctx.presenter.info(`Pack: ${entry.msg || entry}`);
+            if (!ctx.output.isQuiet && !ctx.output.isJSON) {
+              ctx.output.info(`Pack: ${entry.msg || entry}`);
             }
           }
         };
@@ -150,8 +136,8 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             }
           : undefined;
         
-        if (jsonMode) {
-          ctx.presenter.json({
+        if (ctx.output.isJSON) {
+          ctx.output.json({
             ok: true,
             intent,
             product,
@@ -165,16 +151,17 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             ...(artifactData || {}),
           });
         } else {
+          const { ui } = ctx.output;
           // Handle output to file or stdout
           if (outFile) {
             const absPath = isAbsolute(outFile) ? outFile : join(cwd, outFile);
             try {
               await writeFile(absPath, result.markdown, 'utf8');
               
-              if (!quiet) {
+              if (!ctx.output.isQuiet) {
                 const summaryLines: string[] = [];
                 summaryLines.push(
-                  ...keyValue({
+                  ...ui.keyValue({
                     File: absPath,
                     Intent: intent,
                     Product: product || 'none',
@@ -203,12 +190,11 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
                   ),
                 );
 
-                summaryLines.push('', renderStatusLine('Pack saved', 'success', duration));
-                ctx.presenter.write('\n' + box('Mind Pack', summaryLines));
+                summaryLines.push('', renderStatusLine('Pack saved', 'success', duration, ctx.output));
+                ctx.output.write('\n' + ui.box('Mind Pack', summaryLines));
               }
             } catch (writeError: any) {
               const errorMessage = writeError instanceof Error ? writeError.message : String(writeError);
-              const errorCode = writeError instanceof Error && 'code' in writeError ? (writeError as any).code : 'MIND_PACK_ERROR';
               
               await emit({
                 type: ANALYTICS_EVENTS.PACK_FINISHED,
@@ -222,42 +208,30 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
                 },
               });
               
-              const errorData = {
-                ok: false,
-                code: errorCode,
-                message: errorMessage,
-                hint: 'Check file permissions and path',
-                timing: duration
-              };
-              
-              if (jsonMode) {
-                ctx.presenter.json(errorData);
-              } else {
-                ctx.presenter.error(errorMessage);
-                if (!quiet) {
-                  ctx.presenter.info(`Code: ${errorCode}`);
-                }
-              }
+              ctx.output.error(writeError instanceof Error ? writeError : new Error(errorMessage), {
+                code: MIND_ERROR_CODES.PACK_FAILED,
+                suggestions: ['Check file permissions and path'],
+              });
               return 1;
             }
           } else {
             // Default: stream Markdown to stdout
             // Show summary if not quiet
-            if (!quiet) {
+            if (!ctx.output.isQuiet) {
               const summaryLines: string[] = [];
               summaryLines.push(
-                ...keyValue({
+                ...ui.keyValue({
                   Intent: intent,
                   Product: product || 'none',
                   Tokens: String(result.tokensEstimate),
                 }),
               );
 
-              summaryLines.push('', renderStatusLine('Pack ready', 'success', duration));
-              ctx.presenter.write('\n' + box('Mind Pack', summaryLines));
+              summaryLines.push('', renderStatusLine('Pack ready', 'success', duration, ctx.output));
+              ctx.output.write('\n' + ui.box('Mind Pack', summaryLines));
             }
             // Also return data for artifacts
-            ctx.presenter.write(result.markdown);
+            ctx.output.write(result.markdown);
           }
         }
         
@@ -312,14 +286,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           timing: duration
         };
         
-        if (jsonMode) {
-          ctx.presenter.json(errorData);
-        } else {
-          ctx.presenter.error(errorMessage);
-          if (!quiet) {
-            ctx.presenter.info(`Code: ${errorCode}`);
-          }
-        }
+        ctx.output.error(e instanceof Error ? e : new Error(errorMessage), {
+          code: MIND_ERROR_CODES.PACK_FAILED,
+          suggestions: ['Check your workspace and indexes'],
+        });
         return 1;
       }
     }
@@ -328,11 +298,12 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
 type StatusKind = 'success' | 'warning' | 'error';
 
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
+  const { ui } = output;
   const symbol =
-    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
   const color =
-    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
 
-  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
 }

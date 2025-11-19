@@ -9,12 +9,9 @@ import { sha256 } from '@kb-labs/mind-core';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-types';
 import {
   TimingTracker,
-  box,
-  keyValue,
   formatTiming,
-  safeColors,
-  safeSymbols,
 } from '@kb-labs/shared-cli-ui';
+import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { runScope, type AnalyticsEventV1, type EmitResult } from '@kb-labs/analytics-sdk-node';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
@@ -60,8 +57,6 @@ function computeJsonHash(obj: any): string {
  */
 export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<number | void> => {
   const cwd = typeof flags.cwd === 'string' && flags.cwd ? flags.cwd : ctx.cwd;
-  const json = !!flags.json;
-  const quiet = !!flags.quiet;
 
   return (await runScope(
     {
@@ -112,14 +107,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
             }
           };
           
-          if (json) {
-            ctx.presenter.json(error);
-          } else {
-            ctx.presenter.error('Mind structure not initialized');
-            if (!quiet) {
-              ctx.presenter.info('Run: kb mind init');
-            }
-          }
+          ctx.output.error(new Error('Mind structure not initialized'), {
+            code: MIND_ERROR_CODES.VERIFY_FAILED,
+            suggestions: ['Run: kb mind init'],
+          });
           return 1;
         }
 
@@ -239,23 +230,24 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           }
         };
 
-        if (json) {
-          ctx.presenter.json(result);
+        if (ctx.output.isJSON) {
+          ctx.output.json(result);
         } else {
-          if (!quiet) {
+          if (!ctx.output.isQuiet) {
+            const { ui } = ctx.output;
             if (result.ok) {
               const summaryLines: string[] = [];
               summaryLines.push(
-                ...keyValue({
+                ...ui.keyValue({
                   'Files Checked': String(filesChecked),
                 }),
               );
-              summaryLines.push('', renderStatusLine('Workspace consistent', 'success', duration));
-              ctx.presenter.write('\n' + box('Mind Verify', summaryLines));
+              summaryLines.push('', renderStatusLine('Workspace consistent', 'success', duration, ctx.output));
+              ctx.output.write('\n' + ui.box('Mind Verify', summaryLines));
             } else {
               const summaryLines: string[] = [];
               summaryLines.push(
-                ...keyValue({
+                ...ui.keyValue({
                   'Files Checked': String(filesChecked),
                   Inconsistencies: String(inconsistencies.length),
                 }),
@@ -263,16 +255,16 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
               if (inconsistencies.length > 0) {
                 summaryLines.push('');
-                summaryLines.push(safeColors.bold('Details'));
+                summaryLines.push(ui.colors.bold('Details'));
                 for (const inc of inconsistencies) {
-                  summaryLines.push(safeColors.muted(`- ${inc.file} (${inc.type} mismatch)`));
+                  summaryLines.push(ui.colors.muted(`- ${inc.file} (${inc.type} mismatch)`));
                 }
               }
 
               summaryLines.push('');
-              summaryLines.push(safeColors.muted('Hint: Run kb mind update'));
-              summaryLines.push('', renderStatusLine('Inconsistencies found', 'warning', duration));
-              ctx.presenter.write('\n' + box('Mind Verify', summaryLines));
+              summaryLines.push(ui.colors.muted('Hint: Run kb mind update'));
+              summaryLines.push('', renderStatusLine('Inconsistencies found', 'warning', duration, ctx.output));
+              ctx.output.write('\n' + ui.box('Mind Verify', summaryLines));
             }
           }
         }
@@ -320,15 +312,10 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
           },
         });
 
-        if (json) {
-          ctx.presenter.json(errorResult);
-        } else {
-          ctx.presenter.error('Verification failed');
-          ctx.presenter.error(error.message);
-          if (!quiet) {
-            ctx.presenter.info('Check file permissions and try again');
-          }
-        }
+        ctx.output.error(error instanceof Error ? error : new Error(error.message || 'Verification failed'), {
+          code: MIND_ERROR_CODES.VERIFY_FAILED,
+          suggestions: ['Check file permissions and try again'],
+        });
 
         return 1;
       }
@@ -338,11 +325,12 @@ export const run: CommandModule['run'] = async (ctx, argv, flags): Promise<numbe
 
 type StatusKind = 'success' | 'warning' | 'error';
 
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number): string {
+function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
+  const { ui } = output;
   const symbol =
-    kind === 'error' ? safeSymbols.error : kind === 'warning' ? safeSymbols.warning : safeSymbols.success;
+    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
   const color =
-    kind === 'error' ? safeColors.error : kind === 'warning' ? safeColors.warning : safeColors.success;
+    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
 
-  return `${symbol} ${color(label)} · ${safeColors.muted(formatTiming(durationMs))}`;
+  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
 }
