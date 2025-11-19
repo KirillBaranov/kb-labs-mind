@@ -11,6 +11,10 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./sync": {
+      "import": "./dist/sync/index.js",
+      "types": "./dist/sync/index.d.ts"
+    },
     "./adapters/runtime-adapter": {
       "import": "./dist/adapters/runtime-adapter.js",
       "types": "./dist/adapters/runtime-adapter.d.ts"
@@ -43,6 +47,7 @@
     "@kb-labs/mind-vector-store": "link:../mind-vector-store",
     "fast-glob": "^3.3.2",
     "fs-extra": "^11.2.0",
+    "openai": "^4.104.0",
     "picomatch": "^4.0.2",
     "typescript": "^5.6.3"
   },

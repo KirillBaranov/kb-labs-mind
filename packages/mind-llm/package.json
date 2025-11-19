@@ -28,7 +28,9 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests"
   },
-  "dependencies": {},
+  "dependencies": {
+    "openai": "^4.104.0"
+  },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",
     "@types/node": "^24.7.0",

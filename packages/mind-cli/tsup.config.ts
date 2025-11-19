@@ -3,10 +3,12 @@ import nodePreset from '@kb-labs/devkit/tsup/node.js'
 
 export default defineConfig({
   ...nodePreset,
+  tsconfig: "tsconfig.build.json", // Use build-specific tsconfig without paths
   entry: [
     'src/index.ts',
     'src/manifest.v2.ts',
     'src/application/index.ts',
+    'src/application/sync.ts',
     'src/rest/index.ts',
     'src/cli/index.ts',
     'src/studio/index.ts',
@@ -18,6 +20,7 @@ export default defineConfig({
     'src/cli/commands/rag-index.ts',
     'src/cli/commands/rag-query.ts',
     'src/cli/commands/verify.ts',
+    'src/cli/commands/sync.ts',
     'src/cli/types.ts',
     'src/rest/handlers/query-handler.ts',
     'src/rest/handlers/verify-handler.ts',
@@ -39,6 +42,9 @@ export default defineConfig({
     resolve: true,
     skipLibCheck: true,
     // Ensure .d.ts files are generated for all entries including widgets
+    compilerOptions: {
+      skipLibCheck: true,
+    },
   },
   // Ensure TypeScript declarations are generated for React components
   esbuildOptions(options) {
