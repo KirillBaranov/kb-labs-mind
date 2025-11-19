@@ -1,0 +1,45 @@
+{
+  "knowledge": {
+    "sources": [
+      {
+        "id": "test-source",
+        "type": "filesystem",
+        "kind": "code",
+        "paths": ["."]
+      }
+    ],
+    "scopes": [
+      {
+        "id": "test-scope",
+        "name": "Test Scope",
+        "description": "Test scope for synchronization",
+        "sources": ["test-source"]
+      }
+    ],
+    "engines": [
+      {
+        "id": "mind-engine",
+        "type": "mind",
+        "scopes": ["test-scope"]
+      }
+    ]
+  },
+  "mind": {
+    "sync": {
+      "registry": {
+        "type": "filesystem",
+        "path": ".kb/mind/sync/registry.json"
+      },
+      "softDelete": {
+        "enabled": true,
+        "ttlDays": 30
+      },
+      "partialUpdates": {
+        "enabled": true
+      },
+      "batch": {
+        "maxSize": 100
+      }
+    }
+  }
+}
