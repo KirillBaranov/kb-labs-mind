@@ -73,7 +73,7 @@ function renderStatusLine(label: string, kind: StatusKind, durationMs: number, o
 /**
  * Verify mind workspace consistency
  */
-export const run = defineCommand({
+export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
   name: 'mind:verify',
   flags: {
     cwd: {
