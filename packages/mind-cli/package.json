@@ -65,6 +65,7 @@
     "@kb-labs/mind-query": "link:../mind-query",
     "@kb-labs/mind-types": "link:../mind-types",
     "@kb-labs/shared-cli-ui": "link:../../../kb-labs-shared/packages/cli-ui",
+    "@kb-labs/cli-command-kit": "workspace:*",
     "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts",
     "@kb-labs/knowledge-core": "link:../../../kb-labs-knowledge/packages/knowledge-core",
     "@tanstack/react-query": "^5.0.0",
