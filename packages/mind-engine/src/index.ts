@@ -759,9 +759,26 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const embeddingConfig: EmbeddingProviderConfig = rawOptions.embedding
       ? {
           type: rawOptions.embedding.type,
-          provider: rawOptions.embedding.provider,
+          provider: {
+            ...rawOptions.embedding.provider,
+            // Override OpenAI concurrency to 1 - rate limiting is handled by EmbeddingStage
+            openai: {
+              ...rawOptions.embedding.provider?.openai,
+              concurrency: rawOptions.embedding.provider?.openai?.concurrency ?? 1,
+              batchSize: rawOptions.embedding.provider?.openai?.batchSize ?? 100,
+            },
+          },
         }
-      : { type: 'auto' };
+      : {
+          type: 'auto',
+          provider: {
+            openai: {
+              // Safe defaults: sequential requests, rate limiting handled externally
+              concurrency: 1,
+              batchSize: 100,
+            },
+          },
+        };
     
     // Infer dimension from config: deterministic = 384, openai = 1536, default = 1536
     // When type is 'auto', check if OpenAI API key is available to determine dimension
@@ -1056,72 +1073,223 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     sources: KnowledgeSource[],
     options: KnowledgeIndexOptions,
   ): Promise<void> {
-    const { chunks, fileMetadata } = await this.collectChunks(sources);
-    
-    this.runtime.log?.('info', `Collected ${chunks.length} chunks from ${sources.length} sources`, {
-      scopeId: options.scope.id,
-      sources: sources.map(s => s.id),
-      filesCount: fileMetadata.size,
+    // Pipeline-based Indexing Architecture
+    // Breaks down monolithic index() into independent, testable stages
+    const { AdaptiveChunkerFactory } = await import('./chunking/adaptive-factory.js');
+    const { MemoryMonitor } = await import('./indexing/memory-monitor.js');
+    const { IndexingPipeline } = await import('./indexing/pipeline.js');
+    const { FileDiscoveryStage } = await import('./indexing/stages/discovery.js');
+    const { ParallelChunkingStage } = await import('./indexing/stages/parallel-chunking.js');
+    const { EmbeddingStage } = await import('./indexing/stages/embedding.js');
+    const { StorageStage } = await import('./indexing/stages/storage.js');
+    const { createLogger } = await import('./indexing/utils/logger.js');
+
+    // Initialize components
+    const memoryMonitor = new MemoryMonitor({
+      memoryLimit: 4 * 1024 * 1024 * 1024, // 4GB from manifest
+      warningThreshold: 0.7,
+      criticalThreshold: 0.85,
+      gcEnabled: !!global.gc,
     });
-    
-    if (chunks.length === 0) {
-      this.runtime.log?.('warn', `No chunks collected for scope ${options.scope.id}, clearing store`);
-      await this.vectorStore.replaceScope(options.scope.id, []);
+
+    const chunkerFactory = new AdaptiveChunkerFactory();
+
+    // Create logger adapter
+    const logger = createLogger({ prefix: 'mind-engine' });
+
+    // Incremental indexing: don't clear scope, let deduplication handle updates
+    // await this.vectorStore.replaceScope(options.scope.id, []);
+
+    // Create pipeline context
+    const context: any = {
+      sources,
+      scopeId: options.scope.id,
+      workspaceRoot: this.workspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
+      logger,
+      memoryMonitor,
+      onProgress: undefined, // TODO: wire up progress reporting
+      stats: {
+        filesDiscovered: 0,
+        filesProcessed: 0,
+        filesSkipped: 0,
+        totalChunks: 0,
+        startTime: Date.now(),
+        errors: [],
+      },
+    };
+
+    // Build pipeline stages
+    const discoveryStage = new FileDiscoveryStage();
+
+    // Create pipeline
+    const pipeline = new IndexingPipeline({
+      memoryLimit: 4 * 1024 * 1024 * 1024,
+      batchSize: 20,
+      continueOnError: true,
+      maxErrors: 100,
+    });
+
+    // Add discovery stage
+    pipeline.addStage(discoveryStage);
+
+    // Execute discovery first to get files
+    await discoveryStage.execute(context);
+    const discoveredFiles = discoveryStage.getDiscoveredFiles();
+
+    if (discoveredFiles.length === 0) {
+      this.runtime.log?.('warn', `No files found for scope ${options.scope.id}`);
       return;
     }
 
-    const embeddings = await this.embedChunks(chunks);
-    
-    // Create a map of file paths to metadata for quick lookup
-    const fileMetadataByPath = new Map(fileMetadata);
-    
-    const storedChunks: StoredMindChunk[] = chunks.map((chunk, idx) => {
-      const fileMeta = fileMetadataByPath.get(chunk.path);
-      return {
-      chunkId: chunk.chunkId,
-      scopeId: options.scope.id,
-      sourceId: chunk.sourceId,
-      path: chunk.path,
-      span: chunk.span,
-      text: chunk.text,
-        metadata: {
-          ...chunk.metadata,
-          fileHash: fileMeta?.hash,
-          fileMtime: fileMeta?.mtime,
-        },
-      embedding: embeddings[idx]!,
-      };
-    });
+    // Create memory-aware parallel chunking stage with discovered files
+    const chunkingStage = new ParallelChunkingStage(
+      chunkerFactory,
+      this.runtime,
+      new Map(discoveredFiles.map(f => [f.relativePath, f])),
+      {
+        safeThreshold: 0.75, // 75% of heap limit (was 70%)
+        minConcurrency: 2,   // minimum 2 parallel (was 1)
+        memoryReserve: 256 * 1024 * 1024, // 256MB (was 512MB)
+      }
+    );
+    pipeline.addStage(chunkingStage);
 
-    // Log vector store type for debugging
-    const vectorStoreType = this.vectorStore.constructor.name;
-    const isQdrant = vectorStoreType === 'QdrantVectorStore';
-    this.runtime.log?.('info', `Using vector store: ${vectorStoreType}`, {
+    // Execute chunking
+    await chunkingStage.execute(context);
+    const chunks = chunkingStage.getChunks();
+
+    if (chunks.length === 0) {
+      this.runtime.log?.('warn', `No chunks generated for scope ${options.scope.id}`);
+      return;
+    }
+
+    // Create embedding provider adapter
+    const embeddingProvider = {
+      embedBatch: async (texts: string[]) => {
+        // Batch embed using existing embedChunks method
+        const tempChunks = texts.map((text, i) => ({
+          chunkId: `temp-${i}`,
+          sourceId: 'temp',
+          path: 'temp',
+          span: { startLine: 0, endLine: 0 },
+          text,
+          metadata: {},
+        }));
+        const embeddingVectors = await this.embedChunks(tempChunks);
+        // Convert EmbeddingVector[] to number[][]
+        return embeddingVectors.map(v => v.values);
+      },
+      maxBatchSize: 100,
+      dimension: 1536, // OpenAI default
+    };
+
+    // Create embedding stage with rate limiting
+    // Uses 'openai-tier-1' by default (1M TPM, 500 RPM)
+    // Most accounts start at Tier 1 - can be upgraded via kb.config.json
+    const embeddingStage = new EmbeddingStage(
+      embeddingProvider,
+      chunks as any[],
+      {
+        maxRetries: 3,
+        maxConcurrency: 3, // Limited concurrency, rate limiter ensures we stay within TPM limits
+        rateLimits: 'openai-tier-1', // OpenAI Tier 1 limits (conservative default)
+      }
+    );
+    pipeline.addStage(embeddingStage);
+
+    // Execute embedding
+    await embeddingStage.execute(context);
+    const chunksWithEmbeddings = embeddingStage.getChunksWithEmbeddings();
+
+    // Create vector store adapter
+    const vectorStoreAdapter = {
+      insertBatch: async (chunks: any[]) => {
+        const storedChunks = chunks.map(c => ({
+          chunkId: c.chunkId,
+          scopeId: options.scope.id,
+          sourceId: c.sourceId,
+          path: c.path,
+          span: c.span,
+          text: c.text,
+          metadata: {
+            ...c.metadata,
+            fileHash: c.hash,
+            fileMtime: c.mtime,
+          },
+          // Convert number[] to EmbeddingVector { values: number[], dim: number }
+          embedding: {
+            values: c.embedding as number[],
+            dim: (c.embedding as number[]).length,
+          },
+        }));
+
+        if (this.vectorStore.upsertChunks) {
+          await this.vectorStore.upsertChunks(options.scope.id, storedChunks);
+          return storedChunks.length;
+        }
+        throw new Error('Vector store does not support upsert operation');
+      },
+      updateBatch: async (chunks: any[]) => {
+        return await vectorStoreAdapter.insertBatch(chunks);
+      },
+      checkExistence: async (chunkIds: string[]) => {
+        // Check which chunks already exist in vector store
+        if (!this.vectorStore.getAllChunks) {
+          return new Set<string>();
+        }
+        try {
+          const existingChunks = await this.vectorStore.getAllChunks(options.scope.id);
+          const existingIds = new Set(existingChunks.map(c => c.chunkId));
+          return new Set(chunkIds.filter(id => existingIds.has(id)));
+        } catch {
+          return new Set<string>();
+        }
+      },
+      getChunksByHash: async (hashes: string[]) => {
+        // Find chunks by file hash for deduplication
+        if (!this.vectorStore.getAllChunks) {
+          return new Map<string, string[]>();
+        }
+        try {
+          const allChunks = await this.vectorStore.getAllChunks(options.scope.id);
+          const result = new Map<string, string[]>();
+          for (const hash of hashes) {
+            const matching = allChunks.filter(c => c.metadata?.fileHash === hash);
+            if (matching.length > 0) {
+              result.set(hash, matching.map(c => c.chunkId));
+            }
+          }
+          return result;
+        } catch {
+          return new Map<string, string[]>();
+        }
+      },
+      deleteBatch: async (_chunkIds: string[]) => {
+        return 0;
+      },
+    };
+
+    // Create storage stage
+    const storageStage = new StorageStage(
+      vectorStoreAdapter,
+      chunksWithEmbeddings as any[],
+      { batchSize: 100, deduplication: true, updateExisting: true }
+    );
+    pipeline.addStage(storageStage);
+
+    // Execute storage
+    await storageStage.execute(context);
+
+    // Log final stats
+    this.runtime.log?.('info', `Indexing complete`, {
       scopeId: options.scope.id,
-      chunksCount: storedChunks.length,
-      isQdrant,
-      firstChunkId: storedChunks[0]?.chunkId,
-      firstChunkHasEmbedding: !!storedChunks[0]?.embedding,
+      filesDiscovered: context.stats.filesDiscovered,
+      filesProcessed: context.stats.filesProcessed,
+      filesSkipped: context.stats.filesSkipped,
+      totalChunks: context.stats.totalChunks,
+      errors: context.stats.errors.length,
+      duration: `${((Date.now() - context.stats.startTime) / 1000).toFixed(2)}s`,
     });
-    
-    if (!isQdrant) {
-      this.runtime.log?.('warn', `Expected QdrantVectorStore but got ${vectorStoreType}. Check vectorStore config.`);
-    }
-    
-    // Use incremental update if available and scope exists, otherwise fallback to full replace
-    const hasUpdateScope = !!this.vectorStore.updateScope;
-    const scopeExists = this.vectorStore.scopeExists 
-      ? await this.vectorStore.scopeExists(options.scope.id)
-      : false;
-    const useIncremental = hasUpdateScope && scopeExists;
-    
-    if (useIncremental && this.vectorStore.updateScope) {
-      this.runtime.log?.('info', `Using incremental update for scope ${options.scope.id}`);
-      await this.vectorStore.updateScope(options.scope.id, storedChunks, fileMetadata);
-    } else {
-      this.runtime.log?.('info', `Using full rebuild for scope ${options.scope.id}`);
-    await this.vectorStore.replaceScope(options.scope.id, storedChunks);
-    }
   }
 
   async query(
@@ -1684,9 +1852,19 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       for (const relativePath of files) {
         const fullPath = path.resolve(this.workspaceRoot, relativePath);
         const normalizedPath = relativePath.replace(/\\/g, '/');
-        
+
         // Get file stats for incremental updates
         const stats = await fs.stat(fullPath);
+
+        // CRITICAL OOM FIX: Check file size BEFORE reading to prevent OOM
+        const fileSizeMB = stats.size / (1024 * 1024);
+        const MAX_FILE_SIZE_MB = 10;
+
+        if (fileSizeMB > MAX_FILE_SIZE_MB) {
+          this.runtime.log?.('warn', `Skipping large file: ${normalizedPath} (${fileSizeMB.toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`);
+          continue; // Skip huge files that would cause OOM
+        }
+
         const contents = await fs.readFile(fullPath, 'utf8');
         const hash = createHash('sha256').update(contents).digest('hex');
         
@@ -1768,6 +1946,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     relativePath: string,
     contents: string,
   ): MindChunk[] {
+    // CRITICAL OOM FIX: Check file size before split() to prevent memory issues
+    // V8's split() on huge strings creates massive arrays causing OOM
+    const MAX_CONTENT_LENGTH = 10000000; // 10MB max
+    if (contents.length > MAX_CONTENT_LENGTH) {
+      console.warn(
+        `[MIND] File ${relativePath} is too large (${contents.length} bytes), truncating to ${MAX_CONTENT_LENGTH} bytes`,
+      );
+      contents = contents.substring(0, MAX_CONTENT_LENGTH);
+    }
+
     const lines = contents.split(/\r?\n/);
     const maxLines =
       source.kind === 'docs'
@@ -2097,10 +2285,43 @@ export function createMindKnowledgeEngineFactory(): KnowledgeEngineFactory {
     new MindKnowledgeEngine(config, context);
 }
 
+export interface RegisterMindEngineOptions {
+  runtime?: RuntimeAdapter | {
+    fetch?: typeof fetch;
+    fs?: any;
+    env?: (key: string) => string | undefined;
+    log?: (
+      level: 'debug' | 'info' | 'warn' | 'error',
+      msg: string,
+      meta?: Record<string, unknown>,
+    ) => void;
+    analytics?: {
+      track(event: string, properties?: Record<string, unknown>): void;
+      metric(name: string, value: number, tags?: Record<string, string>): void;
+    };
+  };
+}
+
 export function registerMindKnowledgeEngine(
   registry: KnowledgeEngineRegistry,
+  options?: RegisterMindEngineOptions,
 ): void {
-  registry.register('mind', createMindKnowledgeEngineFactory());
+  // Create factory that captures runtime options
+  const factory = (config: KnowledgeEngineConfig, context: KnowledgeEngineFactoryContext) => {
+    // Inject runtime into config options if provided
+    const configWithRuntime: KnowledgeEngineConfig = options?.runtime
+      ? {
+          ...config,
+          options: {
+            ...(config.options as MindEngineOptions | undefined),
+            _runtime: options.runtime,
+          },
+        }
+      : config;
+    return new MindKnowledgeEngine(configWithRuntime, context);
+  };
+
+  registry.register('mind', factory);
 }
 
 // Export RuntimeAdapter for use in handlers

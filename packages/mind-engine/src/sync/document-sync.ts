@@ -653,6 +653,22 @@ export class DocumentSyncAPI {
     filePath: string,
     contentType?: string,
   ): Promise<Array<{ text: string; span: { startLine: number; endLine: number } }>> {
+    // CRITICAL OOM FIX: Check content size BEFORE chunking to prevent split() OOM
+    const contentSizeMB = content.length / (1024 * 1024);
+    const MAX_CONTENT_SIZE_MB = 10;
+
+    if (contentSizeMB > MAX_CONTENT_SIZE_MB) {
+      this.runtime.log?.('warn', `Content too large for chunking, truncating`, {
+        filePath,
+        sizeMB: contentSizeMB.toFixed(2),
+        maxMB: MAX_CONTENT_SIZE_MB,
+      });
+
+      // Truncate content to safe size BEFORE chunking
+      const maxBytes = MAX_CONTENT_SIZE_MB * 1024 * 1024;
+      content = content.slice(0, maxBytes) + '\n\n[Content truncated due to size limit]';
+    }
+
     // Determine file extension based on content type or use default
     let extension = '.txt';
     if (contentType === 'markdown' || contentType === 'md') {

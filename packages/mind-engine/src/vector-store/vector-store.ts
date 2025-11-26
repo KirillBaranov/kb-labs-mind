@@ -58,6 +58,12 @@ export interface VectorStore {
   ): Promise<void>;
 
   /**
+   * Upsert chunks to a scope without reading existing data
+   * This is memory-efficient for streaming/incremental indexing
+   */
+  upsertChunks?(scopeId: string, chunks: StoredMindChunk[]): Promise<void>;
+
+  /**
    * Search for similar chunks using vector similarity
    */
   search(

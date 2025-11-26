@@ -178,6 +178,46 @@ export class QdrantVectorStore implements VectorStore {
     }
   }
 
+  async upsertChunks(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    // Ensure collection exists
+    await this.ensureCollection();
+
+    this.options.runtime.log?.('info', `Upserting ${chunks.length} chunks for scope ${scopeId}`, {
+      collectionName: this.collectionName,
+    });
+
+    // Convert chunks to Qdrant points
+    const points: QdrantPoint[] = chunks.map(chunk => ({
+      id: stringToUUID(`${scopeId}:${chunk.chunkId}`),
+      vector: chunk.embedding.values,
+      payload: {
+        scopeId,
+        chunkId: chunk.chunkId,
+        sourceId: chunk.sourceId,
+        path: chunk.path,
+        span: {
+          startLine: chunk.span.startLine,
+          endLine: chunk.span.endLine,
+        },
+        text: chunk.text,
+        metadata: chunk.metadata,
+        fileHash: chunk.metadata?.fileHash as string | undefined,
+        fileMtime: chunk.metadata?.fileMtime as number | undefined,
+      },
+    }));
+
+    // Batch upsert (Qdrant supports up to 100 points per request)
+    const batchSize = 100;
+    for (let i = 0; i < points.length; i += batchSize) {
+      const batch = points.slice(i, i + batchSize);
+      await this.upsertPoints(batch);
+    }
+  }
+
   async updateScope(
     scopeId: string,
     chunks: StoredMindChunk[],
