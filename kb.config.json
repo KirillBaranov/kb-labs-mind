@@ -5,7 +5,25 @@
         "id": "test-source",
         "type": "filesystem",
         "kind": "code",
-        "paths": ["."]
+        "paths": [
+          "packages/**/*.{ts,tsx,js,jsx}",
+          "src/**/*.{ts,tsx,js,jsx}"
+        ],
+        "exclude": [
+          "**/node_modules/**",
+          "**/.git/**",
+          "**/dist/**",
+          "**/build/**",
+          "**/coverage/**",
+          "**/*.min.js",
+          "**/*.bundle.js",
+          "**/*.d.ts",
+          "**/__tests__/**",
+          "**/*.test.{ts,tsx,js,jsx}",
+          "**/*.spec.{ts,tsx,js,jsx}",
+          "**/fixtures/**",
+          "**/.ignored/**"
+        ]
       }
     ],
     "scopes": [
