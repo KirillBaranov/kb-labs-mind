@@ -1363,12 +1363,23 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const filters = this.createSearchFilters(context);
     let matches: VectorSearchMatch[];
 
-    // Get adaptive weights if learning enabled
+    // Get search weights - priority: query.metadata > adaptive learning > config defaults
     let vectorWeight = this.options.search.vectorWeight;
     let keywordWeight = this.options.search.keywordWeight;
     let rrfK = this.options.search.rrfK;
 
-    if (this.options.learning.enabled && this.adaptiveWeights) {
+    // First, check if weights provided explicitly in query metadata (from orchestrator)
+    const metadataWeights = query.metadata as { vectorWeight?: number; keywordWeight?: number } | undefined;
+    if (metadataWeights?.vectorWeight !== undefined && metadataWeights?.keywordWeight !== undefined) {
+      vectorWeight = metadataWeights.vectorWeight;
+      keywordWeight = metadataWeights.keywordWeight;
+      this.runtime.log?.('debug', 'Using query-specified weights', {
+        vectorWeight,
+        keywordWeight,
+        source: 'query.metadata',
+      });
+    } else if (this.options.learning.enabled && this.adaptiveWeights) {
+      // Fallback to adaptive learning if enabled
       try {
         const adaptiveWeights = await this.adaptiveWeights.getWeights(
           query.text,
@@ -2339,3 +2350,9 @@ export type CompressionOptions = NormalizedOptions['search']['optimization']['co
 
 // Export sync API
 export * from './sync/index.js';
+
+// Export incremental indexing API
+export * from './index/index.js';
+
+// Export search API (query classification, adaptive search)
+export * from './search/index.js';

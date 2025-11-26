@@ -9,6 +9,7 @@ import type {
   AgentResponse,
   AgentErrorResponse,
   AgentSource,
+  AgentWarning,
 } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 
@@ -126,6 +127,7 @@ export interface SynthesisResult {
     label: string;
     ref: string;
   }>;
+  warnings?: AgentWarning[];
 }
 
 // === LLM STATS ===

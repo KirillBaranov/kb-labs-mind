@@ -13,12 +13,21 @@ export interface ChunkGathererOptions {
   config: OrchestratorConfig;
 }
 
+/**
+ * Query function options with adaptive search weights
+ */
+export interface QueryFnOptions {
+  text: string;
+  intent?: KnowledgeIntent;
+  limit?: number;
+  /** Vector search weight (0-1), default 0.7 */
+  vectorWeight?: number;
+  /** Keyword search weight (0-1), default 0.3 */
+  keywordWeight?: number;
+}
+
 export interface QueryFn {
-  (options: {
-    text: string;
-    intent?: KnowledgeIntent;
-    limit?: number;
-  }): Promise<{
+  (options: QueryFnOptions): Promise<{
     chunks: KnowledgeChunk[];
   }>;
 }

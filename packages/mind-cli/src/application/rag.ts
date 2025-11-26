@@ -266,11 +266,13 @@ export async function runAgentRagQuery(
     };
   }
 
-  // Create query function for orchestrator
+  // Create query function for orchestrator with adaptive weights support
   const queryFn = async (queryOptions: {
     text: string;
     intent?: KnowledgeIntent;
     limit?: number;
+    vectorWeight?: number;
+    keywordWeight?: number;
   }) => {
     const result = await runtime.service.query({
       productId: MIND_PRODUCT_ID,
@@ -278,6 +280,13 @@ export async function runAgentRagQuery(
       scopeId,
       text: queryOptions.text,
       limit: queryOptions.limit,
+      // Pass adaptive weights via metadata for mind-engine to use
+      metadata: queryOptions.vectorWeight !== undefined && queryOptions.keywordWeight !== undefined
+        ? {
+            vectorWeight: queryOptions.vectorWeight,
+            keywordWeight: queryOptions.keywordWeight,
+          }
+        : undefined,
     });
 
     return {

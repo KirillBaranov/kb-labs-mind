@@ -2,10 +2,11 @@
  * Response Synthesizer
  *
  * Synthesizes an agent-friendly response from chunks and query.
+ * Includes anti-hallucination verification.
  */
 
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
-import type { AgentQueryMode, AgentSource, AgentSourceKind } from '@kb-labs/knowledge-contracts';
+import type { AgentQueryMode, AgentSource, AgentSourceKind, AgentWarning } from '@kb-labs/knowledge-contracts';
 import type { LLMProvider } from '../llm/llm-provider.js';
 import type { SynthesisResult, OrchestratorConfig } from '../types.js';
 import {
@@ -13,6 +14,8 @@ import {
   SYNTHESIS_PROMPT_TEMPLATE,
   INSTANT_SYNTHESIS_TEMPLATE,
 } from './prompts.js';
+import { createSourceVerifier, extractCodeMentions, verifyMentionsInChunks } from '../verification/index.js';
+import { createFieldChecker } from '../verification/index.js';
 
 interface SynthesisResponse {
   answer: string;
@@ -164,16 +167,45 @@ export class ResponseSynthesizer {
         sources.push(...this.chunksToSources(chunks.slice(0, 5)));
       }
 
+      // Anti-hallucination verification
+      const warnings: AgentWarning[] = [];
+      let adjustedConfidence = Math.max(0, Math.min(1, response.confidence));
+
+      // Verify sources exist in chunks
+      const sourceVerifier = createSourceVerifier();
+      const sourceVerification = sourceVerifier.verifyAll(sources, chunks, adjustedConfidence);
+      warnings.push(...sourceVerification.warnings);
+      adjustedConfidence = sourceVerification.adjustedConfidence;
+
+      // Verify mentioned fields exist in source code
+      const fieldChecker = createFieldChecker();
+      const fieldCheck = fieldChecker.check(response.answer, chunks);
+      warnings.push(...fieldCheck.warnings);
+
+      // Adjust confidence based on field verification
+      if (fieldCheck.confidence < 1) {
+        adjustedConfidence *= fieldCheck.confidence;
+      }
+
+      // Add low confidence warning if needed
+      if (adjustedConfidence < 0.5) {
+        warnings.push({
+          code: 'LOW_CONFIDENCE',
+          message: `Answer confidence is low (${(adjustedConfidence * 100).toFixed(0)}%). Some claims may not be fully supported by sources.`,
+        });
+      }
+
       return {
         answer: response.answer,
         sources,
-        confidence: Math.max(0, Math.min(1, response.confidence)),
-        complete: response.complete ?? response.confidence > 0.7,
+        confidence: adjustedConfidence,
+        complete: response.complete ?? adjustedConfidence > 0.7,
         suggestions: response.suggestions?.map(s => ({
           type: s.type as any,
           label: s.label,
           ref: s.ref,
         })),
+        warnings: warnings.length > 0 ? warnings : undefined,
       };
     } catch (error) {
       // On error, fall back to direct answer

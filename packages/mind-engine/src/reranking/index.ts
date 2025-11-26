@@ -11,12 +11,21 @@ export type {
 
 export { CrossEncoderReranker, HeuristicReranker } from './reranker.js';
 
+// Smart heuristic reranker (improved version)
+export {
+  SmartHeuristicReranker,
+  createSmartHeuristicReranker,
+  type SmartHeuristicRerankerOptions,
+  type HeuristicScoreBreakdown,
+} from './smart-heuristic-reranker.js';
+
 import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
 import { CrossEncoderReranker } from './reranker.js';
 import { HeuristicReranker } from './reranker.js';
+import { SmartHeuristicReranker } from './smart-heuristic-reranker.js';
 import type { Reranker } from './reranker.js';
 
-export type RerankerType = 'cross-encoder' | 'heuristic' | 'none';
+export type RerankerType = 'cross-encoder' | 'heuristic' | 'smart-heuristic' | 'none';
 
 export interface RerankerConfig {
   type?: RerankerType;
@@ -26,6 +35,14 @@ export interface RerankerConfig {
     model?: string;
     batchSize?: number;
     timeout?: number;
+  };
+  smartHeuristic?: {
+    exactMatchWeight?: number;
+    symbolMatchWeight?: number;
+    definitionWeight?: number;
+    pathRelevanceWeight?: number;
+    termDensityWeight?: number;
+    positionWeight?: number;
   };
 }
 
@@ -44,6 +61,10 @@ export function createReranker(
 
   if (type === 'heuristic') {
     return new HeuristicReranker();
+  }
+
+  if (type === 'smart-heuristic') {
+    return new SmartHeuristicReranker(config.smartHeuristic);
   }
 
   if (type === 'cross-encoder') {

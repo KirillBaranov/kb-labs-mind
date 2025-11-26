@@ -41,9 +41,69 @@ export {
   type QueryStartedPayload,
   type QueryCompletedPayload,
   type QueryFailedPayload,
+  type FeedbackRating,
+  type FeedbackReason,
+  type AnswerFeedbackPayload,
+  type VerificationCompletedPayload,
   calculateLLMCost,
   DEFAULT_LLM_COSTS,
 } from './analytics/index.js';
+
+// Verification (anti-hallucination)
+export {
+  SourceVerifier,
+  createSourceVerifier,
+  FieldChecker,
+  createFieldChecker,
+  extractCodeMentions,
+  verifyMentionsInChunks,
+  hasLikelyHallucinations,
+  type SourceVerificationResult,
+  type VerificationSummary,
+  type SourceVerifierOptions,
+  type FieldCheckResult,
+  type FieldCheckerOptions,
+} from './verification/index.js';
+
+// Context management
+export {
+  TokenBudgetPlanner,
+  createTokenBudgetPlanner,
+  formatChunksWithNumbers,
+  categorizeChunks,
+  type TokenBudgetConfig,
+  type AssembledContext,
+} from './context/index.js';
+
+// Index freshness
+export {
+  checkIndexFreshness,
+  createStaleIndexWarning,
+  createGitExecutor,
+  readIndexMetadata,
+  type IndexFreshness,
+  type IndexMetadata,
+} from './freshness/index.js';
+
+// Pipeline & Graceful Degradation
+export {
+  GracefulDegradationHandler,
+  createGracefulDegradationHandler,
+  getDegradedMode,
+  MODE_DEGRADATION_CHAIN,
+  type DegradationResult,
+  type PipelineStepConfig,
+  type GracefulDegradationOptions,
+} from './pipeline/index.js';
+
+// Query Cache
+export {
+  QueryCache,
+  createQueryCache,
+  hashQuery,
+  type CacheEntry,
+  type QueryCacheOptions,
+} from './cache/index.js';
 
 // Re-export agent response types from knowledge-contracts
 export {
@@ -56,6 +116,8 @@ export {
   type AgentSuggestion,
   type AgentDebugInfo,
   type AgentErrorCode,
+  type AgentWarning,
+  type AgentWarningCode,
   isAgentError,
   isAgentSuccess,
   AGENT_RESPONSE_SCHEMA_VERSION,

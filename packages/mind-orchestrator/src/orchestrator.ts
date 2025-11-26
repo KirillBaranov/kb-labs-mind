@@ -31,6 +31,7 @@ import {
   type OrchestratorResult,
   DEFAULT_ORCHESTRATOR_CONFIG,
 } from './types.js';
+import { classifyQuery, type QueryClassification } from '@kb-labs/mind-engine';
 
 /**
  * Generate UUID using crypto
@@ -170,6 +171,22 @@ export class AgentQueryOrchestrator {
 
       if (mode === 'instant') {
         result = await this.executeInstantMode(options, queryFn, requestId);
+
+        // Auto-fallback: if instant mode has low confidence, upgrade to auto mode
+        const LOW_CONFIDENCE_THRESHOLD = 0.3;
+        if (result.confidence < LOW_CONFIDENCE_THRESHOLD && this.llmProvider) {
+          // Log the fallback
+          this.analytics.updateContext(analyticsCtx, {
+            fallbackReason: `instant confidence ${result.confidence.toFixed(2)} < ${LOW_CONFIDENCE_THRESHOLD}`,
+          });
+
+          // Upgrade to auto mode
+          mode = 'auto';
+          analyticsCtx.mode = mode;
+          const autoResult = await this.executeAutoModeWithAnalytics(options, queryFn, requestId, analyticsCtx);
+          result = autoResult.result;
+          subqueries = autoResult.subqueries;
+        }
       } else if (mode === 'thinking') {
         const thinkingResult = await this.executeThinkingModeWithAnalytics(options, queryFn, requestId, analyticsCtx);
         result = thinkingResult.result;
@@ -373,18 +390,29 @@ export class AgentQueryOrchestrator {
   }
 
   /**
-   * Instant mode - fast, minimal LLM
+   * Instant mode - fast, minimal LLM with adaptive search weights
    */
   private async executeInstantMode(
     options: OrchestratorQueryOptions,
     queryFn: QueryFn,
     requestId: string,
   ): Promise<AgentResponse> {
-    // Direct query without decomposition
+    // Classify query for adaptive search weights
+    const classification = classifyQuery(options.text);
+
+    // Use classification-based limit and weights
+    const limit = Math.max(
+      this.config.modes.instant.maxChunks,
+      classification.suggestedLimit,
+    );
+
+    // Direct query with adaptive weights
     const result = await queryFn({
       text: options.text,
       intent: 'search',
-      limit: this.config.modes.instant.maxChunks,
+      limit,
+      vectorWeight: classification.weights.vector,
+      keywordWeight: classification.weights.keyword,
     });
 
     // Build response

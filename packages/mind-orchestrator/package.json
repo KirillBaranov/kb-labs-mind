@@ -32,6 +32,7 @@
     "@kb-labs/analytics-sdk-node": "link:../../../kb-labs-analytics/packages/analytics-sdk-node",
     "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts",
     "@kb-labs/mind-core": "link:../mind-core",
+    "@kb-labs/mind-engine": "link:../mind-engine",
     "@kb-labs/mind-llm": "link:../mind-llm",
     "@kb-labs/mind-query": "link:../mind-query",
     "@kb-labs/mind-types": "link:../mind-types",

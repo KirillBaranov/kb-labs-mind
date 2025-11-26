@@ -19,7 +19,11 @@ export type MindEventType =
   // Index operations
   | 'mind.index.started'
   | 'mind.index.completed'
-  | 'mind.index.failed';
+  | 'mind.index.failed'
+  // User feedback
+  | 'mind.answer.feedback'
+  // Verification events
+  | 'mind.verification.completed';
 
 // === PAYLOAD SCHEMAS ===
 
@@ -84,6 +88,55 @@ export interface StageCompletedPayload {
   stage: string;
   durationMs: number;
   [key: string]: unknown;
+}
+
+// === FEEDBACK ===
+
+export type FeedbackRating = 'thumbs_up' | 'thumbs_down';
+export type FeedbackReason =
+  | 'incorrect'
+  | 'incomplete'
+  | 'outdated'
+  | 'hallucination'
+  | 'slow'
+  | 'helpful'
+  | 'other';
+
+export interface AnswerFeedbackPayload {
+  /** Request ID from AgentResponse.meta.requestId */
+  answerId: string;
+  /** Hash of original query */
+  queryHash: string;
+  /** User rating */
+  rating: FeedbackRating;
+  /** Optional reason for rating */
+  reason?: FeedbackReason;
+  /** For agents: what correction was made */
+  correction?: string;
+  /** Confidence of original answer */
+  originalConfidence: number;
+  /** Mode used for query */
+  mode: AgentQueryMode;
+}
+
+// === VERIFICATION ===
+
+export interface VerificationCompletedPayload {
+  queryId: string;
+  /** Source verification results */
+  sourcesTotal: number;
+  sourcesVerified: number;
+  sourcesFailed: number;
+  /** Field verification results */
+  fieldsTotal: number;
+  fieldsVerified: number;
+  fieldsUnverified: number;
+  /** Final confidence after verification */
+  adjustedConfidence: number;
+  /** Original confidence before verification */
+  originalConfidence: number;
+  /** Warnings generated */
+  warningsCount: number;
 }
 
 // === ANALYTICS CONTEXT ===
