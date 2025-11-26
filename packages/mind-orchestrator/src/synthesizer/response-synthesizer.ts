@@ -1,0 +1,299 @@
+/**
+ * Response Synthesizer
+ *
+ * Synthesizes an agent-friendly response from chunks and query.
+ */
+
+import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { AgentQueryMode, AgentSource, AgentSourceKind } from '@kb-labs/knowledge-contracts';
+import type { LLMProvider } from '../llm/llm-provider.js';
+import type { SynthesisResult, OrchestratorConfig } from '../types.js';
+import {
+  SYNTHESIS_SYSTEM_PROMPT,
+  SYNTHESIS_PROMPT_TEMPLATE,
+  INSTANT_SYNTHESIS_TEMPLATE,
+} from './prompts.js';
+
+interface SynthesisResponse {
+  answer: string;
+  sources?: Array<{
+    file: string;
+    lines: [number, number];
+    snippet: string;
+    relevance: string;
+    kind?: string;
+  }>;
+  confidence: number;
+  complete?: boolean;
+  suggestions?: Array<{
+    type: string;
+    label: string;
+    ref: string;
+  }>;
+}
+
+interface InstantSynthesisResponse {
+  answer: string;
+  confidence: number;
+}
+
+export interface ResponseSynthesizerOptions {
+  llm: LLMProvider;
+  config: OrchestratorConfig;
+}
+
+/**
+ * Response Synthesizer - creates agent-friendly responses
+ */
+export class ResponseSynthesizer {
+  private readonly llm: LLMProvider;
+  private readonly config: OrchestratorConfig;
+
+  constructor(options: ResponseSynthesizerOptions) {
+    this.llm = options.llm;
+    this.config = options.config;
+  }
+
+  /**
+   * Synthesize response from chunks
+   */
+  async synthesize(
+    query: string,
+    chunks: KnowledgeChunk[],
+    mode: AgentQueryMode,
+  ): Promise<SynthesisResult> {
+    // No chunks = no answer
+    if (chunks.length === 0) {
+      return {
+        answer: this.getNoResultsMessage(query),
+        sources: [],
+        confidence: 0,
+        complete: false,
+        suggestions: [
+          {
+            type: 'next-question',
+            label: 'Try a different search term',
+            ref: query,
+          },
+        ],
+      };
+    }
+
+    // Instant mode - simple answer without LLM or with minimal LLM
+    if (mode === 'instant') {
+      return this.synthesizeInstant(query, chunks);
+    }
+
+    // Full synthesis for auto/thinking modes
+    return this.synthesizeFull(query, chunks, mode);
+  }
+
+  /**
+   * Instant mode synthesis - fast, minimal LLM usage
+   */
+  private async synthesizeInstant(
+    query: string,
+    chunks: KnowledgeChunk[],
+  ): Promise<SynthesisResult> {
+    // For simple instant mode, build answer from chunks without LLM
+    if (this.config.modes.instant.skipLLM) {
+      return this.buildDirectAnswer(query, chunks);
+    }
+
+    // Optional: Use LLM for brief answer
+    try {
+      const chunksText = this.formatChunksForLLM(chunks, 3);
+      const prompt = INSTANT_SYNTHESIS_TEMPLATE
+        .replace('{query}', query)
+        .replace('{chunks}', chunksText);
+
+      const response = await this.llm.completeJSON<InstantSynthesisResponse>({
+        prompt,
+        maxTokens: 200,
+        temperature: 0.1,
+      });
+
+      return {
+        answer: response.answer,
+        sources: this.chunksToSources(chunks.slice(0, 3)),
+        confidence: response.confidence,
+        complete: response.confidence > 0.7,
+      };
+    } catch {
+      return this.buildDirectAnswer(query, chunks);
+    }
+  }
+
+  /**
+   * Full synthesis with LLM
+   */
+  private async synthesizeFull(
+    query: string,
+    chunks: KnowledgeChunk[],
+    mode: AgentQueryMode,
+  ): Promise<SynthesisResult> {
+    const maxChunks = mode === 'thinking'
+      ? this.config.modes.thinking.chunksPerQuery
+      : this.config.modes.auto.chunksPerQuery;
+
+    const chunksText = this.formatChunksForLLM(chunks, maxChunks);
+
+    try {
+      const prompt = SYNTHESIS_PROMPT_TEMPLATE
+        .replace('{query}', query)
+        .replace('{chunks}', chunksText);
+
+      const response = await this.llm.completeJSON<SynthesisResponse>({
+        prompt,
+        systemPrompt: SYNTHESIS_SYSTEM_PROMPT,
+        maxTokens: mode === 'thinking' ? 2000 : 1000,
+        temperature: 0.2,
+      });
+
+      // Convert response sources to AgentSource format
+      const sources: AgentSource[] = (response.sources ?? []).map(s => ({
+        file: s.file,
+        lines: s.lines,
+        snippet: s.snippet,
+        relevance: s.relevance,
+        kind: this.parseSourceKind(s.kind, s.file),
+      }));
+
+      // If LLM didn't return sources, use chunks
+      if (sources.length === 0) {
+        sources.push(...this.chunksToSources(chunks.slice(0, 5)));
+      }
+
+      return {
+        answer: response.answer,
+        sources,
+        confidence: Math.max(0, Math.min(1, response.confidence)),
+        complete: response.complete ?? response.confidence > 0.7,
+        suggestions: response.suggestions?.map(s => ({
+          type: s.type as any,
+          label: s.label,
+          ref: s.ref,
+        })),
+      };
+    } catch (error) {
+      // On error, fall back to direct answer
+      console.warn('Synthesis LLM failed, using direct answer', error);
+      return this.buildDirectAnswer(query, chunks);
+    }
+  }
+
+  /**
+   * Build direct answer without LLM
+   */
+  private buildDirectAnswer(query: string, chunks: KnowledgeChunk[]): SynthesisResult {
+    const topChunk = chunks[0];
+    if (!topChunk) {
+      return {
+        answer: this.getNoResultsMessage(query),
+        sources: [],
+        confidence: 0,
+        complete: false,
+      };
+    }
+
+    // Build simple answer from top chunks
+    const answer = chunks.length === 1
+      ? `Found in ${topChunk.path} (lines ${topChunk.span.startLine}-${topChunk.span.endLine})`
+      : `Found ${chunks.length} relevant matches. Top result: ${topChunk.path} (lines ${topChunk.span.startLine}-${topChunk.span.endLine})`;
+
+    return {
+      answer,
+      sources: this.chunksToSources(chunks.slice(0, 5)),
+      confidence: topChunk.score,
+      complete: topChunk.score > 0.8,
+    };
+  }
+
+  /**
+   * Convert chunks to AgentSource format
+   */
+  private chunksToSources(chunks: KnowledgeChunk[]): AgentSource[] {
+    return chunks.map(chunk => ({
+      file: chunk.path,
+      lines: [chunk.span.startLine, chunk.span.endLine] as [number, number],
+      snippet: this.truncateSnippet(chunk.text, this.config.synthesis.snippetMaxLines),
+      relevance: `Score: ${chunk.score.toFixed(2)}`,
+      kind: this.inferSourceKind(chunk),
+    }));
+  }
+
+  /**
+   * Format chunks for LLM prompt
+   */
+  private formatChunksForLLM(chunks: KnowledgeChunk[], maxChunks: number): string {
+    return chunks
+      .slice(0, maxChunks)
+      .map((chunk, i) => {
+        const truncatedText = this.truncateSnippet(chunk.text, 50);
+        return `[${i + 1}] ${chunk.path} (lines ${chunk.span.startLine}-${chunk.span.endLine}):\n\`\`\`\n${truncatedText}\n\`\`\``;
+      })
+      .join('\n\n');
+  }
+
+  /**
+   * Truncate snippet to max lines
+   */
+  private truncateSnippet(text: string, maxLines: number): string {
+    const lines = text.split('\n');
+    if (lines.length <= maxLines) {
+      return text;
+    }
+    return lines.slice(0, maxLines).join('\n') + '\n...';
+  }
+
+  /**
+   * Infer source kind from chunk
+   */
+  private inferSourceKind(chunk: KnowledgeChunk): AgentSourceKind {
+    const path = chunk.path.toLowerCase();
+
+    if (path.startsWith('external://')) {
+      return 'external';
+    }
+    if (path.includes('/adr/') || path.includes('/docs/adr/')) {
+      return 'adr';
+    }
+    if (path.endsWith('.md') || path.includes('/docs/')) {
+      return 'doc';
+    }
+    if (path.includes('config') || path.endsWith('.json') || path.endsWith('.yaml') || path.endsWith('.yml')) {
+      return 'config';
+    }
+    return 'code';
+  }
+
+  /**
+   * Parse source kind from string
+   */
+  private parseSourceKind(kind: string | undefined, file: string): AgentSourceKind {
+    if (!kind) {
+      return this.inferSourceKind({ path: file } as KnowledgeChunk);
+    }
+
+    const validKinds: AgentSourceKind[] = ['code', 'doc', 'adr', 'config', 'external'];
+    if (validKinds.includes(kind as AgentSourceKind)) {
+      return kind as AgentSourceKind;
+    }
+    return 'code';
+  }
+
+  /**
+   * Get appropriate "no results" message
+   */
+  private getNoResultsMessage(query: string): string {
+    // Detect language
+    const isRussian = /[а-яА-ЯёЁ]/.test(query);
+    return isRussian
+      ? 'В индексированной кодовой базе не найдено релевантной информации.'
+      : 'No relevant information found in the indexed codebase.';
+  }
+}
+
+export function createResponseSynthesizer(options: ResponseSynthesizerOptions): ResponseSynthesizer {
+  return new ResponseSynthesizer(options);
+}

@@ -16,6 +16,12 @@ export interface StoredMindChunk {
   embedding: EmbeddingVector;
 }
 
+export interface FileMetadata {
+  path: string;
+  mtime: number;
+  hash: string;
+}
+
 export interface MindVectorStoreOptions {
   indexDir: string;
 }
@@ -55,6 +61,88 @@ export class MindVectorStore {
       scopeId,
       generatedAt: new Date().toISOString(),
       chunks,
+    };
+    await fs.writeJson(filePath, payload, { spaces: 2 });
+  }
+
+  async scopeExists(scopeId: string): Promise<boolean> {
+    const filePath = this.getScopePath(scopeId);
+    return fs.pathExists(filePath);
+  }
+
+  async updateScope(
+    scopeId: string,
+    chunks: StoredMindChunk[],
+    fileMetadata?: Map<string, FileMetadata>,
+  ): Promise<void> {
+    if (!fileMetadata || fileMetadata.size === 0) {
+      // Fallback to full rebuild if no metadata provided
+      return this.replaceScope(scopeId, chunks);
+    }
+
+    // Get existing chunks for comparison
+    const existingChunks = await this.loadScope(scopeId);
+    const existingFiles = new Map<string, FileMetadata>();
+
+    // Extract file metadata from existing chunks
+    for (const chunk of existingChunks) {
+      const existingMeta = chunk.metadata as { fileHash?: string; fileMtime?: number } | undefined;
+      if (existingMeta?.fileHash && existingMeta?.fileMtime) {
+        const currentMeta = existingFiles.get(chunk.path);
+        // Keep the latest mtime if multiple chunks from same file
+        if (!currentMeta || (existingMeta.fileMtime > (currentMeta.mtime ?? 0))) {
+          existingFiles.set(chunk.path, {
+            path: chunk.path,
+            mtime: existingMeta.fileMtime,
+            hash: existingMeta.fileHash,
+          });
+        }
+      }
+    }
+
+    // Determine which files changed
+    const changedFiles = new Set<string>();
+    const deletedFiles = new Set<string>();
+
+    // Check for changed or new files
+    for (const [path, newMeta] of fileMetadata.entries()) {
+      const existingMeta = existingFiles.get(path);
+      if (!existingMeta || existingMeta.hash !== newMeta.hash || existingMeta.mtime !== newMeta.mtime) {
+        changedFiles.add(path);
+      }
+    }
+
+    // Check for deleted files
+    for (const path of existingFiles.keys()) {
+      if (!fileMetadata.has(path)) {
+        deletedFiles.add(path);
+      }
+    }
+
+    // If everything changed, use full rebuild (more efficient)
+    if (changedFiles.size + deletedFiles.size >= existingFiles.size * 0.8) {
+      return this.replaceScope(scopeId, chunks);
+    }
+
+    // Filter out chunks from deleted and changed files
+    const unchangedChunks = existingChunks.filter(chunk =>
+      !deletedFiles.has(chunk.path) && !changedFiles.has(chunk.path)
+    );
+
+    // Add new chunks only from changed files
+    const newChunks = chunks.filter(chunk => changedFiles.has(chunk.path));
+
+    // Combine unchanged and new chunks
+    const updatedChunks = [...unchangedChunks, ...newChunks];
+
+    // Save updated index
+    this.cache.set(scopeId, updatedChunks);
+    await fs.ensureDir(this.options.indexDir);
+    const filePath = this.getScopePath(scopeId);
+    const payload: ScopeIndexFile = {
+      scopeId,
+      generatedAt: new Date().toISOString(),
+      chunks: updatedChunks,
     };
     await fs.writeJson(filePath, payload, { spaces: 2 });
   }

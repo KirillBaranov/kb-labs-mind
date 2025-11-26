@@ -3,6 +3,10 @@
  * Used by ≥2 packages to avoid circular dependencies
  */
 
+// Query modes and JSON output
+export * from './query-modes.js';
+export * from './json-output.js';
+
 // Schema version
 export type SchemaVersion = "1.0";
 
