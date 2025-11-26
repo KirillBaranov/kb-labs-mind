@@ -86,6 +86,17 @@ export async function indexApiFiles(
         continue;
       }
 
+      // CRITICAL: Check file size BEFORE reading to prevent OOM
+      const stats = await fsp.stat(fullPath);
+      const fileSizeMB = stats.size / (1024 * 1024);
+
+      // Skip files larger than 10MB to prevent OOM
+      const MAX_FILE_SIZE_MB = 10;
+      if (fileSizeMB > MAX_FILE_SIZE_MB) {
+        console.warn(`⚠️  Skipping large API file: ${fullPath} (${fileSizeMB.toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`);
+        continue;
+      }
+
       // Read file content
       const content = await fsp.readFile(fullPath, 'utf8');
       const size = content.length;

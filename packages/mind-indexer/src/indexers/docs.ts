@@ -62,6 +62,17 @@ async function scanMarkdownFiles(dir: string, root: string, docs: DocEntry[]): P
     if (entry.isDirectory()) {
       await scanMarkdownFiles(fullPath, root, docs);
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
+      // CRITICAL: Check file size BEFORE reading to prevent OOM
+      const stats = await fsp.stat(fullPath);
+      const fileSizeMB = stats.size / (1024 * 1024);
+
+      // Skip files larger than 10MB to prevent OOM
+      const MAX_FILE_SIZE_MB = 10;
+      if (fileSizeMB > MAX_FILE_SIZE_MB) {
+        console.warn(`⚠️  Skipping large markdown file: ${fullPath} (${fileSizeMB.toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`);
+        continue;
+      }
+
       const content = await fsp.readFile(fullPath, 'utf8');
       const doc = extractDocMetadata(content, fullPath, root);
       if (doc) {docs.push(doc);}

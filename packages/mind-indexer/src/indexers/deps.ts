@@ -219,7 +219,8 @@ export async function indexDependencies(
     const uniqueFiles = [...new Set(allFiles)].sort();
 
     // Process files in batches to respect time budget
-    const batchSize = 50;
+    // REDUCED from 50 to 10 to prevent OOM when loading TypeScript AST
+    const batchSize = 10;
     const edges: Array<{ from: string; to: string; type: 'runtime' | 'type'; imports?: string[] }> = [];
 
     for (let i = 0; i < uniqueFiles.length; i += batchSize) {
@@ -237,6 +238,12 @@ export async function indexDependencies(
 
       const batch = uniqueFiles.slice(i, i + batchSize);
       await processBatch(batch, ctx, compilerOptions, baseUrl, paths, edges, externalImports);
+
+      // Force garbage collection after each batch if available
+      // This prevents memory accumulation from TypeScript compiler ASTs
+      if (global.gc) {
+        global.gc();
+      }
     }
 
     // Normalize paths and filter to workspace

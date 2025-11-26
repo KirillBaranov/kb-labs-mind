@@ -6,19 +6,23 @@
 import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
 import type { EmbeddingProvider } from '../index.js';
 import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types.js';
+import { getGlobalEmbeddingCache, type EmbeddingCacheOptions } from '../cache.js';
 
 export interface OpenAIEmbeddingProviderOptions {
   apiKey: string;
   model?: 'text-embedding-3-small' | 'text-embedding-3-large' | 'text-embedding-ada-002';
   dimension?: number;
   batchSize?: number;
+  concurrency?: number;
   timeout?: number;
   retries?: number;
   baseURL?: string;
+  cache?: EmbeddingCacheOptions;
 }
 
 const DEFAULT_MODEL = 'text-embedding-3-small';
-const DEFAULT_BATCH_SIZE = 100;
+const DEFAULT_BATCH_SIZE = 500;
+const DEFAULT_CONCURRENCY = 5;
 const DEFAULT_TIMEOUT = 30000;
 const DEFAULT_RETRIES = 3;
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
@@ -47,13 +51,18 @@ export function createOpenAIEmbeddingProvider(
     model = DEFAULT_MODEL,
     dimension,
     batchSize = DEFAULT_BATCH_SIZE,
+    concurrency = DEFAULT_CONCURRENCY,
     timeout = DEFAULT_TIMEOUT,
     retries = DEFAULT_RETRIES,
     baseURL = DEFAULT_BASE_URL,
+    cache: cacheOptions,
   } = options;
 
   // Determine dimension based on model
   const embeddingDimension = dimension ?? getDefaultDimension(model);
+
+  // Initialize cache
+  const cache = getGlobalEmbeddingCache(cacheOptions);
 
   return {
     id: `openai-${model}`,
@@ -71,25 +80,85 @@ export function createOpenAIEmbeddingProvider(
       });
 
       try {
-        // Process in batches
-        const batches: string[][] = [];
-        for (let i = 0; i < texts.length; i += batchSize) {
-          batches.push(texts.slice(i, i + batchSize));
+        // Check cache for existing embeddings
+        const cachedResults = cache.getMany(texts, model);
+        const textsToEmbed: string[] = [];
+        const textIndexMap: Map<number, number> = new Map(); // original index -> new index
+
+        for (let i = 0; i < texts.length; i++) {
+          if (cachedResults[i] === null) {
+            textIndexMap.set(i, textsToEmbed.length);
+            const text = texts[i];
+            if (text) textsToEmbed.push(text);
+          }
         }
 
-        const allEmbeddings: EmbeddingVector[] = [];
-        for (const batch of batches) {
-          const embeddings = await embedBatch(
-            batch,
-            apiKey,
+        const cacheHits = texts.length - textsToEmbed.length;
+        const cacheMisses = textsToEmbed.length;
+
+        // Track cache statistics
+        if (cacheHits > 0 || cacheMisses > 0) {
+          runtime.analytics?.track('rag.embedding.cache', {
+            provider: 'openai',
             model,
-            dimension,
-            baseURL,
-            timeout,
-            retries,
-            runtime,
+            hits: cacheHits,
+            misses: cacheMisses,
+            hitRate: texts.length > 0 ? cacheHits / texts.length : 0,
+            cacheStats: cache.getStats(),
+          });
+        }
+
+        let newEmbeddings: EmbeddingVector[] = [];
+
+        // Only make API calls if we have cache misses
+        if (textsToEmbed.length > 0) {
+          // Process in batches
+          const batches: string[][] = [];
+          for (let i = 0; i < textsToEmbed.length; i += batchSize) {
+            batches.push(textsToEmbed.slice(i, i + batchSize));
+          }
+
+          // Process batches in parallel with concurrency limit
+          newEmbeddings = await processBatchesInParallel(
+            batches,
+            concurrency,
+            async (batch) => embedBatch(
+              batch,
+              apiKey,
+              model,
+              dimension,
+              baseURL,
+              timeout,
+              retries,
+              runtime,
+            )
           );
-          allEmbeddings.push(...embeddings);
+
+          // Store new embeddings in cache
+          const embeddingsToCache = newEmbeddings.map(emb => emb.values);
+          cache.setMany(textsToEmbed, model, embeddingsToCache);
+        }
+
+        // Combine cached and new embeddings in original order
+        const allEmbeddings: EmbeddingVector[] = [];
+        let newEmbeddingIndex = 0;
+
+        for (let i = 0; i < texts.length; i++) {
+          const cached = cachedResults[i];
+          if (cached !== null && cached !== undefined) {
+            // Use cached embedding
+            allEmbeddings.push({
+              dim: cached.length,
+              values: cached,
+            });
+          } else {
+            // Use newly generated embedding
+            const newEmb = newEmbeddings[newEmbeddingIndex];
+            if (newEmb) {
+              allEmbeddings.push(newEmb);
+            }
+            newEmbeddingIndex++;
+          }
         }
 
         const duration = Date.now() - startTime;
@@ -97,8 +166,10 @@ export function createOpenAIEmbeddingProvider(
           provider: 'openai',
           model,
           textsCount: texts.length,
+          cacheHits,
+          cacheMisses,
           duration,
-          batches: batches.length,
+          batches: textsToEmbed.length > 0 ? Math.ceil(textsToEmbed.length / batchSize) : 0,
         });
 
         return allEmbeddings;
@@ -276,5 +347,38 @@ function sleep(ms: number): Promise<void> {
       resolve();
     }
   });
+}
+
+/**
+ * Process batches in parallel with concurrency limit
+ * Similar to p-map but without external dependency
+ */
+async function processBatchesInParallel<T, R>(
+  items: T[],
+  concurrency: number,
+  processor: (item: T) => Promise<R[]>
+): Promise<R[]> {
+  const results: R[][] = new Array(items.length);
+  const executing: Set<Promise<void>> = new Set();
+
+  for (let i = 0; i < items.length; i++) {
+    const index = i;
+    const item = items[index];
+    if (!item) continue;
+
+    const promise = (async () => {
+      results[index] = await processor(item);
+    })();
+
+    executing.add(promise);
+    promise.finally(() => executing.delete(promise));
+
+    if (executing.size >= concurrency) {
+      await Promise.race(executing);
+    }
+  }
+
+  await Promise.all(executing);
+  return results.flat();
 }
 

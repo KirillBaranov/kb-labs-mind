@@ -19,9 +19,15 @@ export interface EmbeddingProviderConfig {
       model?: 'text-embedding-3-small' | 'text-embedding-3-large' | 'text-embedding-ada-002';
       dimension?: number;
       batchSize?: number;
+      concurrency?: number;
       timeout?: number;
       retries?: number;
       baseURL?: string;
+      cache?: {
+        enabled?: boolean;
+        maxSize?: number;
+        ttlMs?: number;
+      };
     };
     local?: {
       type?: 'ollama' | 'in-process';
@@ -124,9 +130,11 @@ export function createEmbeddingProvider(
           model: config.provider?.openai?.model,
           dimension: config.provider?.openai?.dimension,
           batchSize: config.provider?.openai?.batchSize,
+          concurrency: config.provider?.openai?.concurrency,
           timeout: config.provider?.openai?.timeout,
           retries: config.provider?.openai?.retries,
           baseURL: config.provider?.openai?.baseURL,
+          cache: config.provider?.openai?.cache,
         },
         runtime,
       );
@@ -165,9 +173,11 @@ export function createEmbeddingProvider(
           model: config.provider?.openai?.model,
           dimension: config.provider?.openai?.dimension,
           batchSize: config.provider?.openai?.batchSize,
+          concurrency: config.provider?.openai?.concurrency,
           timeout: config.provider?.openai?.timeout,
           retries: config.provider?.openai?.retries,
           baseURL: config.provider?.openai?.baseURL,
+          cache: config.provider?.openai?.cache,
         },
         runtime,
       );
@@ -205,3 +215,7 @@ export type { LocalEmbeddingProviderOptions } from './providers/local.js';
 export { createOpenAIEmbeddingProvider } from './providers/openai.js';
 export { createLocalEmbeddingProvider } from './providers/local.js';
 export type { EmbeddingRuntimeAdapter } from './runtime-adapter-types.js';
+
+// Export cache types and utilities
+export type { EmbeddingCacheEntry, EmbeddingCacheOptions } from './cache.js';
+export { EmbeddingCache, getGlobalEmbeddingCache, resetGlobalEmbeddingCache } from './cache.js';
