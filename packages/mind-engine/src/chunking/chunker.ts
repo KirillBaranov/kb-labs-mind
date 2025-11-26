@@ -38,8 +38,16 @@ export interface Chunker {
 
   /**
    * Chunk source code into semantic chunks
+   * For small files or when full content is already loaded
    */
   chunk(sourceCode: string, filePath: string, options: ChunkingOptions): Chunk[];
+
+  /**
+   * Stream-based chunking for large files
+   * Processes file in chunks without loading entire content into memory
+   * Optional - if not implemented, falls back to chunk() method
+   */
+  chunkStream?(filePath: string, options: ChunkingOptions): AsyncGenerator<Chunk>;
 }
 
 /**
