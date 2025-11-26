@@ -62,6 +62,7 @@
     "@kb-labs/mind-vector-store": "link:../mind-vector-store",
     "@kb-labs/mind-indexer": "link:../mind-indexer",
     "@kb-labs/mind-pack": "link:../mind-pack",
+    "@kb-labs/mind-orchestrator": "link:../mind-orchestrator",
     "@kb-labs/mind-query": "link:../mind-query",
     "@kb-labs/mind-types": "link:../mind-types",
     "@kb-labs/shared-cli-ui": "link:../../../kb-labs-shared/packages/cli-ui",

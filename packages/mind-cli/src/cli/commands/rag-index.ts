@@ -36,18 +36,25 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
     },
   },
   async handler(ctx, argv, flags) {
+    console.log('[RAG-INDEX] ===== HANDLER ENTRY POINT =====');
+    console.log('[RAG-INDEX] Flags:', JSON.stringify({ cwd: flags.cwd, scope: flags.scope, json: flags.json, quiet: flags.quiet }));
+
     const cwd = flags.cwd || ctx.cwd;
     const scopeId = flags.scope;
-    
+
+    console.log('[RAG-INDEX] Command started, cwd:', cwd, 'scopeId:', scopeId);
+
     const spinner = ctx.output?.spinner('Building Mind RAG index');
     if (!flags.quiet && !flags.json) {
       spinner?.start();
     }
 
+    console.log('[RAG-INDEX] About to call runRagIndex');
     ctx.tracker.checkpoint('index');
 
     const result = await runRagIndex({ cwd, scopeId });
 
+    console.log('[RAG-INDEX] runRagIndex completed successfully');
     ctx.tracker.checkpoint('complete');
 
     if (!flags.quiet && !flags.json) {

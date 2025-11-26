@@ -38,14 +38,7 @@ export default defineConfig({
     'react-dom',
   ],
   treeshake: false,
-  dts: {
-    resolve: true,
-    skipLibCheck: true,
-    // Ensure .d.ts files are generated for all entries including widgets
-    compilerOptions: {
-      skipLibCheck: true,
-    },
-  },
+  dts: false, // Disabled for OOM debugging
   // Ensure TypeScript declarations are generated for React components
   esbuildOptions(options) {
     options.jsx = 'automatic';

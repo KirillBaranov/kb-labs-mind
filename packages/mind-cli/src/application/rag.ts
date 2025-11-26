@@ -1,9 +1,15 @@
-import type { KnowledgeIntent, KnowledgeResult } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeIntent, KnowledgeResult, AgentQueryMode } from '@kb-labs/knowledge-contracts';
+import type { AgentResponse, AgentErrorResponse } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeLogger } from '@kb-labs/knowledge-core';
 import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
 } from '../shared/knowledge.js';
+import {
+  createAgentQueryOrchestrator,
+  isAgentError,
+} from '@kb-labs/mind-orchestrator';
+import { createOpenAILLMEngine } from '@kb-labs/mind-llm';
 
 export interface RagIndexOptions {
   cwd: string;
@@ -173,4 +179,123 @@ export async function runRagQuery(
     scopeId,
     knowledge,
   };
+}
+
+// === Agent-optimized RAG Query ===
+
+export interface AgentRagQueryOptions {
+  cwd: string;
+  scopeId?: string;
+  text: string;
+  mode?: AgentQueryMode;
+  debug?: boolean;
+  runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
+}
+
+export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
+
+/**
+ * Run agent-optimized RAG query with orchestration.
+ *
+ * This function uses the orchestrator pipeline:
+ * 1. Detect query complexity
+ * 2. Decompose into sub-queries (auto/thinking modes)
+ * 3. Gather chunks from mind-engine
+ * 4. Check completeness (with retry in thinking mode)
+ * 5. Synthesize agent-friendly response
+ * 6. Compress if needed
+ *
+ * @returns AgentResponse | AgentErrorResponse - clean JSON for agents
+ */
+export async function runAgentRagQuery(
+  options: AgentRagQueryOptions,
+): Promise<AgentRagQueryResult> {
+  // Get OpenAI API key from environment
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  // Create LLM engine if API key available
+  const llmEngine = apiKey
+    ? createOpenAILLMEngine({
+        apiKey,
+        model: 'gpt-4o-mini',
+      })
+    : undefined;
+
+  // Create orchestrator
+  const orchestrator = createAgentQueryOrchestrator({
+    llmEngine,
+    config: {
+      mode: options.mode ?? 'auto',
+      autoDetectComplexity: true,
+    },
+  });
+
+  // Create silent logger to suppress all output
+  const silentLogger: KnowledgeLogger = {
+    debug: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+  };
+
+  // Create runtime
+  const runtime = await createMindKnowledgeRuntime({
+    cwd: options.cwd,
+    runtime: options.runtime,
+    logger: silentLogger,
+  });
+
+  // Get scope ID
+  const defaultScopeId = runtime.config.scopes?.[0]?.id;
+  const scopeId = options.scopeId ?? defaultScopeId;
+
+  if (!scopeId) {
+    return {
+      error: {
+        code: 'KNOWLEDGE_SCOPE_NOT_FOUND',
+        message: 'No knowledge scopes configured. Provide at least one scope in kb.config.json.',
+        recoverable: false,
+      },
+      meta: {
+        schemaVersion: 'agent-response-v1',
+        requestId: `rq-${Date.now()}`,
+        mode: options.mode ?? 'auto',
+        timingMs: 0,
+        cached: false,
+      },
+    };
+  }
+
+  // Create query function for orchestrator
+  const queryFn = async (queryOptions: {
+    text: string;
+    intent?: KnowledgeIntent;
+    limit?: number;
+  }) => {
+    const result = await runtime.service.query({
+      productId: MIND_PRODUCT_ID,
+      intent: queryOptions.intent ?? 'search',
+      scopeId,
+      text: queryOptions.text,
+      limit: queryOptions.limit,
+    });
+
+    return {
+      chunks: result.chunks,
+    };
+  };
+
+  // Execute orchestrated query
+  const result = await orchestrator.query(
+    {
+      cwd: options.cwd,
+      scopeId,
+      text: options.text,
+      mode: options.mode,
+      debug: options.debug,
+    },
+    queryFn,
+  );
+
+  return result;
 }

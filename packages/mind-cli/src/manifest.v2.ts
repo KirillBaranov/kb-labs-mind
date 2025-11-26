@@ -480,19 +480,44 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
             description: 'Profile ID override (knowledge profiles v2)',
           },
           {
+            name: 'mode',
+            type: 'string',
+            choices: ['instant', 'auto', 'thinking'],
+            description: 'Query execution mode (instant: ~500ms, auto: ~2-3s, thinking: ~5-10s)',
+            default: 'auto',
+          },
+          {
+            name: 'format',
+            type: 'string',
+            choices: ['text', 'json', 'json-pretty'],
+            description: 'Output format (text: human-readable, json: structured)',
+            default: 'text',
+          },
+          {
             name: 'json',
             type: 'boolean',
-            description: 'Output in JSON format',
+            description: 'Output in JSON format (deprecated: use --format json)',
           },
           {
             name: 'quiet',
             type: 'boolean',
             description: 'Quiet output',
           },
+          {
+            name: 'agent',
+            type: 'boolean',
+            description: 'Agent-optimized output (clean JSON only, no logs)',
+          },
+          {
+            name: 'debug',
+            type: 'boolean',
+            description: 'Include debug info in agent response',
+          },
         ],
         examples: [
-          'kb mind rag:query --text "summarize monitoring stack"',
-          'kb mind rag:query --text "where is auth middleware?" --intent search --scope backend --json',
+          'kb mind rag-query --text "summarize monitoring stack"',
+          'kb mind rag-query --text "how does rate limiting work" --mode auto',
+          'kb mind rag-query --agent --text "where is auth middleware"',
         ],
         handler: './cli/commands/rag-query#run',
       },
@@ -720,7 +745,7 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
           },
           quotas: {
             timeoutMs: 60000,
-            memoryMb: 1024,
+            memoryMb: 4096, // 4GB for embedding generation
             cpuMs: 30000,
           },
           capabilities: ['fs:read', 'fs:write'],
@@ -748,7 +773,7 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
           },
           quotas: {
             timeoutMs: 60000,
-            memoryMb: 1024,
+            memoryMb: 4096, // 4GB for embedding generation
             cpuMs: 30000,
           },
           capabilities: ['fs:read', 'fs:write'],
@@ -832,7 +857,7 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
           },
           quotas: {
             timeoutMs: 300000,
-            memoryMb: 2048,
+            memoryMb: 4096, // 4GB for batch operations
             cpuMs: 180000,
           },
           capabilities: ['fs:read', 'fs:write'],
@@ -927,6 +952,11 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
 
   // Studio widgets
   // Widgets are bundled with the plugin - Studio is just a sandbox renderer
+  // TODO: Fix widget schemas - currently commented out due to validation errors
+  // Invalid widget kinds: 'form', 'input-display', 'infopanel', 'cardlist'
+  // Valid kinds: 'panel', 'card', 'table', 'chart', 'tree', 'timeline', 'metric', 'logs', 'json', 'diff', 'status', 'progress'
+  // Also missing required 'data.schema' field for all widgets
+  /*
   studio: {
     widgets: [
       {
@@ -1089,6 +1119,7 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
       },
     ],
   },
+  */
 
   // Capabilities required
   capabilities: ['fs:read', 'fs:write'],
@@ -1120,9 +1151,9 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
       ],
     },
     quotas: {
-      timeoutMs: 300000,
-      memoryMb: 1024,
-      cpuMs: 180000,
+      timeoutMs: 1200000, // 20 minutes for RAG indexing (5334+ chunks, embeddings via OpenAI)
+      memoryMb: 4096, // 4GB for large codebases (1967 TS files, 18GB total)
+      cpuMs: 600000, // 10 minutes CPU time
     },
     capabilities: ['fs:read', 'fs:write'],
     // Cross-plugin invocation permissions
