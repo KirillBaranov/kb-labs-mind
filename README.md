@@ -161,6 +161,9 @@ pnpm kb mind:rag-query --text "your query" --intent search
 
 # Query with summary intent
 pnpm kb mind:rag-query --text "explain compression" --intent summary
+
+# Agent mode - structured JSON output for AI agents
+pnpm kb mind:rag-query --agent --text "how does rate limiting work"
 ```
 
 **Mind v1 (Legacy):**
@@ -200,6 +203,8 @@ pnpm kb mind feed
 - **Token Compression**: Smart truncation and metadata-only mode for low-relevance chunks
 - **Vector Store Abstraction**: Supports Qdrant and local file-based storage
 - **Runtime Adapter Pattern**: Portable across Node.js, sandboxes, and serverless
+- **Agent Query Orchestration**: LLM-powered query decomposition, multi-step retrieval, response synthesis
+- **Built-in Analytics**: Query metrics, LLM costs, timing data via `@kb-labs/analytics-sdk-node`
 
 ### Mind v1 (Legacy)
 
@@ -217,8 +222,9 @@ pnpm kb mind feed
 
 ```
 kb-labs-mind/
-├── packages/                # Core packages
+├── packages/                 # Core packages
 │   ├── mind-engine/          # Mind v2: Core knowledge engine
+│   ├── mind-orchestrator/    # Mind v2: Agent query orchestration + analytics
 │   ├── mind-embeddings/      # Mind v2: Embedding providers
 │   ├── mind-llm/             # Mind v2: LLM client abstraction
 │   ├── mind-vector-store/    # Mind v2: Vector store implementations
@@ -255,6 +261,7 @@ kb-labs-mind/
 | Package | Description |
 |---------|-------------|
 | [@kb-labs/mind-engine](./packages/mind-engine/) | Core knowledge engine with vector search, chunking, and self-learning |
+| [@kb-labs/mind-orchestrator](./packages/mind-orchestrator/) | Agent-optimized RAG query orchestration with analytics |
 | [@kb-labs/mind-embeddings](./packages/mind-embeddings/) | Embedding providers (OpenAI, deterministic) |
 | [@kb-labs/mind-llm](./packages/mind-llm/) | LLM client abstraction |
 | [@kb-labs/mind-vector-store](./packages/mind-vector-store/) | Vector store implementations (Qdrant, local) |
@@ -333,6 +340,84 @@ Regenerate these mappings after adding new surfaces with `pnpm --filter @kb-labs
 - Dependency chain queries
 - Metadata queries
 - Documentation queries
+
+**@kb-labs/mind-orchestrator** provides agent-optimized RAG orchestration:
+- Query decomposition into focused sub-queries
+- Multi-iteration chunk gathering with completeness checks
+- LLM-powered response synthesis and compression
+- Three query modes: `instant` (fast), `auto` (balanced), `thinking` (thorough)
+- Built-in analytics integration with `@kb-labs/analytics-sdk-node`
+- Cost tracking for LLM calls (tokens, pricing)
+
+## 🤖 Agent Mode
+
+The `--agent` flag enables structured JSON output optimized for AI agents:
+
+```bash
+pnpm kb mind:rag-query --agent --text "how does authentication work"
+```
+
+**Response format:**
+```json
+{
+  "answer": "Authentication is implemented using...",
+  "sources": [
+    {
+      "file": "src/auth/middleware.ts",
+      "snippet": "export function authenticate(req, res, next) {...}",
+      "relevance": 0.95
+    }
+  ],
+  "confidence": 0.9,
+  "complete": true,
+  "meta": {
+    "schemaVersion": "agent-response-v1",
+    "mode": "auto",
+    "timingMs": 5500,
+    "llmCalls": 4,
+    "tokensIn": 2500,
+    "tokensOut": 800
+  }
+}
+```
+
+**Query modes:**
+- `instant` - Single-shot retrieval, fastest (~500ms target)
+- `auto` - Iterative with completeness checks (default)
+- `thinking` - Full decomposition and multi-iteration synthesis
+
+## 📈 Analytics Integration
+
+Mind tracks query metrics via `@kb-labs/analytics-sdk-node`:
+
+```typescript
+import { createAgentQueryOrchestrator } from '@kb-labs/mind-orchestrator';
+
+const orchestrator = createAgentQueryOrchestrator({
+  queryEngine,
+  analytics: {
+    enabled: true,
+    detailed: true,      // Track per-stage metrics
+    llmModel: 'gpt-4o-mini'
+  }
+});
+```
+
+**Tracked events:**
+| Event | Description |
+|-------|-------------|
+| `mind.query.started` | Query initiated with mode and query hash |
+| `mind.query.completed` | Success with timing, confidence, costs |
+| `mind.query.failed` | Failure with error details |
+
+**Metrics captured:**
+- Duration (total and per-stage)
+- Confidence and completeness scores
+- Source counts by type (code/docs/external)
+- LLM usage (calls, tokens in/out)
+- Cost calculation (configurable per model)
+
+Events are buffered to `.kb/analytics/buffer` for batch sync.
 
 ## 🛠️ Available Scripts
 
@@ -461,6 +546,11 @@ The system creates artifacts in `.kb/mind/`:
   - [ADR-0023: Runtime Adapter Pattern](./docs/adr/0023-runtime-adapter-pattern.md)
   - [ADR-0024: Deterministic Embeddings](./docs/adr/0024-deterministic-embeddings-fallback.md)
   - [ADR-0025: Reranking Strategy](./docs/adr/0025-reranking-strategy.md)
+  - [ADR-0026: External Data Sync](./docs/adr/0026-external-data-sync.md)
+  - [ADR-0027: Provider-Agnostic Rate Limiting](./docs/adr/0027-provider-agnostic-rate-limiting.md)
+  - [ADR-0028: Memory-Aware Parallel Processing](./docs/adr/0028-memory-aware-parallel-processing.md)
+  - [ADR-0029: Agent Query Orchestration](./docs/adr/0029-agent-query-orchestration.md)
+  - [ADR-0030: Mind Analytics Integration](./docs/adr/0030-mind-analytics-integration.md)
 
 ### Development
 
