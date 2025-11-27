@@ -20,6 +20,7 @@
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
   },
   "dependencies": {
+    "@kb-labs/core-sys": "link:../../../kb-labs-core/packages/sys",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-indexer": "link:../mind-indexer",
     "@kb-labs/mind-types": "link:../mind-types"

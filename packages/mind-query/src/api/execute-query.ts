@@ -2,6 +2,7 @@
  * Main query executor for KB Labs Mind Query
  */
 
+import { getLogger } from '@kb-labs/core-sys/logging';
 import type { QueryName, QueryResult } from '@kb-labs/mind-types';
 import { estimateTokens } from '@kb-labs/mind-core';
 import { loadIndexes, createPathRegistry } from '../loader/index-loader.js';
@@ -14,6 +15,8 @@ import { queryExternals } from '../queries/externals.js';
 import { queryChain } from '../queries/chain.js';
 import { queryMeta } from '../queries/meta.js';
 import { queryDocs } from '../queries/docs.js';
+
+const logger = getLogger('mind:query:executor');
 
 export interface QueryOptions {
   cwd: string;
@@ -160,8 +163,10 @@ export async function executeQuery(
     
     return response;
   } catch (error: any) {
-    console.error('EXECUTE QUERY ERROR:', error.message);
-    console.error('STACK:', error.stack);
+    logger.error('Execute query error', {
+      message: error.message,
+      stack: error.stack,
+    });
     return {
       ok: false,
       code: 'MIND_QUERY_ERROR',

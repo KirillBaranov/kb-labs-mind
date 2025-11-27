@@ -141,11 +141,17 @@
       "@kb-labs/cli-commands/*": [
         "../kb-labs-cli/packages/commands/src/*"
       ],
+      "@kb-labs/cli-contracts": [
+        "../kb-labs-cli/packages/cli-contracts/src/index.ts"
+      ],
+      "@kb-labs/cli-contracts/*": [
+        "../kb-labs-cli/packages/cli-contracts/src/*"
+      ],
       "@kb-labs/cli-core": [
-        "../kb-labs-cli/packages/cli-core/src/index.ts"
+        "../kb-labs-cli/packages/core/src/index.ts"
       ],
       "@kb-labs/cli-core/*": [
-        "../kb-labs-cli/packages/cli-core/src/*"
+        "../kb-labs-cli/packages/core/src/*"
       ],
       "@kb-labs/cli-runtime": [
         "../kb-labs-cli/packages/cli-runtime/src/index.ts"
@@ -308,6 +314,12 @@
       ],
       "@kb-labs/mind-llm/*": [
         "packages/mind-llm/src/*"
+      ],
+      "@kb-labs/mind-orchestrator": [
+        "packages/mind-orchestrator/src/index.ts"
+      ],
+      "@kb-labs/mind-orchestrator/*": [
+        "packages/mind-orchestrator/src/*"
       ],
       "@kb-labs/mind-pack": [
         "packages/mind-pack/src/index.ts"

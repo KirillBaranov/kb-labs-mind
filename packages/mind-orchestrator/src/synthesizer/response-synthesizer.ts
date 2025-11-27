@@ -5,6 +5,7 @@
  * Includes anti-hallucination verification.
  */
 
+import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 import type { AgentQueryMode, AgentSource, AgentSourceKind, AgentWarning } from '@kb-labs/knowledge-contracts';
 import type { LLMProvider } from '../llm/llm-provider.js';
@@ -16,6 +17,8 @@ import {
 } from './prompts.js';
 import { createSourceVerifier, extractCodeMentions, verifyMentionsInChunks } from '../verification/index.js';
 import { createFieldChecker } from '../verification/index.js';
+
+const logger = getLogger('mind:orchestrator:synthesizer');
 
 interface SynthesisResponse {
   answer: string;
@@ -209,7 +212,7 @@ export class ResponseSynthesizer {
       };
     } catch (error) {
       // On error, fall back to direct answer
-      console.warn('Synthesis LLM failed, using direct answer', error);
+      logger.warn('Synthesis LLM failed, using direct answer', { error });
       return this.buildDirectAnswer(query, chunks);
     }
   }
