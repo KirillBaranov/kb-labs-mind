@@ -5,9 +5,12 @@
  * deduplicates and merges results.
  */
 
+import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeChunk, KnowledgeIntent } from '@kb-labs/knowledge-contracts';
 import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
 import type { DecomposedQuery, GatheredChunks, OrchestratorConfig } from '../types.js';
+
+const logger = getLogger('mind:orchestrator:gatherer');
 
 export interface ChunkGathererOptions {
   config: OrchestratorConfig;
@@ -69,7 +72,7 @@ export class ChunkGatherer {
         totalMatches += result.chunks.length;
       } catch (error) {
         // Log error but continue with other sub-queries
-        console.warn(`Subquery failed: ${subquery}`, error);
+        logger.warn(`Subquery failed: ${subquery}`, { error });
         subqueryResults.set(subquery, []);
       }
     }
