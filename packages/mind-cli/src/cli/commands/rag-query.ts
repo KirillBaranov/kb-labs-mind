@@ -280,25 +280,30 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       } else if (!flags.quiet) {
         const { ui } = ctx.output!;
         const topChunk = result.knowledge.chunks[0];
-        const summaryLines = [
-          ...ui.keyValue({
-            Scope: result.scopeId,
-            Intent: result.knowledge.query.intent,
-            'Chunks returned': String(result.knowledge.chunks.length),
-          }),
+
+        const sections: Array<{ header?: string; items: string[] }> = [
+          {
+            header: 'Summary',
+            items: [
+              `Scope: ${result.scopeId}`,
+              `Intent: ${result.knowledge.query.intent}`,
+              `Chunks returned: ${result.knowledge.chunks.length}`,
+            ],
+          },
         ];
 
         if (topChunk) {
-          summaryLines.push(
-            '',
-            ui.colors.bold('Top chunk:'),
-            `${topChunk.path} ${ui.colors.muted(
-              `#${topChunk.span.startLine}-${topChunk.span.endLine}`,
-            )}`,
-            truncateText(topChunk.text, 400),
-          );
+          sections.push({
+            header: 'Top chunk',
+            items: [
+              `${topChunk.path} #${topChunk.span.startLine}-${topChunk.span.endLine}`,
+              truncateText(topChunk.text, 400),
+            ],
+          });
         } else {
-          summaryLines.push('', ui.colors.muted('No matching chunks found.'));
+          sections.push({
+            items: ['No matching chunks found.'],
+          });
         }
 
         // Show synthesized context if available (from reasoning chain)
@@ -306,17 +311,19 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
           const contextPreview = result.knowledge.contextText.length > 2000
             ? result.knowledge.contextText.substring(0, 2000) + '...'
             : result.knowledge.contextText;
-          summaryLines.push(
-            '',
-            ui.colors.bold('Synthesized context:'),
-            ui.colors.muted(`(${result.knowledge.contextText.length} chars)`),
-            contextPreview,
-          );
+          sections.push({
+            header: `Synthesized context (${result.knowledge.contextText.length} chars)`,
+            items: [contextPreview],
+          });
         }
 
-        ctx.output?.write(
-          '\n' + ui.box(`${ui.symbols.info} Mind RAG query`, summaryLines),
-        );
+        const outputText = ui.sideBox({
+          title: 'Mind RAG Query',
+          sections,
+          status: 'info',
+          timing: ctx.tracker.total(),
+        });
+        ctx.output?.write(outputText);
       }
 
       return { ok: true, result };

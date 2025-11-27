@@ -25,10 +25,17 @@ export async function handleQuery(
     traceId?: string;
     spanId?: string;
     parentSpanId?: string;
+    logger?: {
+      debug: (msg: string, meta?: Record<string, unknown>) => void;
+      info: (msg: string, meta?: Record<string, unknown>) => void;
+      warn: (msg: string, meta?: Record<string, unknown>) => void;
+      error: (msg: string, meta?: Record<string, unknown>) => void;
+    };
     runtime?: {
       fetch: typeof fetch;
       fs: any;
       env: (key: string) => string | undefined;
+      /** @deprecated Use ctx.logger instead. Will be removed in v2.0 */
       log: (level: 'debug' | 'info' | 'warn' | 'error', msg: string, meta?: Record<string, unknown>) => void;
       invoke?: <T = unknown>(request: any) => Promise<any>;
       artifacts?: {
@@ -110,11 +117,7 @@ export async function handleQuery(
       } as MindGatewayError;
     }
     
-    const log = ctx.runtime?.log || ((level: string, msg: string, meta?: Record<string, unknown>) => {
-      console.log(`[${level}] ${msg}`, meta || '');
-    });
-
-    log('info', 'Executing Mind query', { query: request.query, params: request.params });
+    ctx.logger?.info('Executing Mind query', { query: request.query, params: request.params });
 
     const env = ctx.runtime?.env || ((key: string) => process.env[key]);
     let repoRoot = request.options?.cwd || env('KB_LABS_REPO_ROOT') || '';

@@ -7,11 +7,7 @@ import { updateIndexes } from '@kb-labs/mind-indexer';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET, createMindError, wrapError, getExitCode } from '@kb-labs/mind-core';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
-import {
-  formatTiming,
-  parseNumberFlag,
-  displayArtifacts,
-} from '@kb-labs/shared-cli-ui';
+import { parseNumberFlag } from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join, dirname, isAbsolute } from 'node:path';
@@ -21,18 +17,6 @@ const PACK_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
 const UPDATE_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';
-
-type StatusKind = 'success' | 'warning' | 'error';
-
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
-  const { ui } = output;
-  const symbol =
-    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
-  const color =
-    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
-
-  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
-}
 
 type MindFeedFlags = {
   cwd: { type: 'string'; description?: string };
@@ -280,71 +264,69 @@ export const run = defineCommand<MindFeedFlags, MindFeedResult>({
         await writeFile(absPath, packResult.markdown, 'utf8');
         
         if (!flags.quiet) {
-          const summaryLines: string[] = [];
-          summaryLines.push(
-            ...ui.keyValue({
-              File: absPath,
-              Intent: intent,
-              Product: product || 'none',
-              Tokens: String(packResult.tokensEstimate),
-              Mode: doUpdate ? 'Update + Pack' : 'Pack Only',
-            }),
-          );
+          const sections: Array<{ header?: string; items: string[] }> = [
+            {
+              header: 'Summary',
+              items: [
+                `File: ${absPath}`,
+                `Intent: ${intent}`,
+                `Product: ${product || 'none'}`,
+                `Tokens: ${packResult.tokensEstimate}`,
+                `Mode: ${doUpdate ? 'Update + Pack' : 'Pack Only'}`,
+              ],
+            },
+            {
+              header: 'Artifacts',
+              items: [
+                `${ui.symbols.success} Mind Feed Pack: Markdown bundle created by feed`,
+              ],
+            },
+          ];
 
           if (ignoredFlags.length > 0) {
-            summaryLines.push('');
-            summaryLines.push(ui.colors.muted(`Ignored flags: ${ignoredFlags.join(', ')}`));
+            sections.push({
+              header: 'Warnings',
+              items: [`Ignored flags: ${ignoredFlags.join(', ')}`],
+            });
           }
 
-          summaryLines.push('');
-          summaryLines.push(
-            ...displayArtifacts(
-              [
-                {
-                  name: 'Mind Feed Pack',
-                  path: absPath,
-                  size: Buffer.byteLength(packResult.markdown, 'utf8'),
-                  modified: new Date(),
-                  description: 'Markdown bundle created by feed',
-                },
-              ],
-              {
-                title: 'Artifacts',
-                showDescription: true,
-                showTime: false,
-                maxItems: 1,
-              },
-            ),
-          );
-
-          const statusLine = renderStatusLine('Pack saved', 'success', ctx.tracker.total(), ctx.output);
-          summaryLines.push('', statusLine);
-
-          ctx.output?.write('\n' + ui.box('Mind Feed', summaryLines));
+          const outputText = ui.sideBox({
+            title: 'Mind Feed',
+            sections,
+            status: 'success',
+            timing: ctx.tracker.total(),
+          });
+          ctx.output?.write(outputText);
         }
       } else {
         // Default: stream Markdown to stdout
         // Show summary to stderr if not quiet
         if (!flags.quiet) {
-          const summaryLines: string[] = [];
-          summaryLines.push(
-            ...ui.keyValue({
-              Intent: intent,
-              Product: product || 'none',
-              Tokens: String(packResult.tokensEstimate),
-              Mode: doUpdate ? 'Update + Pack' : 'Pack Only',
-            }),
-          );
+          const sections: Array<{ header?: string; items: string[] }> = [
+            {
+              items: [
+                `Intent: ${intent}`,
+                `Product: ${product || 'none'}`,
+                `Tokens: ${packResult.tokensEstimate}`,
+                `Mode: ${doUpdate ? 'Update + Pack' : 'Pack Only'}`,
+              ],
+            },
+          ];
 
           if (ignoredFlags.length > 0) {
-            summaryLines.push('');
-            summaryLines.push(ui.colors.muted(`Ignored flags: ${ignoredFlags.join(', ')}`));
+            sections.push({
+              header: 'Warnings',
+              items: [`Ignored flags: ${ignoredFlags.join(', ')}`],
+            });
           }
 
-          const statusLine = renderStatusLine('Pack ready', 'success', ctx.tracker.total(), ctx.output);
-          summaryLines.push('', statusLine);
-
-          ctx.output?.write('\n' + ui.box('Mind Feed', summaryLines));
+          const outputText = ui.sideBox({
+            title: 'Mind Feed',
+            sections,
+            status: 'success',
+            timing: ctx.tracker.total(),
+          });
+          ctx.output?.write(outputText);
         }
         // Stream markdown to stdout
         ctx.output?.write(packResult.markdown);

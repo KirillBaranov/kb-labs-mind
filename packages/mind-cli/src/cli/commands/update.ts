@@ -5,10 +5,7 @@
 import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
-import {
-  formatTiming,
-  parseNumberFlag,
-} from '@kb-labs/shared-cli-ui';
+import { parseNumberFlag } from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
@@ -148,32 +145,37 @@ export const run = defineCommand<MindUpdateFlags, MindUpdateResult>({
     } else {
       if (!flags.quiet) {
         const { ui } = ctx.output!;
-        const summaryLines: string[] = [];
-        summaryLines.push(
-          ...ui.keyValue({
-            'API Changes': formatDelta(result.api?.added, result.api?.updated, result.api?.removed),
-            'Dependencies': formatDelta(result.deps?.edgesAdded, undefined, result.deps?.edgesRemoved),
-            'Diff Files': result.diff ? String(result.diff.files || 0) : 'none',
-          }),
-        );
+
+        const sections: Array<{ header?: string; items: string[] }> = [
+          {
+            header: 'Changes',
+            items: [
+              `API Changes: ${formatDelta(result.api?.added, result.api?.updated, result.api?.removed)}`,
+              `Dependencies: ${formatDelta(result.deps?.edgesAdded, undefined, result.deps?.edgesRemoved)}`,
+              `Diff Files: ${result.diff ? String(result.diff.files || 0) : 'none'}`,
+            ],
+          },
+        ];
 
         if (result.partial && result.budget) {
-          summaryLines.push('');
-          summaryLines.push(
-            ui.colors.muted('Partial update due to time budget'),
-            ui.colors.muted(`Budget: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`),
-          );
+          sections.push({
+            header: 'Budget',
+            items: [
+              `Partial update due to time budget`,
+              `Used: ${result.budget.usedMs}ms / ${result.budget.limitMs}ms`,
+            ],
+          });
         }
 
-        const statusSymbol = result.partial ? ui.symbols.warning : ui.symbols.success;
-        const statusColor = result.partial ? ui.colors.warn : ui.colors.success;
-        const statusLabel = result.partial ? 'Partial update' : 'Update complete';
-        summaryLines.push(
-          '',
-          `${statusSymbol} ${statusColor(statusLabel)} · ${ui.colors.muted(formatTiming(ctx.tracker.total()))}`,
-        );
+        const status = result.partial ? 'warning' : 'success';
 
-        ctx.output?.write('\n' + ui.box('Mind Update', summaryLines));
+        const outputText = ui.sideBox({
+          title: 'Mind Update',
+          sections,
+          status,
+          timing: ctx.tracker.total(),
+        });
+        ctx.output?.write(outputText);
       }
     }
 

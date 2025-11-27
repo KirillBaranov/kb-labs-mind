@@ -4,9 +4,6 @@
 
 import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
 import { initMindStructure } from '@kb-labs/mind-indexer';
-import {
-  displayArtifacts,
-} from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 import { join } from 'node:path';
@@ -147,26 +144,35 @@ export const run = defineCommand<MindInitFlags, MindInitResult>({
       });
     } else if (!flags.quiet) {
       const { ui } = ctx.output!;
-      const summaryLines: string[] = [];
-      summaryLines.push(
-        ...ui.keyValue({
-          Workspace: mindDir,
-          Status: 'Initialized',
-        }),
-      );
+
+      const sections: Array<{ header?: string; items: string[] }> = [
+        {
+          header: 'Summary',
+          items: [
+            `Workspace: ${mindDir}`,
+            `Status: Initialized`,
+          ],
+        },
+      ];
 
       if (artifacts.length > 0) {
-        summaryLines.push('');
-        summaryLines.push(
-          ...displayArtifacts(artifacts, {
-            title: 'Created Artifacts',
-            showDescription: true,
-            showTime: false,
-          }),
-        );
+        const artifactItems: string[] = [];
+        for (const artifact of artifacts) {
+          artifactItems.push(`${ui.symbols.success} ${artifact.name}: ${artifact.description}`);
+        }
+        sections.push({
+          header: 'Created Artifacts',
+          items: artifactItems,
+        });
       }
 
-      ctx.output?.write('\n' + ui.box(`${ui.symbols.success} Mind Init`, summaryLines));
+      const outputText = ui.sideBox({
+        title: 'Mind Init',
+        sections,
+        status: 'success',
+        timing: ctx.tracker.total(),
+      });
+      ctx.output?.write(outputText);
     }
 
     return { ok: true, mindDir, artifacts };

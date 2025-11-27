@@ -523,7 +523,7 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
       },
       {
         manifestVersion: '1.0',
-        id: 'mind:sync',
+        id: 'sync',
         group: 'mind',
         describe: 'Synchronize external documents with Mind',
         longDescription: 'Add, update, delete, or list external documents (ClickUp, Git, etc.)',

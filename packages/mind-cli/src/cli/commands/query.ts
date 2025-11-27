@@ -4,10 +4,6 @@
 
 import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
-import {
-  formatTiming,
-  displayArtifacts,
-} from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { resolve, join } from 'node:path';
 import { mkdir, writeFile, stat } from 'node:fs/promises';
@@ -22,18 +18,6 @@ import {
 
 const QUERY_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.query.output']?.id ?? 'mind.query.output';
-
-type StatusKind = 'success' | 'warning' | 'error';
-
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
-  const { ui } = output;
-  const symbol =
-    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
-  const color =
-    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
-
-  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
-}
 
 type MindQueryFlags = {
   cwd: { type: 'string'; description?: string };
@@ -334,28 +318,32 @@ export const run = defineCommand<MindQueryFlags, MindQueryResult>({
         } else {
           if (!flags.quiet) {
             const { ui } = ctx.output!;
-            const summaryLines: string[] = [];
-            summaryLines.push(
-              ...ui.keyValue({
-                Query: queryName,
-                Format: 'TOON',
-              }),
-            );
+
+            const sections: Array<{ header?: string; items: string[] }> = [
+              {
+                items: [
+                  `Query: ${queryName}`,
+                  `Format: TOON`,
+                ],
+              },
+            ];
 
             if (sidecarArtifact) {
-              summaryLines.push('');
-              summaryLines.push(
-                ...displayArtifacts([sidecarArtifact], {
-                  title: 'Artifacts',
-                  showDescription: true,
-                  showTime: false,
-                  maxItems: 1,
-                }),
-              );
+              sections.push({
+                header: 'Artifacts',
+                items: [
+                  `${ui.symbols.success} ${sidecarArtifact.name}: ${sidecarArtifact.description}`,
+                ],
+              });
             }
 
-            summaryLines.push('', renderStatusLine('Query ready', 'success', ctx.tracker.total(), ctx.output));
-            ctx.output?.write('\n' + ui.box('Mind Query (TOON)', summaryLines));
+            const outputText = ui.sideBox({
+              title: 'Mind Query (TOON)',
+              sections,
+              status: 'success',
+              timing: ctx.tracker.total(),
+            });
+            ctx.output?.write(outputText);
           }
           ctx.output?.write(toonOutput);
         }
@@ -396,24 +384,31 @@ export const run = defineCommand<MindQueryFlags, MindQueryResult>({
     } else {
       if (!flags.quiet) {
         const { ui } = ctx.output!;
-        const summaryLines: string[] = [];
-        summaryLines.push(
-          ...ui.keyValue({
-            Query: queryName,
-            Duration: formatTiming(ctx.tracker.total()),
-            Cached: meta?.cached ? 'Yes' : 'No',
-          }),
-        );
+
+        const items: string[] = [
+          `Query: ${queryName}`,
+          `Cached: ${meta?.cached ? 'Yes' : 'No'}`,
+        ];
 
         if (meta?.tokensEstimate !== undefined) {
-          summaryLines.push(`Token Estimate: ${meta.tokensEstimate}`);
+          items.push(`Token Estimate: ${meta.tokensEstimate}`);
         }
 
         if (meta?.filesScanned !== undefined) {
-          summaryLines.push(`Files Scanned: ${meta.filesScanned}`);
+          items.push(`Files Scanned: ${meta.filesScanned}`);
         }
 
-        ctx.output?.write('\n' + ui.box('Mind Query', summaryLines));
+        const sections: Array<{ header?: string; items: string[] }> = [
+          { items },
+        ];
+
+        const outputText = ui.sideBox({
+          title: 'Mind Query',
+          sections,
+          status: 'success',
+          timing: ctx.tracker.total(),
+        });
+        ctx.output?.write(outputText);
       }
 
       if (compact) {

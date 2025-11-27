@@ -36,26 +36,26 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
     },
   },
   async handler(ctx, argv, flags) {
-    console.log('[RAG-INDEX] ===== HANDLER ENTRY POINT =====');
-    console.log('[RAG-INDEX] Flags:', JSON.stringify({ cwd: flags.cwd, scope: flags.scope, json: flags.json, quiet: flags.quiet }));
+    ctx.logger?.debug('RAG-INDEX handler entry point');
+    ctx.logger?.debug('Flags', { cwd: flags.cwd, scope: flags.scope, json: flags.json, quiet: flags.quiet });
 
     const cwd = flags.cwd || ctx.cwd;
     const scopeId = flags.scope;
 
-    console.log('[RAG-INDEX] Command started, cwd:', cwd, 'scopeId:', scopeId);
+    ctx.logger?.debug('Command started', { cwd, scopeId });
 
     const spinner = ctx.output?.spinner('Building Mind RAG index');
     if (!flags.quiet && !flags.json) {
       spinner?.start();
     }
 
-    console.log('[RAG-INDEX] About to call runRagIndex');
-    ctx.tracker.checkpoint('index');
+    ctx.logger?.debug('About to call runRagIndex');
+    ctx.tracker?.checkpoint('index');
 
     const result = await runRagIndex({ cwd, scopeId });
 
-    console.log('[RAG-INDEX] runRagIndex completed successfully');
-    ctx.tracker.checkpoint('complete');
+    ctx.logger?.debug('runRagIndex completed successfully');
+    ctx.tracker?.checkpoint('complete');
 
     if (!flags.quiet && !flags.json) {
       spinner?.succeed('Mind RAG index updated');
@@ -70,10 +70,23 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
       ctx.output?.json({ ok: true, scopes: result.scopeIds });
     } else if (!flags.quiet) {
       const { ui } = ctx.output!;
-      ctx.output?.success(
-        `${ui.symbols.success} ${ui.colors.success('Mind knowledge index updated')} (${scopesLabel})`,
-        { scopes: result.scopeIds },
-      );
+
+      const sections: Array<{ header?: string; items: string[] }> = [
+        {
+          items: [
+            `Updated ${scopesLabel}`,
+            `Scopes: ${result.scopeIds.join(', ')}`,
+          ],
+        },
+      ];
+
+      const outputText = ui.sideBox({
+        title: 'Mind RAG Index',
+        sections,
+        status: 'success',
+        timing: ctx.tracker.total(),
+      });
+      ctx.output?.write(outputText);
     }
 
     return { ok: true, scopes: result.scopeIds };

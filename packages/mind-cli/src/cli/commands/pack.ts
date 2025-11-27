@@ -6,11 +6,7 @@ import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
-import {
-  formatTiming,
-  parseNumberFlag,
-  displayArtifacts,
-} from '@kb-labs/shared-cli-ui';
+import { parseNumberFlag } from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { writeFile } from 'node:fs/promises';
 import { join, isAbsolute } from 'node:path';
@@ -18,18 +14,6 @@ import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.
 
 const PACK_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
-
-type StatusKind = 'success' | 'warning' | 'error';
-
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
-  const { ui } = output;
-  const symbol =
-    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
-  const color =
-    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
-
-  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
-}
 
 type MindPackFlags = {
   cwd: { type: 'string'; description?: string };
@@ -192,39 +176,31 @@ export const run = defineCommand<MindPackFlags, MindPackResult>({
           await writeFile(absPath, result.markdown, 'utf8');
           
           if (!flags.quiet) {
-            const summaryLines: string[] = [];
-            summaryLines.push(
-              ...ui.keyValue({
-                File: absPath,
-                Intent: intent,
-                Product: product || 'none',
-                Tokens: String(result.tokensEstimate),
-              }),
-            );
-
-            summaryLines.push('');
-            summaryLines.push(
-              ...displayArtifacts(
-                [
-                  {
-                    name: 'Mind Pack',
-                    path: absPath,
-                    size: Buffer.byteLength(result.markdown, 'utf8'),
-                    modified: new Date(),
-                    description: 'Markdown bundle saved to disk',
-                  },
+            const sections: Array<{ header?: string; items: string[] }> = [
+              {
+                header: 'Summary',
+                items: [
+                  `File: ${absPath}`,
+                  `Intent: ${intent}`,
+                  `Product: ${product || 'none'}`,
+                  `Tokens: ${result.tokensEstimate}`,
                 ],
-                {
-                  title: 'Artifacts',
-                  showDescription: true,
-                  showTime: false,
-                  maxItems: 1,
-                },
-              ),
-            );
+              },
+              {
+                header: 'Artifacts',
+                items: [
+                  `${ui.symbols.success} Mind Pack: Markdown bundle saved to disk`,
+                ],
+              },
+            ];
 
-            summaryLines.push('', renderStatusLine('Pack saved', 'success', ctx.tracker.total(), ctx.output));
-            ctx.output?.write('\n' + ui.box('Mind Pack', summaryLines));
+            const outputText = ui.sideBox({
+              title: 'Mind Pack',
+              sections,
+              status: 'success',
+              timing: ctx.tracker.total(),
+            });
+            ctx.output?.write(outputText);
           }
         } catch (writeError: any) {
           const errorMessage = writeError instanceof Error ? writeError.message : String(writeError);
@@ -239,17 +215,23 @@ export const run = defineCommand<MindPackFlags, MindPackResult>({
         // Default: stream Markdown to stdout
         // Show summary if not quiet
         if (!flags.quiet) {
-          const summaryLines: string[] = [];
-          summaryLines.push(
-            ...ui.keyValue({
-              Intent: intent,
-              Product: product || 'none',
-              Tokens: String(result.tokensEstimate),
-            }),
-          );
+          const sections: Array<{ header?: string; items: string[] }> = [
+            {
+              items: [
+                `Intent: ${intent}`,
+                `Product: ${product || 'none'}`,
+                `Tokens: ${result.tokensEstimate}`,
+              ],
+            },
+          ];
 
-          summaryLines.push('', renderStatusLine('Pack ready', 'success', ctx.tracker.total(), ctx.output));
-          ctx.output?.write('\n' + ui.box('Mind Pack', summaryLines));
+          const outputText = ui.sideBox({
+            title: 'Mind Pack',
+            sections,
+            status: 'success',
+            timing: ctx.tracker.total(),
+          });
+          ctx.output?.write(outputText);
         }
         // Also return data for artifacts
         ctx.output?.write(result.markdown);

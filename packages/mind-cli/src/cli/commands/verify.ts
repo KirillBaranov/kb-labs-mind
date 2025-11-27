@@ -7,9 +7,6 @@ import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { sha256 } from '@kb-labs/mind-core';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-types';
-import {
-  formatTiming,
-} from '@kb-labs/shared-cli-ui';
 import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
 
@@ -56,18 +53,6 @@ async function readJsonSafely<T>(path: string): Promise<T | null> {
  */
 function computeJsonHash(obj: any): string {
   return sha256(JSON.stringify(obj));
-}
-
-type StatusKind = 'success' | 'warning' | 'error';
-
-function renderStatusLine(label: string, kind: StatusKind, durationMs: number, output: any): string {
-  const { ui } = output;
-  const symbol =
-    kind === 'error' ? ui.symbols.error : kind === 'warning' ? ui.symbols.warning : ui.symbols.success;
-  const color =
-    kind === 'error' ? ui.colors.error : kind === 'warning' ? ui.colors.warn : ui.colors.success;
-
-  return `${symbol} ${color(label)} · ${ui.colors.muted(formatTiming(durationMs))}`;
 }
 
 /**
@@ -292,37 +277,43 @@ export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
     } else {
       if (!flags.quiet) {
         const { ui } = ctx.output!;
-        if (result.ok) {
-          const summaryLines: string[] = [];
-          summaryLines.push(
-            ...ui.keyValue({
-              'Files Checked': String(filesChecked),
-            }),
-          );
-          summaryLines.push('', renderStatusLine('Workspace consistent', 'success', ctx.tracker.total(), ctx.output));
-          ctx.output?.write('\n' + ui.box('Mind Verify', summaryLines));
-        } else {
-          const summaryLines: string[] = [];
-          summaryLines.push(
-            ...ui.keyValue({
-              'Files Checked': String(filesChecked),
-              Inconsistencies: String(inconsistencies.length),
-            }),
-          );
+
+        const sections: Array<{ header?: string; items: string[] }> = [
+          {
+            items: [
+              `Files Checked: ${filesChecked}`,
+            ],
+          },
+        ];
+
+        if (!result.ok) {
+          sections[0].items.push(`Inconsistencies: ${inconsistencies.length}`);
 
           if (inconsistencies.length > 0) {
-            summaryLines.push('');
-            summaryLines.push(ui.colors.bold('Details'));
+            const detailItems: string[] = [];
             for (const inc of inconsistencies) {
-              summaryLines.push(ui.colors.muted(`- ${inc.file} (${inc.type} mismatch)`));
+              detailItems.push(`${ui.symbols.warning} ${inc.file} (${inc.type} mismatch)`);
             }
+            sections.push({
+              header: 'Details',
+              items: detailItems,
+            });
           }
 
-          summaryLines.push('');
-          summaryLines.push(ui.colors.muted('Hint: Run kb mind update'));
-          summaryLines.push('', renderStatusLine('Inconsistencies found', 'warning', ctx.tracker.total(), ctx.output));
-          ctx.output?.write('\n' + ui.box('Mind Verify', summaryLines));
+          sections.push({
+            header: 'Hint',
+            items: ['Run kb mind update'],
+          });
         }
+
+        const status = result.ok ? 'success' : 'warning';
+        const outputText = ui.sideBox({
+          title: 'Mind Verify',
+          sections,
+          status,
+          timing: ctx.tracker.total(),
+        });
+        ctx.output?.write(outputText);
       }
     }
 
