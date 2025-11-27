@@ -4,11 +4,14 @@
 
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
+import { getLogger } from '@kb-labs/core-sys/logging';
 import { TSExtractor } from '../adapters/ts-extractor.js';
 import { sha256 } from '@kb-labs/mind-core';
 import { ensureMindStructure } from '../fs/ensure.js';
 import type { ApiIndex as _ApiIndex, ApiFile, ApiExport as _ApiExport } from '@kb-labs/mind-types';
 import type { IndexerContext } from '../types/index.js';
+
+const logger = getLogger('mind:indexer:api');
 
 /**
  * Recursively find TypeScript/JavaScript files
@@ -93,7 +96,7 @@ export async function indexApiFiles(
       // Skip files larger than 10MB to prevent OOM
       const MAX_FILE_SIZE_MB = 10;
       if (fileSizeMB > MAX_FILE_SIZE_MB) {
-        console.warn(`⚠️  Skipping large API file: ${fullPath} (${fileSizeMB.toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`);
+        logger.warn(`Skipping large API file: ${fullPath} (${fileSizeMB.toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`);
         continue;
       }
 
