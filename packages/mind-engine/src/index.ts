@@ -1,3 +1,4 @@
+import { getLogger } from '@kb-labs/core-sys/logging';
 import * as path from 'node:path';
 import fs from 'fs-extra';
 import fg from 'fast-glob';
@@ -5,6 +6,8 @@ import fg from 'fast-glob';
 import picomatch from 'picomatch';
 import { createHash } from 'node:crypto';
 import { getChunkerForFile, type Chunk } from './chunking/index.js';
+
+const logger = getLogger('mind:engine');
 import type {
   KnowledgeChunk,
   KnowledgeEngineConfig,
@@ -1082,7 +1085,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const { ParallelChunkingStage } = await import('./indexing/stages/parallel-chunking.js');
     const { EmbeddingStage } = await import('./indexing/stages/embedding.js');
     const { StorageStage } = await import('./indexing/stages/storage.js');
-    const { createLogger } = await import('./indexing/utils/logger.js');
+    const { getLogger } = await import('@kb-labs/core-sys/logging');
 
     // Initialize components
     const memoryMonitor = new MemoryMonitor({
@@ -1094,8 +1097,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     const chunkerFactory = new AdaptiveChunkerFactory();
 
-    // Create logger adapter
-    const logger = createLogger({ prefix: 'mind-engine' });
+    // Create logger using official logging system
+    const logger = getLogger('mind:engine');
 
     // Incremental indexing: don't clear scope, let deduplication handle updates
     // await this.vectorStore.replaceScope(options.scope.id, []);
@@ -1961,9 +1964,11 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // V8's split() on huge strings creates massive arrays causing OOM
     const MAX_CONTENT_LENGTH = 10000000; // 10MB max
     if (contents.length > MAX_CONTENT_LENGTH) {
-      console.warn(
-        `[MIND] File ${relativePath} is too large (${contents.length} bytes), truncating to ${MAX_CONTENT_LENGTH} bytes`,
-      );
+      logger.warn('File is too large, truncating', {
+        file: relativePath,
+        size: contents.length,
+        maxSize: MAX_CONTENT_LENGTH,
+      });
       contents = contents.substring(0, MAX_CONTENT_LENGTH);
     }
 

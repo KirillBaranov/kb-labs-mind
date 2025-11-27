@@ -13,9 +13,12 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
+import { getLogger } from '@kb-labs/core-sys/logging';
 import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types.js';
 import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory.js';
 import type { FileMetadata } from './discovery.js';
+
+const logger = getLogger('mind:engine:chunking');
 
 export interface MindChunk {
   chunkId: string;
@@ -166,7 +169,7 @@ export class ChunkingStage implements PipelineStage {
     });
 
     // DEBUG: Log which chunker is selected for which file
-    console.log(`[CHUNKING] File: ${normalizedPath}, Size: ${(size / 1024).toFixed(1)}KB, Chunker: ${chunker.id}`);
+    logger.debug(`File: ${normalizedPath}, Size: ${(size / 1024).toFixed(1)}KB, Chunker: ${chunker.id}`);
 
     // Calculate file hash (for deduplication)
     const hashStream = createHash('sha256');
