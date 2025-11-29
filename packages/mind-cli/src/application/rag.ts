@@ -8,8 +8,14 @@ import {
 import {
   createAgentQueryOrchestrator,
   isAgentError,
+  type AgentQueryOrchestrator,
 } from '@kb-labs/mind-orchestrator';
 import { createOpenAILLMEngine } from '@kb-labs/mind-llm';
+
+/**
+ * Global orchestrator instance for cache persistence across queries
+ */
+let globalOrchestrator: AgentQueryOrchestrator | null = null;
 
 export interface RagIndexOptions {
   cwd: string;
@@ -48,6 +54,12 @@ export async function runRagIndex(
 
   for (const scopeId of scopeIds) {
     await runtime.service.index(scopeId);
+  }
+
+  // Invalidate query cache after re-indexing
+  // This ensures fresh results after index update
+  if (globalOrchestrator) {
+    globalOrchestrator.invalidateCache(scopeIds);
   }
 
   return { scopeIds };
@@ -101,8 +113,28 @@ export async function runRagQuery(
           };
           
           const humanReadableStage = stageMap[event.stage] || event.stage;
+
+          // Extract interesting details from metadata
+          let enhancedDetails = event.details;
+          if (event.metadata) {
+            // Show subqueries if available
+            if (event.metadata.subqueries && Array.isArray(event.metadata.subqueries)) {
+              const subqueryList = event.metadata.subqueries.slice(0, 3).join(', ');
+              const count = event.metadata.subqueries.length;
+              enhancedDetails = `${count} subqueries: ${subqueryList}${count > 3 ? '...' : ''}`;
+            }
+            // Show result count if available
+            else if (typeof event.metadata.resultCount === 'number') {
+              enhancedDetails = `${event.metadata.resultCount} results`;
+            }
+            // Show chunk count if available
+            else if (typeof event.metadata.chunkCount === 'number') {
+              enhancedDetails = `${event.metadata.chunkCount} chunks`;
+            }
+          }
+
           if (options.onProgress) {
-            options.onProgress(humanReadableStage, event.details);
+            options.onProgress(humanReadableStage, enhancedDetails);
           }
         } catch (error) {
           // Don't break query if progress callback fails
@@ -152,8 +184,8 @@ export async function runRagQuery(
     onProgress: onProgressEvent,
   });
   
-  options.onProgress?.('Initializing runtime');
-  
+  options.onProgress?.('Initializing Mind runtime');
+
   const defaultScopeId = runtime.config.scopes?.[0]?.id;
   const scopeId = options.scopeId ?? defaultScopeId;
   if (!scopeId) {
@@ -162,8 +194,10 @@ export async function runRagQuery(
     );
   }
 
-  options.onProgress?.('Executing query', `scope: ${scopeId}`);
-  
+  options.onProgress?.('Preparing query', `scope: ${scopeId}`);
+
+  options.onProgress?.('Searching knowledge base');
+
   const knowledge = await runtime.service.query({
     productId: MIND_PRODUCT_ID,
     intent: options.intent ?? 'summary',
@@ -173,7 +207,7 @@ export async function runRagQuery(
     profileId: options.profileId,
   });
 
-  options.onProgress?.('Query completed', `${knowledge.chunks.length} chunks found`);
+  options.onProgress?.('Processing results', `${knowledge.chunks.length} chunks found`);
 
   return {
     scopeId,
@@ -221,14 +255,18 @@ export async function runAgentRagQuery(
       })
     : undefined;
 
-  // Create orchestrator
-  const orchestrator = createAgentQueryOrchestrator({
-    llmEngine,
-    config: {
-      mode: options.mode ?? 'auto',
-      autoDetectComplexity: true,
-    },
-  });
+  // Reuse or create global orchestrator for cache persistence
+  if (!globalOrchestrator) {
+    globalOrchestrator = createAgentQueryOrchestrator({
+      llmEngine,
+      config: {
+        mode: options.mode ?? 'auto',
+        autoDetectComplexity: true,
+      },
+    });
+  }
+
+  const orchestrator = globalOrchestrator;
 
   // Create silent logger to suppress all output
   const silentLogger: KnowledgeLogger = {

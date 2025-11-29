@@ -24,6 +24,7 @@ import { ChunkGatherer, type QueryFn } from './gatherer/chunk-gatherer.js';
 import { CompletenessChecker } from './checker/completeness-checker.js';
 import { ResponseSynthesizer } from './synthesizer/response-synthesizer.js';
 import { ResponseCompressor } from './compressor/response-compressor.js';
+import { QueryCache } from './cache/query-cache.js';
 import { createMindAnalytics, type MindAnalytics, type MindAnalyticsContext } from './analytics/index.js';
 import {
   type OrchestratorConfig,
@@ -68,6 +69,7 @@ export class AgentQueryOrchestrator {
   private readonly checker: CompletenessChecker | null;
   private readonly synthesizer: ResponseSynthesizer | null;
   private readonly compressor: ResponseCompressor;
+  private readonly queryCache: QueryCache;
   private readonly analytics: MindAnalytics;
 
   constructor(options: AgentQueryOrchestratorOptions = {}) {
@@ -121,6 +123,16 @@ export class AgentQueryOrchestrator {
       config: this.config.compression,
     });
 
+    // Initialize query cache
+    this.queryCache = new QueryCache({
+      maxSize: 100,
+      ttlByMode: {
+        instant: 2 * 60 * 1000,   // 2 minutes
+        auto: 5 * 60 * 1000,      // 5 minutes
+        thinking: 15 * 60 * 1000, // 15 minutes
+      },
+    });
+
     // Initialize analytics
     this.analytics = createMindAnalytics({
       enabled: options.analytics?.enabled ?? true,
@@ -138,11 +150,28 @@ export class AgentQueryOrchestrator {
   ): Promise<OrchestratorResult> {
     const requestId = generateRequestId();
 
+    // Determine mode early for cache lookup
+    let mode = options.mode ?? this.config.mode;
+
+    // Check cache first (before analytics to avoid overhead)
+    if (!options.noCache) {
+      const cached = this.queryCache.get(
+        options.text,
+        options.scopeId ?? 'default',
+        mode,
+      );
+
+      if (cached) {
+        // Cache hit - return immediately
+        return cached;
+      }
+    }
+
     // Create analytics context
     const analyticsCtx = this.analytics.createContext({
       queryId: requestId,
       scopeId: options.scopeId ?? 'default',
-      mode: options.mode ?? this.config.mode,
+      mode: mode,
     });
 
     // Track query start
@@ -155,8 +184,7 @@ export class AgentQueryOrchestrator {
     });
 
     try {
-      // Determine mode
-      let mode = options.mode ?? this.config.mode;
+      // Mode already determined above for cache lookup
 
       // Auto-detect complexity if in auto mode
       if (mode === 'auto' && this.decomposer && this.config.autoDetectComplexity) {
@@ -225,6 +253,16 @@ export class AgentQueryOrchestrator {
       // Check if compression was applied
       if (compressed !== result) {
         this.analytics.updateContext(analyticsCtx, { compressionApplied: true });
+      }
+
+      // Store in cache
+      if (!options.noCache) {
+        this.queryCache.set(
+          options.text,
+          options.scopeId ?? 'default',
+          mode,
+          compressed,
+        );
       }
 
       // Track successful completion
@@ -324,6 +362,9 @@ export class AgentQueryOrchestrator {
     // Gather chunks
     let gathered = await this.gatherer.gather(decomposed, 'thinking', queryFn);
 
+    // Early deduplication - reduce tokens for completeness check
+    gathered.chunks = this.deduplicateChunks(gathered.chunks);
+
     // Track gather stage
     await this.analytics.trackStage('gather', analyticsCtx, {
       chunksFound: gathered.chunks.length,
@@ -345,7 +386,11 @@ export class AgentQueryOrchestrator {
         iteration: iteration + 1,
       });
 
-      if (completeness.complete || !completeness.suggestSources?.length) {
+      // Early exit conditions:
+      // 1. Marked as complete
+      // 2. High confidence (>0.8) - good enough
+      // 3. No suggestions for improvement
+      if (completeness.complete || completeness.confidence > 0.8 || !completeness.suggestSources?.length) {
         break;
       }
 
@@ -362,11 +407,14 @@ export class AgentQueryOrchestrator {
         }
       }
 
+      // Deduplicate after each iteration to reduce token count
+      gathered.chunks = this.deduplicateChunks(gathered.chunks);
+
       iteration++;
     }
 
-    // Deduplicate after iterations
-    const uniqueChunks = this.deduplicateChunks(gathered.chunks);
+    // Chunks already deduplicated during iterations
+    const uniqueChunks = gathered.chunks;
 
     // Synthesize response
     const result = await this.buildResponse(
@@ -547,6 +595,33 @@ export class AgentQueryOrchestrator {
       }
     }
     return Array.from(seen.values()).sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Invalidate query cache for specific scopes (e.g., after re-indexing)
+   * @param scopeIds - Optional array of scope IDs to invalidate. If not provided, clears entire cache.
+   * @returns Number of cache entries invalidated
+   */
+  invalidateCache(scopeIds?: string[]): number {
+    if (!scopeIds || scopeIds.length === 0) {
+      // Clear entire cache
+      this.queryCache.clear();
+      return 0;
+    }
+
+    // Invalidate specific scopes
+    let totalInvalidated = 0;
+    for (const scopeId of scopeIds) {
+      totalInvalidated += this.queryCache.invalidateScope(scopeId);
+    }
+    return totalInvalidated;
+  }
+
+  /**
+   * Get query cache statistics
+   */
+  getCacheStats() {
+    return this.queryCache.stats();
   }
 
   /**

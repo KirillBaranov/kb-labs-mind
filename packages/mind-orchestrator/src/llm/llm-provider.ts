@@ -71,16 +71,15 @@ export function createLLMProvider(engine: MindLLMEngine): LLMProvider {
     name: engine.id,
 
     async complete(options: LLMCompleteOptions): Promise<string> {
-      const fullPrompt = options.systemPrompt
-        ? `${options.systemPrompt}\n\n${options.prompt}`
-        : options.prompt;
-
-      // Estimate input tokens (rough)
-      const inputTokens = Math.ceil(fullPrompt.length / 4);
+      // Pass system prompt separately (NOT concatenated) for OpenAI prompt caching
+      const inputTokens = Math.ceil(
+        ((options.systemPrompt?.length ?? 0) + options.prompt.length) / 4
+      );
       stats.tokensIn += inputTokens;
       stats.calls++;
 
-      const result = await engine.generate(fullPrompt, {
+      const result = await engine.generate(options.prompt, {
+        systemPrompt: options.systemPrompt,
         maxTokens: options.maxTokens ?? 1024,
         temperature: options.temperature ?? 0.2,
         stop: options.stop,
@@ -96,16 +95,20 @@ IMPORTANT: Respond with valid JSON only. No markdown, no code blocks, just raw J
 Do not include any text before or after the JSON object.
 `;
 
-      const fullPrompt = options.systemPrompt
-        ? `${options.systemPrompt}\n\n${jsonInstructions}\n\n${options.prompt}`
-        : `${jsonInstructions}\n\n${options.prompt}`;
+      // Append JSON instructions to system prompt (still cacheable!)
+      const systemPrompt = options.systemPrompt
+        ? `${options.systemPrompt}\n\n${jsonInstructions}`
+        : jsonInstructions;
 
       // Estimate input tokens
-      const inputTokens = Math.ceil(fullPrompt.length / 4);
+      const inputTokens = Math.ceil(
+        (systemPrompt.length + options.prompt.length) / 4
+      );
       stats.tokensIn += inputTokens;
       stats.calls++;
 
-      const result = await engine.generate(fullPrompt, {
+      const result = await engine.generate(options.prompt, {
+        systemPrompt,
         maxTokens: options.maxTokens ?? 2048,
         temperature: options.temperature ?? 0.1, // Lower for JSON
       });

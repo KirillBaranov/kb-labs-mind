@@ -69,14 +69,26 @@ export function createOpenAILLMEngine(
       generateOptions?: MindLLMGenerateOptions,
     ): Promise<MindLLMGenerateResult> {
       try {
+        // Build messages array
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+
+        // Add system message if provided (enables OpenAI prompt caching!)
+        if (generateOptions?.systemPrompt) {
+          messages.push({
+            role: 'system',
+            content: generateOptions.systemPrompt,
+          });
+        }
+
+        // Add user message
+        messages.push({
+          role: 'user',
+          content: prompt,
+        });
+
         const response = await client.chat.completions.create({
           model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
+          messages,
           max_tokens: generateOptions?.maxTokens ?? 512,
           temperature: generateOptions?.temperature ?? 0.3, // Lower temperature for compression/summarization
           stop: generateOptions?.stop,

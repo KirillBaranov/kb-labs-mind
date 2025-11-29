@@ -58,23 +58,30 @@ export class ChunkGatherer {
     const allChunks: KnowledgeChunk[] = [];
     let totalMatches = 0;
 
-    // Execute sub-queries
-    for (const subquery of decomposed.subqueries) {
+    // Execute sub-queries in parallel
+    const subqueryPromises = decomposed.subqueries.map(async (subquery) => {
       try {
         const result = await queryFn({
           text: subquery,
           intent: 'search',
           limit: modeConfig.chunksPerQuery,
         });
-
-        subqueryResults.set(subquery, result.chunks);
-        allChunks.push(...result.chunks);
-        totalMatches += result.chunks.length;
+        return { subquery, chunks: result.chunks };
       } catch (error) {
         // Log error but continue with other sub-queries
         logger.warn(`Subquery failed: ${subquery}`, { error });
-        subqueryResults.set(subquery, []);
+        return { subquery, chunks: [] };
       }
+    });
+
+    // Wait for all sub-queries to complete
+    const results = await Promise.all(subqueryPromises);
+
+    // Aggregate results
+    for (const { subquery, chunks } of results) {
+      subqueryResults.set(subquery, chunks);
+      allChunks.push(...chunks);
+      totalMatches += chunks.length;
     }
 
     // Deduplicate chunks

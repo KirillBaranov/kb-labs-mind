@@ -1160,6 +1160,22 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
     // Mind can be invoked by other plugins via REST API
     // No need to declare invoke permissions here as mind doesn't call other plugins
     // invoke: undefined, // Not needed - mind doesn't invoke other plugins
+    // State broker permissions
+    // Mind uses state broker for persistent query caching
+    state: {
+      own: {
+        read: true,
+        write: true,
+        delete: true,
+      },
+      // No external namespace access needed for now
+      // external: [],
+      quotas: {
+        maxEntries: 10000, // Maximum cache entries
+        maxSizeBytes: 100 * 1024 * 1024, // 100 MB total cache size
+        operationsPerMinute: 1000, // Allow frequent cache operations
+      },
+    },
     // Artifact access permissions
     // Other plugins can read mind artifacts (pack outputs, query results)
     artifacts: {
@@ -1178,6 +1194,21 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
       ],
     },
   },
+
+  // Scheduled jobs
+  jobs: [
+    {
+      id: 'auto-index',
+      handler: './handlers/auto-index#run',
+      schedule: '0 * * * *', // Every hour
+      describe: 'Automatically index Mind RAG database',
+      enabled: false, // Disabled by default - users enable with 'kb jobs enable'
+      priority: 5,
+      timeout: 1200000, // 20 minutes
+      retries: 2,
+      tags: ['mind', 'indexing', 'rag', 'automatic'],
+    },
+  ],
 
   // Artifacts (output files)
   artifacts: [

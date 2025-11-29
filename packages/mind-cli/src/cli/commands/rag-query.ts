@@ -198,7 +198,7 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
     }
 
     // === STANDARD MODE ===
-    const spinner = ctx.output?.spinner('Initializing...');
+    const spinner = ctx.output?.spinner('Initializing Mind RAG query...');
     const startTime = Date.now();
 
     // Helper to format elapsed time
@@ -212,19 +212,20 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       return `${minutes}m ${remainingSeconds}s`;
     };
 
-    // Set up interval to update spinner with elapsed time
+    // Track current stage for spinner updates
+    let currentStage = 'Initializing';
     let timeUpdateInterval: NodeJS.Timeout | null = null;
-    
+
     ctx.tracker.checkpoint('query');
 
     if (!flags.quiet && !flags.json) {
       spinner?.start();
-      // Update spinner with elapsed time every second
+      // Update spinner with elapsed time and stage every second
       timeUpdateInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         const elapsedStr = formatElapsedTime(elapsed);
         const { ui } = ctx.output!;
-        spinner?.update({ text: `Querying... ${ui.colors.muted(`[${elapsedStr}]`)}` });
+        spinner?.update({ text: `${currentStage}... ${ui.colors.muted(`[${elapsedStr}]`)}` });
       }, 1000);
     }
 
@@ -238,12 +239,15 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
         profileId,
         mode,
         outputFormat: format,
+        runtime: ctx.runtime, // Pass runtime to suppress INFO logs in silent mode
         onProgress: (stage: string, details?: string) => {
           if (flags.quiet || format === 'json' || format === 'json-pretty') return;
 
-          ctx.output?.progress('RAG Query', {
-            message: details ? `${stage}: ${details}` : stage,
-          });
+          // Update current stage for spinner
+          currentStage = details ? `${stage}: ${details}` : stage;
+
+          // Optionally write progress messages (can be disabled for cleaner output)
+          // ctx.output?.progress('RAG Query', { message: currentStage });
         },
       });
 

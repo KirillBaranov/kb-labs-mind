@@ -18,12 +18,17 @@ Language: Match the question language (Russian for Russian questions, English fo
 
 export const SYNTHESIS_PROMPT_TEMPLATE = `Answer this question using ONLY the provided sources: "{query}"
 
-SOURCES:
+SOURCES (TOON format - compact notation):
 {chunks}
+
+NOTE: Sources are in TOON format:
+- Header: [count]{fields}: shows number of sources and field names
+- Rows: comma-separated values for each source
+- Fields: id, path, lines, score, text (code snippet)
 
 STRICT REQUIREMENTS:
 1. Only reference files, functions, parameters that appear EXACTLY in sources above
-2. Include [source:N] reference for every claim (N = source number from above)
+2. Include [source:N] reference for every claim (N = id from TOON table)
 3. If sources don't contain the answer, say "Based on available sources, this information was not found"
 4. Do NOT mention any fields/parameters unless you can see them in the source code
 5. When mentioning a parameter, quote the exact line where it appears
@@ -59,8 +64,10 @@ CONFIDENCE GUIDE:
 
 export const INSTANT_SYNTHESIS_TEMPLATE = `Question: "{query}"
 
-Code matches:
+Code matches (TOON format):
 {chunks}
+
+NOTE: Sources in compact TOON format - [count]{fields}: rows of values
 
 Return brief JSON (only use info from code above):
 {

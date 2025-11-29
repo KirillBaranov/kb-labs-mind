@@ -4,6 +4,7 @@ export interface MindLLMGenerateOptions {
   maxTokens?: number;
   temperature?: number;
   stop?: string[];
+  systemPrompt?: string;
   metadata?: Record<string, unknown>;
 }
 

@@ -17,6 +17,7 @@ import {
 } from './prompts.js';
 import { createSourceVerifier, extractCodeMentions, verifyMentionsInChunks } from '../verification/index.js';
 import { createFieldChecker } from '../verification/index.js';
+import { arrayToToon } from '../utils/toon.js';
 
 const logger = getLogger('mind:orchestrator:synthesizer');
 
@@ -258,16 +259,22 @@ export class ResponseSynthesizer {
   }
 
   /**
-   * Format chunks for LLM prompt
+   * Format chunks for LLM prompt using TOON format
+   * TOON provides compact tabular format for structured data
    */
   private formatChunksForLLM(chunks: KnowledgeChunk[], maxChunks: number): string {
-    return chunks
-      .slice(0, maxChunks)
-      .map((chunk, i) => {
-        const truncatedText = this.truncateSnippet(chunk.text, 50);
-        return `[${i + 1}] ${chunk.path} (lines ${chunk.span.startLine}-${chunk.span.endLine}):\n\`\`\`\n${truncatedText}\n\`\`\``;
-      })
-      .join('\n\n');
+    const selectedChunks = chunks.slice(0, maxChunks);
+
+    // Convert chunks to TOON-friendly format
+    const chunkData = selectedChunks.map((chunk, i) => ({
+      id: i + 1,
+      path: chunk.path,
+      lines: `${chunk.span.startLine}-${chunk.span.endLine}`,
+      score: chunk.score.toFixed(2),
+      text: this.truncateSnippet(chunk.text, 50), // Keep original 50 lines for quality
+    }));
+
+    return arrayToToon(chunkData, ['id', 'path', 'lines', 'score', 'text']);
   }
 
   /**
