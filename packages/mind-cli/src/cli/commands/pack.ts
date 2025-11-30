@@ -2,15 +2,15 @@
  * Mind pack command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { buildPack } from '@kb-labs/mind-pack';
 import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import { parseNumberFlag } from '@kb-labs/shared-cli-ui';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
 import { writeFile } from 'node:fs/promises';
 import { join, isAbsolute } from 'node:path';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 
 const PACK_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.pack.output']?.id ?? 'mind.pack.output';
