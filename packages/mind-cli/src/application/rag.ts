@@ -4,7 +4,7 @@ import type { KnowledgeLogger } from '@kb-labs/knowledge-core';
 import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
-} from '../shared/knowledge.js';
+} from '../shared/knowledge';
 import {
   createAgentQueryOrchestrator,
   isAgentError,

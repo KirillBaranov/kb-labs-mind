@@ -18,7 +18,7 @@ import {
 import {
   createMindKnowledgeRuntime,
   type MindKnowledgeRuntime,
-} from '../shared/knowledge.js';
+} from '../shared/knowledge';
 import type { RuntimeAdapter } from '@kb-labs/mind-engine';
 
 export interface SyncAddOptions {

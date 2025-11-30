@@ -1,3 +1,3 @@
-export * from './queries/run-query-core.js';
-export * from './sync.js';
-export * from './rag.js';
+export * from './queries/run-query-core';
+export * from './sync';
+export * from './rag';
