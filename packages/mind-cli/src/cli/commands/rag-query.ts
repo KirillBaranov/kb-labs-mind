@@ -1,7 +1,7 @@
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
-import { runRagQuery, runAgentRagQuery } from '../../application/rag.js';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import { runRagQuery, runAgentRagQuery } from '../../application/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
 
 const VALID_INTENTS = ['summary', 'search', 'similar', 'nav'] as const;
 const VALID_MODES = ['instant', 'auto', 'thinking'] as const;

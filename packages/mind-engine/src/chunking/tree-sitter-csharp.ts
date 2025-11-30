@@ -5,7 +5,7 @@
  * Respects semantic boundaries: methods, classes, namespaces stay intact.
  */
 
-import { TreeSitterChunker } from './tree-sitter-base.js';
+import { TreeSitterChunker } from './tree-sitter-base';
 
 /**
  * C# chunker using tree-sitter

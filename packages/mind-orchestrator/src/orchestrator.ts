@@ -18,20 +18,20 @@ import {
   isAgentError,
 } from '@kb-labs/knowledge-contracts';
 
-import { createLLMProvider, type LLMProvider } from './llm/llm-provider.js';
-import { QueryDecomposer } from './decomposer/query-decomposer.js';
-import { ChunkGatherer, type QueryFn } from './gatherer/chunk-gatherer.js';
-import { CompletenessChecker } from './checker/completeness-checker.js';
-import { ResponseSynthesizer } from './synthesizer/response-synthesizer.js';
-import { ResponseCompressor } from './compressor/response-compressor.js';
-import { QueryCache } from './cache/query-cache.js';
-import { createMindAnalytics, type MindAnalytics, type MindAnalyticsContext } from './analytics/index.js';
+import { createLLMProvider, type LLMProvider } from './llm/llm-provider';
+import { QueryDecomposer } from './decomposer/query-decomposer';
+import { ChunkGatherer, type QueryFn } from './gatherer/chunk-gatherer';
+import { CompletenessChecker } from './checker/completeness-checker';
+import { ResponseSynthesizer } from './synthesizer/response-synthesizer';
+import { ResponseCompressor } from './compressor/response-compressor';
+import { QueryCache } from './cache/query-cache';
+import { createMindAnalytics, type MindAnalytics, type MindAnalyticsContext } from './analytics/index';
 import {
   type OrchestratorConfig,
   type OrchestratorQueryOptions,
   type OrchestratorResult,
   DEFAULT_ORCHESTRATOR_CONFIG,
-} from './types.js';
+} from './types';
 import { classifyQuery, type QueryClassification } from '@kb-labs/mind-engine';
 
 /**

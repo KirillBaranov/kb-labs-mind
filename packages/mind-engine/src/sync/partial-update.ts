@@ -3,14 +3,14 @@
  * Partial update logic for updating only changed chunks
  */
 
-import type { DocumentSyncAPI } from './document-sync.js';
+import type { DocumentSyncAPI } from './document-sync';
 import type {
   UpdateDocumentOptions,
   DocumentRecord,
   ChunkRecord,
-} from './types.js';
-import type { StoredMindChunk } from '../vector-store/vector-store.js';
-import type { DocumentRegistry } from './registry/document-registry.js';
+} from './types';
+import type { StoredMindChunk } from '../vector-store/vector-store';
+import type { DocumentRegistry } from './registry/document-registry';
 import { createHash } from 'node:crypto';
 
 /**
@@ -23,7 +23,7 @@ export async function partialUpdate(
   existing: DocumentRecord,
   newHash: string,
   similarityThreshold: number,
-): Promise<import('./types.js').SyncResult> {
+): Promise<import('./types').SyncResult> {
   const documentId = `${options.source}:${options.id}`;
   const startTime = Date.now();
 

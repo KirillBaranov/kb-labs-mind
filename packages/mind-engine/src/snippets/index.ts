@@ -7,4 +7,4 @@ export {
   type SnippetExtractionResult,
   type SnippetExtractionOptions,
   SnippetExtractor,
-} from './snippet-extractor.js';
+} from './snippet-extractor';

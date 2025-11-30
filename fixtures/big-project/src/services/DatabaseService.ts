@@ -2,8 +2,8 @@
  * Database service for managing database connections
  */
 
-import { Logger } from '../utils/Logger.js';
-import { DatabaseConfig } from '../config/DatabaseConfig.js';
+import { Logger } from '../utils/Logger';
+import { DatabaseConfig } from '../config/DatabaseConfig';
 
 export class DatabaseService {
   private config: DatabaseConfig;

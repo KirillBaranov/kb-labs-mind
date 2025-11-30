@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sha256, sha256Buffer } from '../utils/hash.js';
+import { sha256, sha256Buffer } from '../utils/hash';
 
 describe('Hash Utilities', () => {
   it('should compute SHA256 for string', () => {

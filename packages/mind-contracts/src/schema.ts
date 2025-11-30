@@ -1,10 +1,10 @@
-export { pluginContractsSchema, parsePluginContracts } from './schema/contract.schema.js';
-export type { PluginContractsSchema } from './schema/contract.schema.js';
+export { pluginContractsSchema, parsePluginContracts } from './schema/contract.schema';
+export type { PluginContractsSchema } from './schema/contract.schema';
 
-export { apiContractSchema, restApiContractSchema, restRouteContractSchema, schemaReferenceSchema } from './schema/api.schema.js';
-export { artifactContractSchema, artifactsContractMapSchema, artifactExampleSchema } from './schema/artifacts.schema.js';
-export { commandContractSchema, commandContractMapSchema } from './schema/commands.schema.js';
-export { workflowContractSchema, workflowContractMapSchema, workflowStepSchema } from './schema/workflows.schema.js';
+export { apiContractSchema, restApiContractSchema, restRouteContractSchema, schemaReferenceSchema } from './schema/api.schema';
+export { artifactContractSchema, artifactsContractMapSchema, artifactExampleSchema } from './schema/artifacts.schema';
+export { commandContractSchema, commandContractMapSchema } from './schema/commands.schema';
+export { workflowContractSchema, workflowContractMapSchema, workflowStepSchema } from './schema/workflows.schema';
 
 export {
   MindInitCommandInputSchema,
@@ -21,4 +21,4 @@ export {
   MindQueryRequestSchema,
   MindQueryResponseSchema,
   MindVerifyResponseSchema,
-} from './schema/mind.contracts.schema.js';
+} from './schema/mind.contracts.schema';

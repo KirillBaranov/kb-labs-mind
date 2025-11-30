@@ -8,20 +8,20 @@
  * - Memory constraints
  */
 
-import type { Chunker } from './chunker.js';
+import type { Chunker } from './chunker';
 // REMOVED: TypeScriptASTChunker (uses 8.7MB TypeScript compiler, redundant with tree-sitter)
-// import { TypeScriptASTChunker } from './ast-typescript.js';
-import { MarkdownChunker } from './markdown.js';
-import { RegexTypeScriptChunker } from './regex-typescript.js';
-import { StreamingLineChunker } from './streaming-line.js';
+// import { TypeScriptASTChunker } from './ast-typescript';
+import { MarkdownChunker } from './markdown';
+import { RegexTypeScriptChunker } from './regex-typescript';
+import { StreamingLineChunker } from './streaming-line';
 
 // Tree-sitter based chunkers (AST-aware, semantic boundaries)
-import { TypeScriptTreeSitterChunker } from './tree-sitter-typescript.js';
-import { JavaScriptTreeSitterChunker } from './tree-sitter-javascript.js';
-import { CSharpTreeSitterChunker } from './tree-sitter-csharp.js';
-import { PythonTreeSitterChunker } from './tree-sitter-python.js';
-import { GoTreeSitterChunker } from './tree-sitter-go.js';
-import { RustTreeSitterChunker } from './tree-sitter-rust.js';
+import { TypeScriptTreeSitterChunker } from './tree-sitter-typescript';
+import { JavaScriptTreeSitterChunker } from './tree-sitter-javascript';
+import { CSharpTreeSitterChunker } from './tree-sitter-csharp';
+import { PythonTreeSitterChunker } from './tree-sitter-python';
+import { GoTreeSitterChunker } from './tree-sitter-go';
+import { RustTreeSitterChunker } from './tree-sitter-rust';
 
 export interface FileInfo {
   path: string;

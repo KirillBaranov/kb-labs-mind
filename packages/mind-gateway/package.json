@@ -15,18 +15,17 @@
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
   },
   "dependencies": {
-    "@kb-labs/mind-cli": "link:../mind-cli",
+    "@kb-labs/mind-cli": "workspace:*",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-indexer": "link:../mind-indexer",
-    "@kb-labs/mind-query": "link:../mind-query",
-    "@kb-labs/mind-types": "link:../mind-types"
+    "@kb-labs/mind-query": "link:../mind-query"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",
-    "@types/node": "^20.0.0",
-    "rimraf": "^6",
-    "tsup": "^8",
-    "typescript": "^5",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
     "vitest": "^3.2.4"
   },
   "engines": {

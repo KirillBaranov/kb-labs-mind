@@ -3,7 +3,7 @@
  * Source categorization for query-aware retrieval boosting
  */
 
-import type { VectorSearchMatch } from '../vector-store/vector-store.js';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export type SourceCategory = 'adr' | 'code' | 'docs' | 'config' | 'test' | 'other';
 

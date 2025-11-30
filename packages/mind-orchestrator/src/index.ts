@@ -15,21 +15,21 @@
 export {
   AgentQueryOrchestrator,
   createAgentQueryOrchestrator,
-} from './orchestrator.js';
-export type { AgentQueryOrchestratorOptions } from './orchestrator.js';
+} from './orchestrator';
+export type { AgentQueryOrchestratorOptions } from './orchestrator';
 
 // Types
-export * from './types.js';
+export * from './types';
 
 // Components
-export { QueryDecomposer, createQueryDecomposer } from './decomposer/index.js';
-export { ChunkGatherer, createChunkGatherer } from './gatherer/index.js';
-export { CompletenessChecker, createCompletenessChecker } from './checker/index.js';
-export { ResponseSynthesizer, createResponseSynthesizer } from './synthesizer/index.js';
-export { ResponseCompressor, createResponseCompressor } from './compressor/index.js';
+export { QueryDecomposer, createQueryDecomposer } from './decomposer/index';
+export { ChunkGatherer, createChunkGatherer } from './gatherer/index';
+export { CompletenessChecker, createCompletenessChecker } from './checker/index';
+export { ResponseSynthesizer, createResponseSynthesizer } from './synthesizer/index';
+export { ResponseCompressor, createResponseCompressor } from './compressor/index';
 
 // LLM
-export { createLLMProvider, type LLMProvider } from './llm/index.js';
+export { createLLMProvider, type LLMProvider } from './llm/index';
 
 // Analytics
 export {
@@ -47,7 +47,7 @@ export {
   type VerificationCompletedPayload,
   calculateLLMCost,
   DEFAULT_LLM_COSTS,
-} from './analytics/index.js';
+} from './analytics/index';
 
 // Verification (anti-hallucination)
 export {
@@ -63,7 +63,7 @@ export {
   type SourceVerifierOptions,
   type FieldCheckResult,
   type FieldCheckerOptions,
-} from './verification/index.js';
+} from './verification/index';
 
 // Context management
 export {
@@ -73,7 +73,7 @@ export {
   categorizeChunks,
   type TokenBudgetConfig,
   type AssembledContext,
-} from './context/index.js';
+} from './context/index';
 
 // Index freshness
 export {
@@ -83,7 +83,7 @@ export {
   readIndexMetadata,
   type IndexFreshness,
   type IndexMetadata,
-} from './freshness/index.js';
+} from './freshness/index';
 
 // Pipeline & Graceful Degradation
 export {
@@ -94,7 +94,7 @@ export {
   type DegradationResult,
   type PipelineStepConfig,
   type GracefulDegradationOptions,
-} from './pipeline/index.js';
+} from './pipeline/index';
 
 // Query Cache
 export {
@@ -103,7 +103,7 @@ export {
   hashQuery,
   type CacheEntry,
   type QueryCacheOptions,
-} from './cache/index.js';
+} from './cache/index';
 
 // Re-export agent response types from knowledge-contracts
 export {

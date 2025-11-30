@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ResultSynthesizer } from '../synthesizer.js';
+import { ResultSynthesizer } from '../synthesizer';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
 import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 

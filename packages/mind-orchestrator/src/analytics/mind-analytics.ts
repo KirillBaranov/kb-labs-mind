@@ -9,8 +9,8 @@ import type {
   QueryStartedPayload,
   QueryCompletedPayload,
   QueryFailedPayload,
-} from './types.js';
-import { calculateLLMCost } from './types.js';
+} from './types';
+import { calculateLLMCost } from './types';
 import { createHash } from 'crypto';
 
 const MIND_SOURCE = {

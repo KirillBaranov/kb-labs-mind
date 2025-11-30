@@ -77,5 +77,5 @@ export function createLocalStubLLMEngine(
 }
 
 // Export OpenAI engine
-export { createOpenAILLMEngine } from './openai.js';
-export type { OpenAILLMEngineOptions } from './openai.js';
+export { createOpenAILLMEngine } from './openai';
+export type { OpenAILLMEngineOptions } from './openai';

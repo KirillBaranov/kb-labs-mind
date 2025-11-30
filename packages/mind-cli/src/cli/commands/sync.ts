@@ -1,4 +1,4 @@
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import {
   runSyncAdd,
   runSyncUpdate,
@@ -8,8 +8,8 @@ import {
   runSyncStatus,
   runSyncRestore,
   runSyncCleanup,
-} from '../../application/sync.js';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
+} from '../../application/sync';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
 
 type MindSyncFlags = {
   cwd: { type: 'string'; description?: string };

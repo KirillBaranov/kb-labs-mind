@@ -11,10 +11,10 @@ export {
   getRateLimitConfig,
   estimateTokens,
   estimateBatchTokens,
-} from './rate-limit-config.js';
+} from './rate-limit-config';
 
 export {
   RateLimiter,
   createRateLimiter,
   type RateLimiterStats,
-} from './rate-limiter.js';
+} from './rate-limiter';

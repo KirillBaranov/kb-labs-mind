@@ -7,13 +7,13 @@ import { createHash } from 'node:crypto';
 import type {
   EmbeddingVector,
 } from '@kb-labs/knowledge-contracts';
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 import type {
   StoredMindChunk,
   VectorSearchFilters,
   VectorSearchMatch,
   VectorStore,
-} from './vector-store.js';
+} from './vector-store';
 
 export interface QdrantVectorStoreOptions {
   url: string;
@@ -221,7 +221,7 @@ export class QdrantVectorStore implements VectorStore {
   async updateScope(
     scopeId: string,
     chunks: StoredMindChunk[],
-    fileMetadata?: Map<string, import('./vector-store.js').FileMetadata>,
+    fileMetadata?: Map<string, import('./vector-store').FileMetadata>,
   ): Promise<void> {
     // Ensure collection exists
     await this.ensureCollection();
@@ -234,7 +234,7 @@ export class QdrantVectorStore implements VectorStore {
 
     // Get existing chunks for this scope to compare
     const existingChunks = await this.getAllChunks(scopeId);
-    const existingFiles = new Map<string, import('./vector-store.js').FileMetadata>();
+    const existingFiles = new Map<string, import('./vector-store').FileMetadata>();
     
     // Extract file metadata from existing chunks
     for (const chunk of existingChunks) {

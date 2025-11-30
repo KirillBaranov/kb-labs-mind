@@ -4,8 +4,8 @@
  */
 
 import { getLogger } from '@kb-labs/core-sys/logging';
-import type { VectorSearchMatch } from '../vector-store/vector-store.js';
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 
 const logger = getLogger('mind:engine:reranking');
 

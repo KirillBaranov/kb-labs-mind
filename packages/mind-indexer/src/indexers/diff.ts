@@ -4,7 +4,7 @@
 
 import { gitDiffSince } from '@kb-labs/mind-adapters';
 import type { RecentDiff as _RecentDiff } from '@kb-labs/mind-types';
-import type { IndexerContext } from '../types/index.js';
+import type { IndexerContext } from '../types/index';
 
 /**
  * Index git diff since a specific revision

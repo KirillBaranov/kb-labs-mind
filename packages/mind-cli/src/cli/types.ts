@@ -2,7 +2,7 @@
  * CLI command module type definition
  */
 
-import type { CliHandlerContext } from '@kb-labs/sandbox';
+import type { CliHandlerContext } from '@kb-labs/core-sandbox';
 import type { Output } from '@kb-labs/core-sys';
 
 /**

@@ -3,7 +3,7 @@
  * Context optimization exports
  */
 
-export { ContextOptimizer } from './context-optimizer.js';
-export type { ContextOptimizationOptions } from './context-optimizer.js';
+export { ContextOptimizer } from './context-optimizer';
+export type { ContextOptimizationOptions } from './context-optimizer';
 
 

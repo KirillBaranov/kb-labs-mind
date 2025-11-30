@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { keywordSearch } from '../keyword.js';
-import type { StoredMindChunk } from '../../vector-store/vector-store.js';
+import { keywordSearch } from '../keyword';
+import type { StoredMindChunk } from '../../vector-store/vector-store';
 
 function createChunk(
   chunkId: string,

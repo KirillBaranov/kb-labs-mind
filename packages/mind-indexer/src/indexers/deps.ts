@@ -9,7 +9,7 @@ import * as ts from 'typescript';
 import type { DepsGraph as _DepsGraph, PackageNode } from '@kb-labs/mind-types';
 import type { IndexerContext } from '../types';
 import { toPosix } from '@kb-labs/mind-core';
-import { writeJson } from '../fs/json.js';
+import { writeJson } from '../fs/json';
 
 const CANDIDATE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.d.ts'];
 

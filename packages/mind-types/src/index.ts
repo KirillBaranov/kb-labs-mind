@@ -4,8 +4,8 @@
  */
 
 // Query modes and JSON output
-export * from './query-modes.js';
-export * from './json-output.js';
+export * from './query-modes';
+export * from './json-output';
 
 // Schema version
 export type SchemaVersion = "1.0";

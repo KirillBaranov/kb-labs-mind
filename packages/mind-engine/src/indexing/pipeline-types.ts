@@ -6,7 +6,7 @@
  */
 
 import type { KnowledgeSource } from '@kb-labs/knowledge-contracts';
-import type { MemoryMonitor } from './memory-monitor.js';
+import type { MemoryMonitor } from './memory-monitor';
 
 /**
  * Logger interface for structured logging

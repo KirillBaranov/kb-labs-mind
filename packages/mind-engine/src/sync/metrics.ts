@@ -3,9 +3,9 @@
  * Metrics and monitoring for synchronization
  */
 
-import type { DocumentRecord } from './types.js';
-import type { SyncMetrics } from './types.js';
-import type { DocumentRegistry } from './registry/document-registry.js';
+import type { DocumentRecord } from './types';
+import type { SyncMetrics } from './types';
+import type { DocumentRegistry } from './registry/document-registry';
 
 /**
  * Calculate sync metrics from registry

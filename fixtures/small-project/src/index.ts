@@ -2,7 +2,7 @@
  * Main entry point for the sample project
  */
 
-import { add, multiply, MathUtils } from './utils.js';
+import { add, multiply, MathUtils } from './utils';
 
 /**
  * Main application class

@@ -2,7 +2,7 @@
  * Analytics module exports
  */
 
-export { createMindAnalytics, type MindAnalytics, type MindAnalyticsOptions } from './mind-analytics.js';
+export { createMindAnalytics, type MindAnalytics, type MindAnalyticsOptions } from './mind-analytics';
 export type {
   MindEventType,
   MindAnalyticsContext,
@@ -17,5 +17,5 @@ export type {
   AnswerFeedbackPayload,
   // Verification types
   VerificationCompletedPayload,
-} from './types.js';
-export { calculateLLMCost, DEFAULT_LLM_COSTS } from './types.js';
+} from './types';
+export { calculateLLMCost, DEFAULT_LLM_COSTS } from './types';

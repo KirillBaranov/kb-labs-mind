@@ -4,7 +4,7 @@
  */
 
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
-import type { VectorSearchMatch } from '../vector-store/vector-store.js';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface ContextOptimizationOptions {
   /**

@@ -14,9 +14,9 @@
 import * as fs from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { createInterface } from 'node:readline';
-import type { Chunker, Chunk, ChunkingOptions } from './chunker.js';
-import { TreeSitterParser } from '../parsers/tree-sitter-parser.js';
-import type { StatementBoundary } from '../parsers/language-parser.js';
+import type { Chunker, Chunk, ChunkingOptions } from './chunker';
+import { TreeSitterParser } from '../parsers/tree-sitter-parser';
+import type { StatementBoundary } from '../parsers/language-parser';
 
 export interface TreeSitterChunkerOptions {
   /**

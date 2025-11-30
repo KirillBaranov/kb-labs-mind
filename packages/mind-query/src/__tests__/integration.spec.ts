@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { executeQuery } from '../api/execute-query.js';
+import { executeQuery } from '../api/execute-query';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -2,12 +2,12 @@
  * Mind update command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { updateIndexes } from '@kb-labs/mind-indexer';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
 import { parseNumberFlag } from '@kb-labs/shared-cli-ui';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 
 const UPDATE_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.update.report']?.id ?? 'mind.update.report';

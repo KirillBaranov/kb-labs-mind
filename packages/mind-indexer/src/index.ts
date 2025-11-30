@@ -4,22 +4,22 @@
  */
 
 // API
-export { initMindStructure } from './api/init.js';
-export { updateIndexes } from './api/update.js';
+export { initMindStructure } from './api/init';
+export { updateIndexes } from './api/update';
 
 // Types
-export type { UpdateOptions, DeltaReport, InitOptions, CacheEntry, IndexerContext, IExportExtractor } from './types/index.js';
+export type { UpdateOptions, DeltaReport, InitOptions, CacheEntry, IndexerContext, IExportExtractor } from './types/index';
 
 // Utils
-export { createIndexerContext, isTimeBudgetExceeded, getRemainingTime } from './utils/workspace.js';
-export type { ExistingIndexes } from './utils/workspace.js';
+export { createIndexerContext, isTimeBudgetExceeded, getRemainingTime } from './utils/workspace';
+export type { ExistingIndexes } from './utils/workspace';
 
 // FS
-export { readJson, writeJson, computeJsonHash } from './fs/json.js';
-export { ensureDir, ensureMindStructure } from './fs/ensure.js';
+export { readJson, writeJson, computeJsonHash } from './fs/json';
+export { ensureDir, ensureMindStructure } from './fs/ensure';
 
 // Cache
-export { LRUCache, FileCache } from './cache/lru.js';
+export { LRUCache, FileCache } from './cache/lru';
 
 // Adapters
-export { TSExtractor } from './adapters/ts-extractor.js';
+export { TSExtractor } from './adapters/ts-extractor';

@@ -7,7 +7,7 @@ import type {
   StoredMindChunk,
   VectorSearchFilters,
   VectorSearchMatch,
-} from '../vector-store/vector-store.js';
+} from '../vector-store/vector-store';
 
 export interface KeywordSearchOptions {
   k1?: number; // Term frequency saturation parameter (default: 1.2)

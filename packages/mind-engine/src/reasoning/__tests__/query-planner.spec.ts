@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { QueryPlanner } from '../query-planner.js';
+import { QueryPlanner } from '../query-planner';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
 
 describe('QueryPlanner', () => {

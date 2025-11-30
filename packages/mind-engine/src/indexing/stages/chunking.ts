@@ -14,9 +14,9 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { getLogger } from '@kb-labs/core-sys/logging';
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types.js';
-import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory.js';
-import type { FileMetadata } from './discovery.js';
+import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
+import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory';
+import type { FileMetadata } from './discovery';
 
 const logger = getLogger('mind:engine:chunking');
 

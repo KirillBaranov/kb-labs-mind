@@ -7,12 +7,12 @@
 export * from '@kb-labs/mind-types';
 
 // Errors
-export * from './error/mind-error.js';
+export * from './error/mind-error';
 
 // Utils
-export * from './utils/token.js';
-export * from './utils/hash.js';
-export * from './utils/paths.js';
+export * from './utils/token';
+export * from './utils/hash';
+export * from './utils/paths';
 
 // Defaults
-export * from './defaults.js';
+export * from './defaults';

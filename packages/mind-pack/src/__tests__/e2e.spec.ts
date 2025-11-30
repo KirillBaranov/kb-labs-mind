@@ -3,7 +3,7 @@ import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { initMindStructure } from '../../../mind-indexer/src/api/init';
 import { updateIndexes } from '../../../mind-indexer/src/api/update';
-import { buildPack } from '../api/build.js';
+import { buildPack } from '../api/build';
 import { DEFAULT_BUDGET } from '@kb-labs/mind-core';
 import type { ContextSection } from '@kb-labs/mind-types';
 

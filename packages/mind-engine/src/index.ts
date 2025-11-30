@@ -5,7 +5,7 @@ import fg from 'fast-glob';
 // @ts-expect-error - picomatch doesn't have types
 import picomatch from 'picomatch';
 import { createHash } from 'node:crypto';
-import { getChunkerForFile, type Chunk } from './chunking/index.js';
+import { getChunkerForFile, type Chunk } from './chunking/index';
 
 const logger = getLogger('mind:engine');
 import type {
@@ -44,51 +44,51 @@ import {
   type VectorSearchFilters,
   type VectorSearchMatch,
 } from '@kb-labs/mind-vector-store';
-import type { RuntimeAdapter } from './adapters/runtime-adapter.js';
-import { createRuntimeAdapter } from './adapters/runtime-adapter.js';
-import { createVectorStore, type VectorStoreConfig } from './vector-store/index.js';
-import type { VectorStore } from './vector-store/vector-store.js';
-import type { StoredMindChunk } from './vector-store/vector-store.js';
-import { hybridSearch } from './search/hybrid.js';
-import { keywordSearch } from './search/keyword.js';
-import { createReranker, type RerankerConfig } from './reranking/index.js';
-import type { Reranker } from './reranking/reranker.js';
-import { ContextOptimizer, type ContextOptimizationOptions } from './optimization/index.js';
-import type { LLMCompressor } from './compression/llm-compressor.js';
-import { OpenAILLMCompressor } from './compression/openai-compressor.js';
-import { ChunkSummarizer } from './compression/summarizer.js';
-import { ComplexityDetector } from './reasoning/complexity-detector.js';
-import { QueryPlanner } from './reasoning/query-planner.js';
-import { ParallelExecutor } from './reasoning/parallel-executor.js';
-import { ResultSynthesizer } from './reasoning/synthesizer.js';
-import { ReasoningEngine } from './reasoning/reasoning-engine.js';
-import type { ReasoningResult } from './reasoning/types.js';
+import type { RuntimeAdapter } from './adapters/runtime-adapter';
+import { createRuntimeAdapter } from './adapters/runtime-adapter';
+import { createVectorStore, type VectorStoreConfig } from './vector-store/index';
+import type { VectorStore } from './vector-store/vector-store';
+import type { StoredMindChunk } from './vector-store/vector-store';
+import { hybridSearch } from './search/hybrid';
+import { keywordSearch } from './search/keyword';
+import { createReranker, type RerankerConfig } from './reranking/index';
+import type { Reranker } from './reranking/reranker';
+import { ContextOptimizer, type ContextOptimizationOptions } from './optimization/index';
+import type { LLMCompressor } from './compression/llm-compressor';
+import { OpenAILLMCompressor } from './compression/openai-compressor';
+import { ChunkSummarizer } from './compression/summarizer';
+import { ComplexityDetector } from './reasoning/complexity-detector';
+import { QueryPlanner } from './reasoning/query-planner';
+import { ParallelExecutor } from './reasoning/parallel-executor';
+import { ResultSynthesizer } from './reasoning/synthesizer';
+import { ReasoningEngine } from './reasoning/reasoning-engine';
+import type { ReasoningResult } from './reasoning/types';
 import {
   type QueryHistoryStore,
   QdrantQueryHistoryStore,
   MemoryQueryHistoryStore,
   type QueryHistoryEntry,
-} from './learning/query-history.js';
+} from './learning/query-history';
 import {
   type FeedbackStore,
   QdrantFeedbackStore,
   MemoryFeedbackStore,
   SelfFeedbackGenerator,
   type FeedbackEntry,
-} from './learning/feedback.js';
+} from './learning/feedback';
 import {
   PopularityBoostCalculator,
   type PopularityBoost,
-} from './learning/popularity.js';
+} from './learning/popularity';
 import {
   QueryPatternMatcher,
   applyPatternBoost,
   type QueryPatternMatcher as IQueryPatternMatcher,
-} from './learning/query-patterns.js';
+} from './learning/query-patterns';
 import {
   AdaptiveWeightCalculator,
   type AdaptiveWeights,
-} from './learning/adaptive-weights.js';
+} from './learning/adaptive-weights';
 
 const DEFAULT_INDEX_DIR = '.kb/mind/rag';
 const DEFAULT_CODE_CHUNK_LINES = 120;
@@ -1078,13 +1078,13 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   ): Promise<void> {
     // Pipeline-based Indexing Architecture
     // Breaks down monolithic index() into independent, testable stages
-    const { AdaptiveChunkerFactory } = await import('./chunking/adaptive-factory.js');
-    const { MemoryMonitor } = await import('./indexing/memory-monitor.js');
-    const { IndexingPipeline } = await import('./indexing/pipeline.js');
-    const { FileDiscoveryStage } = await import('./indexing/stages/discovery.js');
-    const { ParallelChunkingStage } = await import('./indexing/stages/parallel-chunking.js');
-    const { EmbeddingStage } = await import('./indexing/stages/embedding.js');
-    const { StorageStage } = await import('./indexing/stages/storage.js');
+    const { AdaptiveChunkerFactory } = await import('./chunking/adaptive-factory');
+    const { MemoryMonitor } = await import('./indexing/memory-monitor');
+    const { IndexingPipeline } = await import('./indexing/pipeline');
+    const { FileDiscoveryStage } = await import('./indexing/stages/discovery');
+    const { ParallelChunkingStage } = await import('./indexing/stages/parallel-chunking');
+    const { EmbeddingStage } = await import('./indexing/stages/embedding');
+    const { StorageStage } = await import('./indexing/stages/storage');
     const { getLogger } = await import('@kb-labs/core-sys/logging');
 
     // Initialize components
@@ -1844,9 +1844,9 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
   private async collectChunks(
     sources: KnowledgeSource[],
-  ): Promise<{ chunks: MindChunk[]; fileMetadata: Map<string, import('./vector-store/vector-store.js').FileMetadata> }> {
+  ): Promise<{ chunks: MindChunk[]; fileMetadata: Map<string, import('./vector-store/vector-store').FileMetadata> }> {
     const chunkList: MindChunk[] = [];
-    const fileMetadata = new Map<string, import('./vector-store/vector-store.js').FileMetadata>();
+    const fileMetadata = new Map<string, import('./vector-store/vector-store').FileMetadata>();
     
     for (const source of sources) {
       const files = await fg(source.paths, {
@@ -2341,23 +2341,23 @@ export function registerMindKnowledgeEngine(
 }
 
 // Export RuntimeAdapter for use in handlers
-export type { RuntimeAdapter } from './adapters/runtime-adapter.js';
-export { createRuntimeAdapter } from './adapters/runtime-adapter.js';
+export type { RuntimeAdapter } from './adapters/runtime-adapter';
+export { createRuntimeAdapter } from './adapters/runtime-adapter';
 
 // Export compression types
-export type { LLMCompressor } from './compression/llm-compressor.js';
-export { NullLLMCompressor } from './compression/llm-compressor.js';
-export { OpenAILLMCompressor } from './compression/openai-compressor.js';
-export { ChunkSummarizer } from './compression/summarizer.js';
+export type { LLMCompressor } from './compression/llm-compressor';
+export { NullLLMCompressor } from './compression/llm-compressor';
+export { OpenAILLMCompressor } from './compression/openai-compressor';
+export { ChunkSummarizer } from './compression/summarizer';
 
 // Export compression options type
 export type CompressionOptions = NormalizedOptions['search']['optimization']['compression'];
 
 // Export sync API
-export * from './sync/index.js';
+export * from './sync/index';
 
 // Export incremental indexing API
-export * from './index/index.js';
+export * from './index/index';
 
 // Export search API (query classification, adaptive search)
-export * from './search/index.js';
+export * from './search/index';

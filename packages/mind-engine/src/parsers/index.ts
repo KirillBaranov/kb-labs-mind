@@ -9,6 +9,6 @@ export {
   type CodeStructure,
   ParserFactory,
   GenericParser,
-} from './language-parser.js';
+} from './language-parser';
 
-export { TreeSitterParser } from './tree-sitter-parser.js';
+export { TreeSitterParser } from './tree-sitter-parser';

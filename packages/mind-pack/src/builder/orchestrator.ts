@@ -2,18 +2,18 @@
  * Pack orchestrator for KB Labs Mind Pack
  */
 
-import { buildIntentSection } from '../sections/intent.js';
-import { buildOverviewSection } from '../sections/overview.js';
-import { buildApiSection } from '../sections/api.js';
-import { buildDiffsSection } from '../sections/diffs.js';
-import { buildSnippetsSection } from '../sections/snippets.js';
-import { buildConfigsSection } from '../sections/configs.js';
-import { buildMetaSection } from '../sections/meta.js';
-import { buildDocsSection } from '../sections/docs.js';
-import { getBundleInfo } from '../bundle/integration.js';
-import { generateMarkdown } from '../formatter/markdown.js';
-import { createContextPackJson } from '../formatter/json.js';
-import type { PackContext } from '../types/index.js';
+import { buildIntentSection } from '../sections/intent';
+import { buildOverviewSection } from '../sections/overview';
+import { buildApiSection } from '../sections/api';
+import { buildDiffsSection } from '../sections/diffs';
+import { buildSnippetsSection } from '../sections/snippets';
+import { buildConfigsSection } from '../sections/configs';
+import { buildMetaSection } from '../sections/meta';
+import { buildDocsSection } from '../sections/docs';
+import { getBundleInfo } from '../bundle/integration';
+import { generateMarkdown } from '../formatter/markdown';
+import { createContextPackJson } from '../formatter/json';
+import type { PackContext } from '../types/index';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-core';
 import type { ProjectMeta, DocsIndex } from '@kb-labs/mind-types';
 

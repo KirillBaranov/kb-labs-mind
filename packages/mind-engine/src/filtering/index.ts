@@ -7,4 +7,4 @@ export {
   type NegativeFilterOptions,
   type FilterResult,
   NegativeFilter,
-} from './negative-filter.js';
+} from './negative-filter';

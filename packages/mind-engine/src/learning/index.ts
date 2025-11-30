@@ -3,9 +3,9 @@
  * Self-learning system for Mind RAG
  */
 
-export * from './query-history.js';
-export * from './feedback.js';
-export * from './popularity.js';
-export * from './query-patterns.js';
-export * from './adaptive-weights.js';
+export * from './query-history';
+export * from './feedback';
+export * from './popularity';
+export * from './query-patterns';
+export * from './adaptive-weights';
 

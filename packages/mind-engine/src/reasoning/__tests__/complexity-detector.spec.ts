@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ComplexityDetector } from '../complexity-detector.js';
+import { ComplexityDetector } from '../complexity-detector';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
 
 describe('ComplexityDetector', () => {

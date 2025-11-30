@@ -5,7 +5,7 @@
 
 import { createHash } from 'node:crypto';
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 
 export interface QueryHistoryEntry {
   queryId: string;

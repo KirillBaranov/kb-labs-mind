@@ -8,20 +8,20 @@ export type {
   VectorSearchFilters,
   VectorSearchMatch,
   VectorStore,
-} from './vector-store.js';
+} from './vector-store';
 
 // Re-export EmbeddingVector for convenience
 export type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
 
-export { LocalVectorStore } from './local.js';
-export { QdrantVectorStore } from './qdrant.js';
-export type { LocalVectorStoreOptions } from './local.js';
-export type { QdrantVectorStoreOptions } from './qdrant.js';
+export { LocalVectorStore } from './local';
+export { QdrantVectorStore } from './qdrant';
+export type { LocalVectorStoreOptions } from './local';
+export type { QdrantVectorStoreOptions } from './qdrant';
 
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
-import { LocalVectorStore } from './local.js';
-import { QdrantVectorStore } from './qdrant.js';
-import type { VectorStore } from './vector-store.js';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
+import { LocalVectorStore } from './local';
+import { QdrantVectorStore } from './qdrant';
+import type { VectorStore } from './vector-store';
 
 export type VectorStoreType = 'auto' | 'local' | 'qdrant';
 

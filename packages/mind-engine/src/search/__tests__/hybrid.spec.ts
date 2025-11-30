@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { hybridSearch } from '../hybrid.js';
-import type { VectorSearchMatch, StoredMindChunk } from '../../vector-store/vector-store.js';
-import type { EmbeddingVector } from '../../vector-store/vector-store.js';
-import { keywordSearch } from '../keyword.js';
+import { hybridSearch } from '../hybrid';
+import type { VectorSearchMatch, StoredMindChunk } from '../../vector-store/vector-store';
+import type { EmbeddingVector } from '../../vector-store/vector-store';
+import { keywordSearch } from '../keyword';
 
 function createChunk(
   chunkId: string,

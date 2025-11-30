@@ -3,7 +3,7 @@
  * Document registry interface for tracking synchronized documents
  */
 
-import type { DocumentRecord } from '../types.js';
+import type { DocumentRecord } from '../types';
 
 /**
  * Document registry interface

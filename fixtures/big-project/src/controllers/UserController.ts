@@ -2,9 +2,9 @@
  * User controller for handling user-related operations
  */
 
-import { DatabaseService } from '../services/DatabaseService.js';
-import { Logger } from '../utils/Logger.js';
-import { User } from '../models/User.js';
+import { DatabaseService } from '../services/DatabaseService';
+import { Logger } from '../utils/Logger';
+import { User } from '../models/User';
 
 export class UserController {
   private db: DatabaseService;

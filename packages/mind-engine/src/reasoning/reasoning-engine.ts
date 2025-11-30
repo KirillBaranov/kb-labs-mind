@@ -1,16 +1,16 @@
 import { createHash } from 'node:crypto';
 import type { KnowledgeQuery, KnowledgeResult } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
-import type { ComplexityDetector } from './complexity-detector.js';
-import type { QueryPlanner } from './query-planner.js';
-import type { ParallelExecutor, QueryExecutor } from './parallel-executor.js';
-import type { ResultSynthesizer } from './synthesizer.js';
-import type { QueryPlan, ReasoningResult, ReasoningContext } from './types.js';
-import type { ContextOptimizer } from '../optimization/index.js';
-import type { LLMCompressor } from '../compression/llm-compressor.js';
-import type { QueryHistoryStore } from '../learning/query-history.js';
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
-import type { ProgressEvent } from '../index.js';
+import type { ComplexityDetector } from './complexity-detector';
+import type { QueryPlanner } from './query-planner';
+import type { ParallelExecutor, QueryExecutor } from './parallel-executor';
+import type { ResultSynthesizer } from './synthesizer';
+import type { QueryPlan, ReasoningResult, ReasoningContext } from './types';
+import type { ContextOptimizer } from '../optimization/index';
+import type { LLMCompressor } from '../compression/llm-compressor';
+import type { QueryHistoryStore } from '../learning/query-history';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
+import type { ProgressEvent } from '../index';
 
 export interface ReasoningEngineOptions {
   /**

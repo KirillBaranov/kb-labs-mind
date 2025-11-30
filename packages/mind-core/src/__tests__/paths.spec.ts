@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { toPosix, fromPosix, shouldIgnorePath } from '../utils/paths.js';
+import { toPosix, fromPosix, shouldIgnorePath } from '../utils/paths';
 
 // Mock fs
 vi.mock('node:fs', () => ({

@@ -6,8 +6,8 @@
  * Suitable for files 100KB - 500KB using sliding window streaming.
  */
 
-import type { Chunk, ChunkingOptions, Chunker } from './chunker.js';
-import { slidingWindowStream } from './sliding-window.js';
+import type { Chunk, ChunkingOptions, Chunker } from './chunker';
+import { slidingWindowStream } from './sliding-window';
 
 export interface RegexChunkingOptions extends ChunkingOptions {
   includeComments?: boolean;

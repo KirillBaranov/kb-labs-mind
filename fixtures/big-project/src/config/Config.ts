@@ -2,8 +2,8 @@
  * Main configuration class
  */
 
-import { DatabaseConfig } from './DatabaseConfig.js';
-import { AuthConfig } from './AuthConfig.js';
+import { DatabaseConfig } from './DatabaseConfig';
+import { AuthConfig } from './AuthConfig';
 
 export class Config {
   public readonly database: DatabaseConfig;

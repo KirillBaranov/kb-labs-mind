@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { ParallelExecutor } from '../parallel-executor.js';
-import type { QueryPlan, ReasoningContext } from '../types.js';
+import { ParallelExecutor } from '../parallel-executor';
+import type { QueryPlan, ReasoningContext } from '../types';
 import type { KnowledgeQuery, KnowledgeResult, KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
 

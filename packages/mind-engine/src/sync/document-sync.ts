@@ -5,9 +5,9 @@
 
 import { createHash } from 'node:crypto';
 import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
-import type { VectorStore, StoredMindChunk } from '../vector-store/vector-store.js';
-import { getChunkerForFile } from '../chunking/index.js';
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
+import type { VectorStore, StoredMindChunk } from '../vector-store/vector-store';
+import { getChunkerForFile } from '../chunking/index';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 import type {
   AddDocumentOptions,
   UpdateDocumentOptions,
@@ -17,9 +17,9 @@ import type {
   DocumentRecord,
   ChunkRecord,
   DocumentMetadata,
-} from './types.js';
-import type { DocumentRegistry } from './registry/document-registry.js';
-import { partialUpdate } from './partial-update.js';
+} from './types';
+import type { DocumentRegistry } from './registry/document-registry';
+import { partialUpdate } from './partial-update';
 
 export interface DocumentSyncAPIOptions {
   registry: DocumentRegistry;

@@ -5,7 +5,7 @@
  * Supports TPM, RPM, RPS, and concurrency limits.
  */
 
-import type { RateLimitConfig } from './rate-limit-config.js';
+import type { RateLimitConfig } from './rate-limit-config';
 
 export interface RateLimiterStats {
   /** Tokens used in current minute window */

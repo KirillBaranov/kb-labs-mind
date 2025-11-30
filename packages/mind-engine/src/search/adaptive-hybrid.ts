@@ -8,15 +8,15 @@ import type {
   StoredMindChunk,
   VectorSearchFilters,
   VectorSearchMatch,
-} from '../vector-store/vector-store.js';
-import { hybridSearch, type HybridSearchOptions } from './hybrid.js';
-import { keywordSearch } from './keyword.js';
-import { classifyQuery, extractIdentifiers, type QueryClassification } from './query-classifier.js';
+} from '../vector-store/vector-store';
+import { hybridSearch, type HybridSearchOptions } from './hybrid';
+import { keywordSearch } from './keyword';
+import { classifyQuery, extractIdentifiers, type QueryClassification } from './query-classifier';
 import {
   categorizeMatches,
   applyQueryBoost,
   type CategorizedMatch,
-} from './source-categorizer.js';
+} from './source-categorizer';
 
 export interface AdaptiveHybridSearchOptions extends HybridSearchOptions {
   /**

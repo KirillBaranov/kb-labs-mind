@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { TestHelper } from '../helpers/index.js';
-import { createFixture } from '../fixtures/index.js';
+import { TestHelper } from '../helpers/index';
+import { createFixture } from '../fixtures/index';
 import { join } from 'node:path';
 import { promises as fsp } from 'node:fs';
 

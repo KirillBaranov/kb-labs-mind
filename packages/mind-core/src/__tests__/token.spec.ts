@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { estimateTokens, truncateToTokens } from '../utils/token.js';
+import { estimateTokens, truncateToTokens } from '../utils/token';
 
 describe('Token Estimation', () => {
   it('should estimate tokens for simple text', () => {

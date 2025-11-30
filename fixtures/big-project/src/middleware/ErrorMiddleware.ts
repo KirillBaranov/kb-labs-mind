@@ -2,7 +2,7 @@
  * Error handling middleware
  */
 
-import { Logger } from '../utils/Logger.js';
+import { Logger } from '../utils/Logger';
 
 export class ErrorMiddleware {
   private logger: Logger;

@@ -5,11 +5,11 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
-import { buildPack } from '../index.js';
+import { buildPack } from '../index';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { initMindStructure } from '../../../mind-indexer/src/api/init.js';
-import { updateIndexes } from '../../../mind-indexer/src/api/update.js';
+import { initMindStructure } from '../../../mind-indexer/src/api/init';
+import { updateIndexes } from '../../../mind-indexer/src/api/update';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

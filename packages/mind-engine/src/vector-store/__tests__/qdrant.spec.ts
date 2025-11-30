@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QdrantVectorStore } from '../qdrant.js';
-import type { StoredMindChunk } from '../vector-store.js';
-import type { RuntimeAdapter } from '../../adapters/runtime-adapter.js';
+import { QdrantVectorStore } from '../qdrant';
+import type { StoredMindChunk } from '../vector-store';
+import type { RuntimeAdapter } from '../../adapters/runtime-adapter';
 
 function createChunk(
   chunkId: string,

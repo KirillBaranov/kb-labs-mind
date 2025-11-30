@@ -3,7 +3,7 @@
  * REST handler for Mind query endpoint (Plugin Model v2)
  */
 
-import type { MindQueryRequest, MindQueryResponse, MindGatewayError } from '../types.js';
+import type { MindQueryRequest, MindQueryResponse, MindGatewayError } from '../types';
 import type { InfoPanelSection } from '@kb-labs/plugin-manifest';
 import { findRepoRoot } from '@kb-labs/core';
 import { runQueryCore, parseQueryFromHttpRequest, type QueryRuntimeContext } from '@app/application';

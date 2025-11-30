@@ -5,7 +5,7 @@
  * Respects semantic boundaries: functions, impl blocks, traits stay intact.
  */
 
-import { TreeSitterChunker } from './tree-sitter-base.js';
+import { TreeSitterChunker } from './tree-sitter-base';
 
 /**
  * Rust chunker using tree-sitter

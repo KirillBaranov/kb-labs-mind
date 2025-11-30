@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { estimateTokens, truncateToTokens, sha256, DEFAULT_BUDGET } from '../index.js';
+import { estimateTokens, truncateToTokens, sha256, DEFAULT_BUDGET } from '../index';
 
 describe('Token Utilities', () => {
   it('should estimate tokens correctly', () => {

@@ -10,8 +10,8 @@
  * - Progress reporting
  */
 
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types.js';
-import type { ChunkWithEmbedding } from './embedding.js';
+import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
+import type { ChunkWithEmbedding } from './embedding';
 
 export interface VectorStore {
   /**

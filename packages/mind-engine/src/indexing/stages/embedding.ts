@@ -10,8 +10,8 @@
  * - Progress reporting
  */
 
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types.js';
-import type { MindChunk } from './chunking.js';
+import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
+import type { MindChunk } from './chunking';
 import {
   type RateLimitConfig,
   type RateLimitPreset,
@@ -19,7 +19,7 @@ import {
   estimateBatchTokens,
   RateLimiter,
   createRateLimiter,
-} from '../../rate-limiting/index.js';
+} from '../../rate-limiting/index';
 
 export interface ChunkWithEmbedding extends MindChunk {
   embedding: number[];

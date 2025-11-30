@@ -1,5 +1,5 @@
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
-import type { ComplexityResult } from './types.js';
+import type { ComplexityResult } from './types';
 
 export interface ComplexityDetectorOptions {
   /**

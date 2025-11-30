@@ -2,8 +2,8 @@
  * Product controller for handling product-related operations
  */
 
-import { DatabaseService } from '../services/DatabaseService.js';
-import { Logger } from '../utils/Logger.js';
+import { DatabaseService } from '../services/DatabaseService';
+import { Logger } from '../utils/Logger';
 
 export class ProductController {
   private db: DatabaseService;

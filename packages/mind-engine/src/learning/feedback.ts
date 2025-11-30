@@ -4,7 +4,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 
 export type FeedbackType = 'explicit' | 'implicit' | 'self';
 

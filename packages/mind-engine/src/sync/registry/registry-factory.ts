@@ -3,9 +3,9 @@
  * Factory for creating document registry instances
  */
 
-import type { RegistryConfig } from '../types.js';
-import type { DocumentRegistry } from './document-registry.js';
-import { FileSystemRegistry } from './filesystem-registry.js';
+import type { RegistryConfig } from '../types';
+import type { DocumentRegistry } from './document-registry';
+import { FileSystemRegistry } from './filesystem-registry';
 
 /**
  * Create a document registry based on configuration

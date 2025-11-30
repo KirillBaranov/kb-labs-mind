@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
-import { initMindStructure } from '../api/init.js';
-import { updateIndexes } from '../api/update.js';
+import { initMindStructure } from '../api/init';
+import { updateIndexes } from '../api/update';
 
 describe('E2E Mind Indexer', () => {
   const fixtureDir = '/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project';

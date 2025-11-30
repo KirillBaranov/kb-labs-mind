@@ -1,7 +1,7 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeQuery, KnowledgeResult } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
-import type { QueryPlan, ReasoningContext } from './types.js';
+import type { QueryPlan, ReasoningContext } from './types';
 
 const logger = getLogger('mind:engine:reasoning:parallel');
 

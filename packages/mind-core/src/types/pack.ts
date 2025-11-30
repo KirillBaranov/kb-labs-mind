@@ -2,7 +2,7 @@
  * Pack and context types for KB Labs Mind
  */
 
-import type { SchemaVersion } from "./index.js";
+import type { SchemaVersion } from "./index";
 
 export type ContextSection =
   | "intent_summary"

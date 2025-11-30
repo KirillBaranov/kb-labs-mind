@@ -5,8 +5,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DEFAULT_BUDGET, DEFAULT_PRESET } from '@kb-labs/mind-core';
-import { orchestratePackBuilding } from '../builder/orchestrator.js';
-import type { PackOptions, PackResult } from '../types/index.js';
+import { orchestratePackBuilding } from '../builder/orchestrator';
+import type { PackOptions, PackResult } from '../types/index';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-core';
 import type { ProjectMeta, DocsIndex } from '@kb-labs/mind-types';
 

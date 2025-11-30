@@ -6,7 +6,7 @@
  * S3/GCS adapters will be added when cloud access is available.
  */
 
-import type { IndexManifest } from './manifest.js';
+import type { IndexManifest } from './manifest';
 
 /**
  * Information about available update

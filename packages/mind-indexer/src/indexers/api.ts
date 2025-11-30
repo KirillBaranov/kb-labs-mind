@@ -5,11 +5,11 @@
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { getLogger } from '@kb-labs/core-sys/logging';
-import { TSExtractor } from '../adapters/ts-extractor.js';
+import { TSExtractor } from '../adapters/ts-extractor';
 import { sha256 } from '@kb-labs/mind-core';
-import { ensureMindStructure } from '../fs/ensure.js';
+import { ensureMindStructure } from '../fs/ensure';
 import type { ApiIndex as _ApiIndex, ApiFile, ApiExport as _ApiExport } from '@kb-labs/mind-types';
-import type { IndexerContext } from '../types/index.js';
+import type { IndexerContext } from '../types/index';
 
 const logger = getLogger('mind:indexer:api');
 
@@ -156,7 +156,7 @@ export async function indexApiFiles(
   }
 
   // Save API index to file with sorted keys
-  const { writeJson } = await import('../fs/json.js');
+  const { writeJson } = await import('../fs/json');
   const { getGenerator } = await import('@kb-labs/mind-core');
   
   const generator = getGenerator();

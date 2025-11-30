@@ -5,8 +5,8 @@
  */
 
 import type { AgentResponse, AgentSource } from '@kb-labs/knowledge-contracts';
-import type { LLMProvider } from '../llm/llm-provider.js';
-import type { OrchestratorCompressionConfig } from '../types.js';
+import type { LLMProvider } from '../llm/llm-provider';
+import type { OrchestratorCompressionConfig } from '../types';
 
 export interface ResponseCompressorOptions {
   llm?: LLMProvider;

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { ChunkerRegistry, type Chunker } from '../chunker.js';
-import { LineBasedChunker } from '../line-based.js';
+import { ChunkerRegistry, type Chunker } from '../chunker';
+import { LineBasedChunker } from '../line-based';
 
 describe('ChunkerRegistry', () => {
   let registry: ChunkerRegistry;

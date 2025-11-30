@@ -3,7 +3,7 @@
  * REST handler for Mind verify endpoint (Plugin Model v2)
  */
 
-import type { MindVerifyRequest, MindVerifyResponse, MindGatewayError } from '../types.js';
+import type { MindVerifyRequest, MindVerifyResponse, MindGatewayError } from '../types';
 import type { CardData } from '@kb-labs/plugin-manifest';
 // @ts-ignore - Circular dependency during build, types available at runtime
 import { verifyIndexes } from '@kb-labs/mind-gateway';

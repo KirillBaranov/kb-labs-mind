@@ -7,4 +7,4 @@ export {
   type DeduplicationOptions,
   type DeduplicationResult,
   SemanticDeduplicator,
-} from './semantic-deduplicator.js';
+} from './semantic-deduplicator';

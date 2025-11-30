@@ -8,7 +8,7 @@
 
 import * as fs from 'node:fs';
 import * as readline from 'node:readline';
-import type { Chunk, ChunkingOptions, Chunker } from './chunker.js';
+import type { Chunk, ChunkingOptions, Chunker } from './chunker';
 
 export interface StreamingChunkingOptions extends ChunkingOptions {
   chunkLines?: number; // Number of lines per chunk

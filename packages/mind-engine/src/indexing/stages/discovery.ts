@@ -11,7 +11,7 @@
 import fg from 'fast-glob';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types.js';
+import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
 
 export interface FileMetadata {
   relativePath: string;

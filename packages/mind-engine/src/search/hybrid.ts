@@ -8,9 +8,9 @@ import type {
   StoredMindChunk,
   VectorSearchFilters,
   VectorSearchMatch,
-} from '../vector-store/vector-store.js';
-import { keywordSearch } from './keyword.js';
-import type { KeywordSearchOptions } from './keyword.js';
+} from '../vector-store/vector-store';
+import { keywordSearch } from './keyword';
+import type { KeywordSearchOptions } from './keyword';
 
 export interface HybridSearchOptions {
   /**

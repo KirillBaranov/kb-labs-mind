@@ -4,7 +4,7 @@
  */
 
 import type { Handler } from '@kb-labs/plugin-manifest';
-import { runRagIndex } from '../application/rag.js';
+import { runRagIndex } from '../application/rag';
 
 interface AutoIndexInput {
   scopeId?: string;

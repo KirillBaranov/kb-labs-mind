@@ -6,8 +6,8 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
-import type { DocumentRecord } from '../types.js';
-import type { DocumentRegistry } from './document-registry.js';
+import type { DocumentRecord } from '../types';
+import type { DocumentRegistry } from './document-registry';
 
 const logger = getLogger('mind:engine:sync:registry');
 

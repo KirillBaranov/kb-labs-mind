@@ -4,8 +4,8 @@
  * Optimized for instant mode and fallback scenarios
  */
 
-import type { VectorSearchMatch } from '../vector-store/vector-store.js';
-import type { Reranker, RerankingOptions } from './reranker.js';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
+import type { Reranker, RerankingOptions } from './reranker';
 
 export interface SmartHeuristicRerankerOptions {
   /** Weight for exact phrase match (0-1) */

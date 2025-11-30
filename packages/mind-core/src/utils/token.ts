@@ -2,7 +2,7 @@
  * Token estimation utilities for KB Labs Mind
  */
 
-import type { ITokenEstimator } from "../types/pack.js";
+import type { ITokenEstimator } from "../types/pack";
 
 /**
  * Default whitespace-aware token estimator

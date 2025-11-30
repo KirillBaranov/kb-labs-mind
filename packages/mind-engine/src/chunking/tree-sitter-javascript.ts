@@ -5,7 +5,7 @@
  * Respects semantic boundaries: functions, classes, components stay intact.
  */
 
-import { TreeSitterChunker } from './tree-sitter-base.js';
+import { TreeSitterChunker } from './tree-sitter-base';
 
 /**
  * JavaScript chunker using tree-sitter

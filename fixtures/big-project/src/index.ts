@@ -2,11 +2,11 @@
  * Main application entry point
  */
 
-import { Application } from './api/Application.js';
-import { DatabaseService } from './services/DatabaseService.js';
-import { AuthService } from './services/AuthService.js';
-import { Logger } from './utils/Logger.js';
-import { Config } from './config/Config.js';
+import { Application } from './api/Application';
+import { DatabaseService } from './services/DatabaseService';
+import { AuthService } from './services/AuthService';
+import { Logger } from './utils/Logger';
+import { Config } from './config/Config';
 
 export class App {
   private app: Application;

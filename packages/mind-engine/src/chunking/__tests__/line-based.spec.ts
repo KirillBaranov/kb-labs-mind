@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { LineBasedChunker } from '../line-based.js';
+import { LineBasedChunker } from '../line-based';
 
 describe('LineBasedChunker', () => {
   const chunker = new LineBasedChunker();

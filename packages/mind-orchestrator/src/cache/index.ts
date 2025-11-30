@@ -10,4 +10,4 @@ export {
   hashQuery,
   type CacheEntry,
   type QueryCacheOptions,
-} from './query-cache.js';
+} from './query-cache';

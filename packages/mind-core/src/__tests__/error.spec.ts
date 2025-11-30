@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MindError, getExitCode, ERROR_HINTS } from '../error/mind-error.js';
+import { MindError, getExitCode, ERROR_HINTS } from '../error/mind-error';
 
 describe('MindError', () => {
   it('should create error with code and message', () => {

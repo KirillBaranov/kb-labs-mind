@@ -13,8 +13,8 @@
  * - 32GB+ RAM → 32-64 workers (maximum performance)
  */
 
-import type { MemoryMonitor } from './memory-monitor.js';
-import type { WorkerPool, WorkerPoolStats } from './worker-pool.js';
+import type { MemoryMonitor } from './memory-monitor';
+import type { WorkerPool, WorkerPoolStats } from './worker-pool';
 
 export interface AutoScalerOptions {
   /**

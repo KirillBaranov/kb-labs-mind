@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MarkdownChunker } from '../markdown.js';
+import { MarkdownChunker } from '../markdown';
 
 describe('MarkdownChunker', () => {
   const chunker = new MarkdownChunker();

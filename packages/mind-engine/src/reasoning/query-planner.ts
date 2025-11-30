@@ -1,5 +1,5 @@
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
-import type { QueryPlan, SubQuery } from './types.js';
+import type { QueryPlan, SubQuery } from './types';
 
 export interface QueryPlannerOptions {
   /**

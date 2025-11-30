@@ -3,7 +3,7 @@
  */
 
 import * as ts from "typescript";
-import type { IExportExtractor } from "../types/index.js";
+import type { IExportExtractor } from "../types/index";
 import type { ApiExport } from "@kb-labs/mind-types";
 
 /**

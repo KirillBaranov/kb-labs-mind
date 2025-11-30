@@ -5,8 +5,8 @@
 
 import * as fs from 'node:fs';
 import * as readline from 'node:readline';
-import type { Chunk, ChunkingOptions, Chunker } from './chunker.js';
-import { readLinesFromString } from '../utils/streaming.js';
+import type { Chunk, ChunkingOptions, Chunker } from './chunker';
+import { readLinesFromString } from '../utils/streaming';
 
 export interface MarkdownChunkingOptions extends ChunkingOptions {
   byHeadings?: boolean;

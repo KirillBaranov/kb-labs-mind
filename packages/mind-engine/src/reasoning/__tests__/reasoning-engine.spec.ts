@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ReasoningEngine } from '../reasoning-engine.js';
-import { ComplexityDetector } from '../complexity-detector.js';
-import { QueryPlanner } from '../query-planner.js';
-import { ParallelExecutor } from '../parallel-executor.js';
-import { ResultSynthesizer } from '../synthesizer.js';
+import { ReasoningEngine } from '../reasoning-engine';
+import { ComplexityDetector } from '../complexity-detector';
+import { QueryPlanner } from '../query-planner';
+import { ParallelExecutor } from '../parallel-executor';
+import { ResultSynthesizer } from '../synthesizer';
 import type { KnowledgeQuery, KnowledgeResult } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
 

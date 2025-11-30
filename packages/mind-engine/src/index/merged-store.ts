@@ -12,7 +12,7 @@ import type {
   VectorSearchFilters,
   VectorSearchMatch,
   FileMetadata,
-} from '../vector-store/vector-store.js';
+} from '../vector-store/vector-store';
 
 /**
  * Options for merged vector store

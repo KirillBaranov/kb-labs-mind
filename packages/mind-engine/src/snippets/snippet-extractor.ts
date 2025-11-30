@@ -6,8 +6,8 @@
  * reducing token usage for AI agents while preserving context.
  */
 
-import { ParserFactory, type LanguageParser } from '../parsers/language-parser.js';
-import { TreeSitterParser } from '../parsers/tree-sitter-parser.js';
+import { ParserFactory, type LanguageParser } from '../parsers/language-parser';
+import { TreeSitterParser } from '../parsers/tree-sitter-parser';
 
 export interface SnippetExtractionResult {
   /** Extracted snippet code */

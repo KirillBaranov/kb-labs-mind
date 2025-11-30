@@ -6,7 +6,7 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
-import type { LLMCompressor } from './llm-compressor.js';
+import type { LLMCompressor } from './llm-compressor';
 
 const logger = getLogger('mind:engine:compression');
 

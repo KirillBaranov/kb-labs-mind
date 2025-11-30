@@ -2,13 +2,13 @@
  * Application class - main application logic
  */
 
-import { DatabaseService } from '../services/DatabaseService.js';
-import { AuthService } from '../services/AuthService.js';
-import { Logger } from '../utils/Logger.js';
-import { UserController } from '../controllers/UserController.js';
-import { ProductController } from '../controllers/ProductController.js';
-import { AuthMiddleware } from '../middleware/AuthMiddleware.js';
-import { ErrorMiddleware } from '../middleware/ErrorMiddleware.js';
+import { DatabaseService } from '../services/DatabaseService';
+import { AuthService } from '../services/AuthService';
+import { Logger } from '../utils/Logger';
+import { UserController } from '../controllers/UserController';
+import { ProductController } from '../controllers/ProductController';
+import { AuthMiddleware } from '../middleware/AuthMiddleware';
+import { ErrorMiddleware } from '../middleware/ErrorMiddleware';
 
 export class Application {
   private db: DatabaseService;

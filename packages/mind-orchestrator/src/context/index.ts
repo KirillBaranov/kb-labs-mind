@@ -11,4 +11,4 @@ export {
   categorizeChunks,
   type TokenBudgetConfig,
   type AssembledContext,
-} from './token-budget.js';
+} from './token-budget';

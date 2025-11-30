@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ContextOptimizer } from '../context-optimizer.js';
-import type { VectorSearchMatch } from '../../vector-store/vector-store.js';
+import { ContextOptimizer } from '../context-optimizer';
+import type { VectorSearchMatch } from '../../vector-store/vector-store';
 
 function createMatch(
   chunkId: string,

@@ -3,7 +3,7 @@
  */
 
 import { findWorkspaceRoot, toPosix } from "@kb-labs/mind-core";
-import type { IndexerContext } from "../types/index.js";
+import type { IndexerContext } from "../types/index";
 
 /**
  * Create indexer context with workspace root detection

@@ -5,16 +5,16 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import type { QueryName, QueryResult } from '@kb-labs/mind-types';
 import { estimateTokens } from '@kb-labs/mind-core';
-import { loadIndexes, createPathRegistry } from '../loader/index-loader.js';
-import { QueryCache } from '../cache/query-cache.js';
-import { generateAITemplate } from '../ai/templates.js';
-import { queryImpact } from '../queries/impact.js';
-import { queryScope } from '../queries/scope.js';
-import { queryExports } from '../queries/exports.js';
-import { queryExternals } from '../queries/externals.js';
-import { queryChain } from '../queries/chain.js';
-import { queryMeta } from '../queries/meta.js';
-import { queryDocs } from '../queries/docs.js';
+import { loadIndexes, createPathRegistry } from '../loader/index-loader';
+import { QueryCache } from '../cache/query-cache';
+import { generateAITemplate } from '../ai/templates';
+import { queryImpact } from '../queries/impact';
+import { queryScope } from '../queries/scope';
+import { queryExports } from '../queries/exports';
+import { queryExternals } from '../queries/externals';
+import { queryChain } from '../queries/chain';
+import { queryMeta } from '../queries/meta';
+import { queryDocs } from '../queries/docs';
 
 const logger = getLogger('mind:query:executor');
 

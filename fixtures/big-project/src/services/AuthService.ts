@@ -2,11 +2,11 @@
  * Authentication service for managing user authentication
  */
 
-import { Logger } from '../utils/Logger.js';
-import { AuthConfig } from '../config/AuthConfig.js';
-import { User } from '../models/User.js';
-import { JWT } from '../utils/JWT.js';
-import { PasswordHash } from '../utils/PasswordHash.js';
+import { Logger } from '../utils/Logger';
+import { AuthConfig } from '../config/AuthConfig';
+import { User } from '../models/User';
+import { JWT } from '../utils/JWT';
+import { PasswordHash } from '../utils/PasswordHash';
 
 export class AuthService {
   private config: AuthConfig;

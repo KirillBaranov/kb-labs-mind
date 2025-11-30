@@ -3,7 +3,7 @@
  * JSON output format for external integrations
  */
 
-import type { QueryMode } from './query-modes.js';
+import type { QueryMode } from './query-modes';
 
 /**
  * Structured JSON response for Mind queries

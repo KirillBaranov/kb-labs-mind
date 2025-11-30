@@ -11,7 +11,7 @@ import type {
   PipelineConfig,
   PipelineResult,
   CheckpointData,
-} from './pipeline-types.js';
+} from './pipeline-types';
 
 /**
  * Indexing Pipeline Orchestrator

@@ -3,7 +3,7 @@
  */
 
 import { estimateTokens, truncateToTokens } from '@kb-labs/mind-core';
-import type { PackContext } from '../types/index.js';
+import type { PackContext } from '../types/index';
 import type { ProjectMeta, ProductMeta } from '@kb-labs/mind-types';
 
 const PRODUCT_LIMIT = 5;

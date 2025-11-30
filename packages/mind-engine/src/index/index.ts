@@ -18,7 +18,7 @@ export {
   calculateChecksum,
   getDefaultIndexDir,
   getManifestPath,
-} from './manifest.js';
+} from './manifest';
 
 // Git diff detection
 export {
@@ -26,7 +26,7 @@ export {
   type GitDiffOptions,
   GitDiffDetector,
   createGitDiffDetector,
-} from './git-diff.js';
+} from './git-diff';
 
 // Merged vector store
 export {
@@ -34,7 +34,7 @@ export {
   type MergedIndexStats,
   MergedVectorStore,
   createMergedVectorStore,
-} from './merged-store.js';
+} from './merged-store';
 
 // Incremental builder
 export {
@@ -44,7 +44,7 @@ export {
   IncrementalIndexBuilder,
   buildAndStoreOverlay,
   createIncrementalBuilder,
-} from './incremental-builder.js';
+} from './incremental-builder';
 
 // Remote storage
 export {
@@ -55,7 +55,7 @@ export {
   type StorageFactoryOptions,
   createRemoteStorage,
   LocalIndexStorage,
-} from './remote-storage.js';
+} from './remote-storage';
 
 // Overlay manager
 export {
@@ -63,4 +63,4 @@ export {
   type OverlayStatus,
   OverlayManager,
   createOverlayManager,
-} from './overlay-manager.js';
+} from './overlay-manager';

@@ -9,7 +9,7 @@ import type {
   LanguageParser,
   CodeStructure,
   StatementBoundary,
-} from './language-parser.js';
+} from './language-parser';
 
 /**
  * Tree-sitter parser with lazy loading

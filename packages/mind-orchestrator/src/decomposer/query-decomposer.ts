@@ -5,14 +5,14 @@
  */
 
 import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
-import type { LLMProvider } from '../llm/llm-provider.js';
-import type { DecomposedQuery, QueryComplexity, OrchestratorConfig } from '../types.js';
+import type { LLMProvider } from '../llm/llm-provider';
+import type { DecomposedQuery, QueryComplexity, OrchestratorConfig } from '../types';
 import {
   DECOMPOSE_SYSTEM_PROMPT,
   DECOMPOSE_PROMPT_TEMPLATE,
   COMPLEXITY_SYSTEM_PROMPT,
   COMPLEXITY_PROMPT_TEMPLATE,
-} from './prompts.js';
+} from './prompts';
 
 interface DecomposeResponse {
   subqueries: string[];

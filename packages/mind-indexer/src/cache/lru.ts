@@ -2,7 +2,7 @@
  * LRU cache for KB Labs Mind Indexer
  */
 
-import type { CacheEntry } from "../types/index.js";
+import type { CacheEntry } from "../types/index";
 
 /**
  * Simple LRU cache implementation

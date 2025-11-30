@@ -2,13 +2,13 @@
  * Mind verify command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { sha256 } from '@kb-labs/mind-core';
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-types';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 
 type MindVerifyFlags = {
   cwd: { type: 'string'; description?: string };

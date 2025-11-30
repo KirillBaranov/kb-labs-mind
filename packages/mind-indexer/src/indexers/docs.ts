@@ -6,7 +6,7 @@ import { getLogger } from '@kb-labs/core-sys/logging';
 import { promises as fsp } from 'node:fs';
 import { join, basename, extname } from 'node:path';
 import type { DocsIndex, DocEntry } from '@kb-labs/mind-types';
-import type { IndexerContext } from '../types/index.js';
+import type { IndexerContext } from '../types/index';
 import { getGenerator, toPosix } from '@kb-labs/mind-core';
 
 const logger = getLogger('mind:indexer:docs');

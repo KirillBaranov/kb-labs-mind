@@ -2,14 +2,14 @@
  * Orchestrator for KB Labs Mind Indexer
  */
 
-import { indexApiFiles } from '../indexers/api.js';
-import { indexDependencies } from '../indexers/deps.js';
-import { indexGitDiff } from '../indexers/diff.js';
-import { indexMeta } from '../indexers/meta.js';
-import { indexDocs } from '../indexers/docs.js';
-import { isTimeBudgetExceeded } from '../utils/workspace.js';
-import type { IndexerContext } from '../types/index.js';
-import type { DeltaReport } from '../types/index.js';
+import { indexApiFiles } from '../indexers/api';
+import { indexDependencies } from '../indexers/deps';
+import { indexGitDiff } from '../indexers/diff';
+import { indexMeta } from '../indexers/meta';
+import { indexDocs } from '../indexers/docs';
+import { isTimeBudgetExceeded } from '../utils/workspace';
+import type { IndexerContext } from '../types/index';
+import type { DeltaReport } from '../types/index';
 
 /**
  * Orchestrate the indexing process with time budget control

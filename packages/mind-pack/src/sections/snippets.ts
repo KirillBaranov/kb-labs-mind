@@ -4,7 +4,7 @@
 
 import { estimateTokens, truncateToTokens, MAX_SNIPPET_LINES } from '@kb-labs/mind-core';
 import { sortEntriesDeterministically } from '../utils/deterministic';
-import type { PackContext } from '../types/index.js';
+import type { PackContext } from '../types/index';
 import type { ApiIndex } from '@kb-labs/mind-core';
 
 /**

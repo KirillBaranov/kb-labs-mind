@@ -11,4 +11,4 @@ export {
   readIndexMetadata,
   type IndexFreshness,
   type IndexMetadata,
-} from './index-freshness.js';
+} from './index-freshness';

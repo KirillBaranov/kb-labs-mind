@@ -7,9 +7,9 @@ export type {
   Reranker,
   RerankingOptions,
   CrossEncoderRerankerOptions,
-} from './reranker.js';
+} from './reranker';
 
-export { CrossEncoderReranker, HeuristicReranker } from './reranker.js';
+export { CrossEncoderReranker, HeuristicReranker } from './reranker';
 
 // Smart heuristic reranker (improved version)
 export {
@@ -17,13 +17,13 @@ export {
   createSmartHeuristicReranker,
   type SmartHeuristicRerankerOptions,
   type HeuristicScoreBreakdown,
-} from './smart-heuristic-reranker.js';
+} from './smart-heuristic-reranker';
 
-import type { RuntimeAdapter } from '../adapters/runtime-adapter.js';
-import { CrossEncoderReranker } from './reranker.js';
-import { HeuristicReranker } from './reranker.js';
-import { SmartHeuristicReranker } from './smart-heuristic-reranker.js';
-import type { Reranker } from './reranker.js';
+import type { RuntimeAdapter } from '../adapters/runtime-adapter';
+import { CrossEncoderReranker } from './reranker';
+import { HeuristicReranker } from './reranker';
+import { SmartHeuristicReranker } from './smart-heuristic-reranker';
+import type { Reranker } from './reranker';
 
 export type RerankerType = 'cross-encoder' | 'heuristic' | 'smart-heuristic' | 'none';
 

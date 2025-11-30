@@ -2,7 +2,7 @@
  * Default configurations for KB Labs Mind
  */
 
-import type { ContextBudget, ContextPreset } from "./types/pack.js";
+import type { ContextBudget, ContextPreset } from "./types/pack";
 
 /**
  * Default context budget

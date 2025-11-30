@@ -44,7 +44,7 @@ export const fixtures: Record<string, TestFixture> = {
  * Main entry point
  */
 
-export { greet } from './greet.js';
+export { greet } from './greet';
 export { Calculator } from '@/types/calculator.js';
 export type { User } from '@/types/user.js';
 `,
@@ -81,7 +81,7 @@ export type UserRole = 'admin' | 'user' | 'guest';
  * Calculator class
  */
 
-import type { User } from './user.js';
+import type { User } from './user';
 
 export class Calculator {
   private user: User;
@@ -104,8 +104,8 @@ export class Calculator {
  * Types barrel export
  */
 
-export * from './user.js';
-export * from './calculator.js';
+export * from './user';
+export * from './calculator';
 `
         },
 
@@ -198,9 +198,9 @@ A minimal test project for KB Labs Mind testing.
  * Core package entry point
  */
 
-export { CoreService } from './services/core.js';
-export { CoreConfig } from './config.js';
-export type { CoreOptions } from './types.js';
+export { CoreService } from './services/core';
+export { CoreConfig } from './config';
+export type { CoreOptions } from './types';
 `,
 
             'services': {
@@ -209,7 +209,7 @@ export type { CoreOptions } from './types.js';
  */
 
 import { Logger } from '@test/utils';
-import type { CoreOptions } from '../types.js';
+import type { CoreOptions } from '../types';
 
 export class CoreService {
   private logger: Logger;
@@ -235,7 +235,7 @@ export class CoreService {
  */
 
 import { Logger } from '@test/utils';
-import type { User } from '../types.js';
+import type { User } from '../types';
 
 export class AuthService {
   private logger: Logger;
@@ -387,9 +387,9 @@ export async function buildCommand(options: any): Promise<void> {
  * Utils package entry point
  */
 
-export { Logger } from './logger.js';
-export { ConfigManager } from './config.js';
-export * from './validation.js';
+export { Logger } from './logger';
+export { ConfigManager } from './config';
+export * from './validation';
 `,
 
             'logger.ts': `/**

@@ -8,7 +8,7 @@ import type {
   MindLLMEngine,
   MindLLMGenerateOptions,
   MindLLMGenerateResult,
-} from './index.js';
+} from './index';
 
 export interface OpenAILLMEngineOptions {
   /**

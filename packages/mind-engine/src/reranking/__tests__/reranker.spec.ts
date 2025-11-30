@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { HeuristicReranker, CrossEncoderReranker } from '../reranker.js';
-import type { VectorSearchMatch } from '../../vector-store/vector-store.js';
-import type { RuntimeAdapter } from '../../adapters/runtime-adapter.js';
+import { HeuristicReranker, CrossEncoderReranker } from '../reranker';
+import type { VectorSearchMatch } from '../../vector-store/vector-store';
+import type { RuntimeAdapter } from '../../adapters/runtime-adapter';
 
 function createMatch(
   chunkId: string,

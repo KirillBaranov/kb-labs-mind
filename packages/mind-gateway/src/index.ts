@@ -2,11 +2,11 @@
  * Gateway handlers for KB Labs Mind V2 preparation
  */
 
-export * from './handlers/query.js';
-export * from './handlers/verify.js';
+export * from './handlers/query';
+export * from './handlers/verify';
 // Sync handlers moved to mind-cli to avoid circular dependency
-export { verifyIndexes } from './handlers/verify-utils.js';
-export * from './types/request.js';
+export { verifyIndexes } from './handlers/verify-utils';
+export * from './types/request';
 
 // Re-export types for convenience
 export type {
@@ -15,4 +15,4 @@ export type {
   VerifyRequest,
   VerifyResponse,
   GatewayError,
-} from './types/request.js';
+} from './types/request';

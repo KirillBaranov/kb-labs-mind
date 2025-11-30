@@ -2,11 +2,11 @@
  * Initialize Mind structure API
  */
 
-import { ensureMindStructure } from "../fs/ensure.js";
-import { writeJson } from "../fs/json.js";
+import { ensureMindStructure } from "../fs/ensure";
+import { writeJson } from "../fs/json";
 import { getGenerator, toPosix } from "@kb-labs/mind-core";
 import { promises as fsp } from "node:fs";
-import type { InitOptions } from "../types/index.js";
+import type { InitOptions } from "../types/index";
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
 
 /**

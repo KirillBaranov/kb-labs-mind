@@ -3,12 +3,12 @@
  * Batch synchronization operations
  */
 
-import type { DocumentSyncAPI } from './document-sync.js';
+import type { DocumentSyncAPI } from './document-sync';
 import type {
   SyncOperation,
   BatchSyncResult,
   SyncResult,
-} from './types.js';
+} from './types';
 
 export interface BatchSyncOptions {
   maxSize?: number;

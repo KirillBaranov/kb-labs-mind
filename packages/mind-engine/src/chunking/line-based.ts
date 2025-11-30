@@ -3,7 +3,7 @@
  * Line-based chunker (fallback for unsupported languages)
  */
 
-import type { Chunk, ChunkingOptions, Chunker } from './chunker.js';
+import type { Chunk, ChunkingOptions, Chunker } from './chunker';
 import type { SpanRange } from '@kb-labs/knowledge-contracts';
 
 /**

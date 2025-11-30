@@ -5,7 +5,7 @@
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import type { ProjectMeta, ProductMeta } from '@kb-labs/mind-types';
-import type { IndexerContext } from '../types/index.js';
+import type { IndexerContext } from '../types/index';
 import { getGenerator } from '@kb-labs/mind-core';
 
 export async function indexMeta(ctx: IndexerContext): Promise<void> {

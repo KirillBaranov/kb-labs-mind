@@ -3,8 +3,8 @@
  * Adaptive weight adjustment for hybrid search
  */
 
-import type { QueryHistoryStore, QueryHistoryEntry } from './query-history.js';
-import type { FeedbackStore } from './feedback.js';
+import type { QueryHistoryStore, QueryHistoryEntry } from './query-history';
+import type { FeedbackStore } from './feedback';
 
 export interface AdaptiveWeights {
   /**

@@ -8,9 +8,9 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
-import type { LLMProvider } from '../llm/llm-provider.js';
-import type { CompletenessResult, OrchestratorConfig } from '../types.js';
-import { COMPLETENESS_SYSTEM_PROMPT, COMPLETENESS_PROMPT_TEMPLATE } from './prompts.js';
+import type { LLMProvider } from '../llm/llm-provider';
+import type { CompletenessResult, OrchestratorConfig } from '../types';
+import { COMPLETENESS_SYSTEM_PROMPT, COMPLETENESS_PROMPT_TEMPLATE } from './prompts';
 
 const logger = getLogger('mind:orchestrator:checker');
 

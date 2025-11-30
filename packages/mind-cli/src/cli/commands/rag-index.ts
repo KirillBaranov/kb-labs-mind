@@ -1,6 +1,6 @@
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
-import { runRagIndex } from '../../application/rag.js';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import { runRagIndex } from '../../application/rag';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
 
 type MindRagIndexFlags = {
   cwd: { type: 'string'; description?: string };

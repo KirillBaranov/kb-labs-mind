@@ -7,7 +7,7 @@
  */
 
 import * as fs from 'node:fs';
-import type { Chunk } from './chunker.js';
+import type { Chunk } from './chunker';
 
 export interface SlidingWindowOptions {
   /**

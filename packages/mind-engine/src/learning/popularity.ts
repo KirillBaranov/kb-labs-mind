@@ -3,7 +3,7 @@
  * Popularity boost system for frequently used chunks
  */
 
-import type { FeedbackStore } from './feedback.js';
+import type { FeedbackStore } from './feedback';
 
 export interface PopularityBoost {
   /**

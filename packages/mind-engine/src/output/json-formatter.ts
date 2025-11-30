@@ -11,8 +11,8 @@ import type {
   QueryMode,
 } from '@kb-labs/mind-types';
 import type { VectorSearchMatch } from '@kb-labs/mind-vector-store';
-import type { ReasoningResult } from '../reasoning/types.js';
-import { SnippetExtractor } from '../snippets/snippet-extractor.js';
+import type { ReasoningResult } from '../reasoning/types';
+import { SnippetExtractor } from '../snippets/snippet-extractor';
 
 export interface QueryMetrics {
   totalMs: number;

@@ -16,11 +16,11 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types.js';
-import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory.js';
-import type { FileMetadata } from './discovery.js';
-import type { MindChunk } from './chunking.js';
-import { createMemoryAwareQueue } from '../memory-aware-queue.js';
+import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
+import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory';
+import type { FileMetadata } from './discovery';
+import type { MindChunk } from './chunking';
+import { createMemoryAwareQueue } from '../memory-aware-queue';
 
 export interface ParallelChunkingOptions {
   /**

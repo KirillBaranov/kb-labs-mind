@@ -4,4 +4,4 @@ export {
   type LLMJSONOptions,
   type LLMStats,
   createLLMProvider,
-} from './llm-provider.js';
+} from './llm-provider';

@@ -4,5 +4,5 @@ import nodePreset from '@kb-labs/devkit/tsup/node.js';
 export default defineConfig({
   ...nodePreset,
   tsconfig: "tsconfig.build.json",
-  dts: false, // Skip DTS generation due to cross-repo path resolution issues
+  dts: true, // Skip DTS generation due to cross-repo path resolution issues
 });

@@ -38,7 +38,7 @@ export default defineConfig({
     'react-dom',
   ],
   treeshake: false,
-  dts: false, // Disabled for OOM debugging
+  dts: true, // Disabled for OOM debugging
   // Ensure TypeScript declarations are generated for React components
   esbuildOptions(options) {
     options.jsx = 'automatic';

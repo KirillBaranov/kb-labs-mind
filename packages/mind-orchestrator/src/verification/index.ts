@@ -13,7 +13,7 @@ export {
   type SourceVerificationResult,
   type VerificationSummary,
   type SourceVerifierOptions,
-} from './source-verifier.js';
+} from './source-verifier';
 
 export {
   FieldChecker,
@@ -21,4 +21,4 @@ export {
   hasLikelyHallucinations,
   type FieldCheckResult,
   type FieldCheckerOptions,
-} from './field-checker.js';
+} from './field-checker';

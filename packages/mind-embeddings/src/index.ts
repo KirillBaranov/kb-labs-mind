@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
-import type { EmbeddingRuntimeAdapter } from './runtime-adapter-types.js';
-import { createOpenAIEmbeddingProvider } from './providers/openai.js';
-import { createLocalEmbeddingProvider } from './providers/local.js';
+import type { EmbeddingRuntimeAdapter } from './runtime-adapter-types';
+import { createOpenAIEmbeddingProvider } from './providers/openai';
+import { createLocalEmbeddingProvider } from './providers/local';
 
 const DEFAULT_DIMENSION = 384;
 
@@ -210,12 +210,12 @@ export function createEmbeddingProvider(
 }
 
 // Export provider types
-export type { OpenAIEmbeddingProviderOptions } from './providers/openai.js';
-export type { LocalEmbeddingProviderOptions } from './providers/local.js';
-export { createOpenAIEmbeddingProvider } from './providers/openai.js';
-export { createLocalEmbeddingProvider } from './providers/local.js';
-export type { EmbeddingRuntimeAdapter } from './runtime-adapter-types.js';
+export type { OpenAIEmbeddingProviderOptions } from './providers/openai';
+export type { LocalEmbeddingProviderOptions } from './providers/local';
+export { createOpenAIEmbeddingProvider } from './providers/openai';
+export { createLocalEmbeddingProvider } from './providers/local';
+export type { EmbeddingRuntimeAdapter } from './runtime-adapter-types';
 
 // Export cache types and utilities
-export type { EmbeddingCacheEntry, EmbeddingCacheOptions } from './cache.js';
-export { EmbeddingCache, getGlobalEmbeddingCache, resetGlobalEmbeddingCache } from './cache.js';
+export type { EmbeddingCacheEntry, EmbeddingCacheOptions } from './cache';
+export { EmbeddingCache, getGlobalEmbeddingCache, resetGlobalEmbeddingCache } from './cache';

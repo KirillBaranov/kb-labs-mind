@@ -1,1 +1,1 @@
-export * from './widgets/index.js';
+export * from './widgets/index';

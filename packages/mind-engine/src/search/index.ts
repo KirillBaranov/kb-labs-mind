@@ -4,10 +4,10 @@
  */
 
 // Hybrid search
-export { hybridSearch, type HybridSearchOptions } from './hybrid.js';
+export { hybridSearch, type HybridSearchOptions } from './hybrid';
 
 // Keyword search (BM25)
-export { keywordSearch, type KeywordSearchOptions } from './keyword.js';
+export { keywordSearch, type KeywordSearchOptions } from './keyword';
 
 // Query classification
 export {
@@ -17,7 +17,7 @@ export {
   detectLanguage,
   type QueryType,
   type QueryClassification,
-} from './query-classifier.js';
+} from './query-classifier';
 
 // Source categorization
 export {
@@ -28,7 +28,7 @@ export {
   getCategoryStats,
   type SourceCategory,
   type CategorizedMatch,
-} from './source-categorizer.js';
+} from './source-categorizer';
 
 // Adaptive hybrid search
 export {
@@ -36,4 +36,4 @@ export {
   adaptiveSearch,
   type AdaptiveHybridSearchOptions,
   type AdaptiveSearchResult,
-} from './adaptive-hybrid.js';
+} from './adaptive-hybrid';

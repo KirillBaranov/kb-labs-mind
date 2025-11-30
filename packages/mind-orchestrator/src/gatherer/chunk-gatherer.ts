@@ -8,7 +8,7 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeChunk, KnowledgeIntent } from '@kb-labs/knowledge-contracts';
 import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
-import type { DecomposedQuery, GatheredChunks, OrchestratorConfig } from '../types.js';
+import type { DecomposedQuery, GatheredChunks, OrchestratorConfig } from '../types';
 
 const logger = getLogger('mind:orchestrator:gatherer');
 

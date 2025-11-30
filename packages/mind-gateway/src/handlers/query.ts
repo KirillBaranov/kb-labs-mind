@@ -2,7 +2,7 @@
  * Gateway handler for /mind/query endpoint
  */
 
-import type { QueryRequest, QueryResponse, GatewayError } from '../types/request.js';
+import type { QueryRequest, QueryResponse, GatewayError } from '../types/request';
 import { executeQuery } from '@kb-labs/mind-query';
 
 export async function handleQuery(req: QueryRequest): Promise<QueryResponse | GatewayError> {

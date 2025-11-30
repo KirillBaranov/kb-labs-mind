@@ -7,4 +7,4 @@ export {
   type QueryExpansionResult,
   type QueryExpanderOptions,
   QueryExpander,
-} from './query-expander.js';
+} from './query-expander';

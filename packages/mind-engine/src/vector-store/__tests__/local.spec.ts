@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { LocalVectorStore } from '../local.js';
-import type { StoredMindChunk } from '../vector-store.js';
+import { LocalVectorStore } from '../local';
+import type { StoredMindChunk } from '../vector-store';
 import path from 'node:path';
 import fs from 'fs-extra';
 import os from 'node:os';

@@ -8,16 +8,16 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
 import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
 import type { AgentQueryMode, AgentSource, AgentSourceKind, AgentWarning } from '@kb-labs/knowledge-contracts';
-import type { LLMProvider } from '../llm/llm-provider.js';
-import type { SynthesisResult, OrchestratorConfig } from '../types.js';
+import type { LLMProvider } from '../llm/llm-provider';
+import type { SynthesisResult, OrchestratorConfig } from '../types';
 import {
   SYNTHESIS_SYSTEM_PROMPT,
   SYNTHESIS_PROMPT_TEMPLATE,
   INSTANT_SYNTHESIS_TEMPLATE,
-} from './prompts.js';
-import { createSourceVerifier, extractCodeMentions, verifyMentionsInChunks } from '../verification/index.js';
-import { createFieldChecker } from '../verification/index.js';
-import { arrayToToon } from '../utils/toon.js';
+} from './prompts';
+import { createSourceVerifier, extractCodeMentions, verifyMentionsInChunks } from '../verification/index';
+import { createFieldChecker } from '../verification/index';
+import { arrayToToon } from '../utils/toon';
 
 const logger = getLogger('mind:orchestrator:synthesizer');
 

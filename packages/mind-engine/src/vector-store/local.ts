@@ -8,7 +8,7 @@ import type {
   VectorSearchFilters,
   VectorSearchMatch,
   VectorStore,
-} from './vector-store.js';
+} from './vector-store';
 import {
   MindVectorStore,
   type StoredMindChunk as MindStoredMindChunk,

@@ -12,7 +12,7 @@ import {
   runSyncStatus,
   runSyncRestore,
   runSyncCleanup,
-} from '../../application/sync.js';
+} from '../../application/sync';
 import { findRepoRoot } from '@kb-labs/core';
 
 export interface SyncAddRequest {

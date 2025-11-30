@@ -2,12 +2,12 @@
  * Update indexes API
  */
 
-import { createIndexerContext, isTimeBudgetExceeded } from "../utils/workspace.js";
-import { readJson, writeJson, computeJsonHash } from "../fs/json.js";
-import { ensureMindStructure } from "../fs/ensure.js";
-import { orchestrateIndexing } from "../orchestrator/orchestrator.js";
+import { createIndexerContext, isTimeBudgetExceeded } from "../utils/workspace";
+import { readJson, writeJson, computeJsonHash } from "../fs/json";
+import { ensureMindStructure } from "../fs/ensure";
+import { orchestrateIndexing } from "../orchestrator/orchestrator";
 import { DEFAULT_TIME_BUDGET_MS, toPosix, sha256, getGenerator } from "@kb-labs/mind-core";
-import type { UpdateOptions, DeltaReport } from "../types/index.js";
+import type { UpdateOptions, DeltaReport } from "../types/index";
 import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
 
 /**

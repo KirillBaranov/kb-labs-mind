@@ -4,8 +4,8 @@
  */
 
 import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
-import type { EmbeddingProvider } from '../index.js';
-import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types.js';
+import type { EmbeddingProvider } from '../index';
+import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types';
 
 export interface LocalEmbeddingProviderOptions {
   type: 'ollama' | 'in-process';

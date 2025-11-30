@@ -4,9 +4,9 @@
  */
 
 import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
-import type { EmbeddingProvider } from '../index.js';
-import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types.js';
-import { getGlobalEmbeddingCache, type EmbeddingCacheOptions } from '../cache.js';
+import type { EmbeddingProvider } from '../index';
+import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types';
+import { getGlobalEmbeddingCache, type EmbeddingCacheOptions } from '../cache';
 
 export interface OpenAIEmbeddingProviderOptions {
   apiKey: string;

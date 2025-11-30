@@ -12,4 +12,4 @@ export {
   type DegradationResult,
   type PipelineStepConfig,
   type GracefulDegradationOptions,
-} from './graceful-degradation.js';
+} from './graceful-degradation';

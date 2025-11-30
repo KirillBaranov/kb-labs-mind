@@ -4,7 +4,7 @@
 
 import { estimateTokens, truncateToTokens } from '@kb-labs/mind-core';
 import { sortDeterministically } from '../utils/deterministic';
-import type { PackContext } from '../types/index.js';
+import type { PackContext } from '../types/index';
 import type { RecentDiff } from '@kb-labs/mind-core';
 
 /**
