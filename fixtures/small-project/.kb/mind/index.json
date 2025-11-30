@@ -1,11 +1,11 @@
 {
   "apiIndexHash": "335c8ff6140248953470fc62019fec3a0680ae6fb53057712075b1b5792f4862",
-  "depsHash": "fc1d449ac3dd6b68b6fa7ffb8b95e16b56f611983cf9c7712077e9305d76fc47",
+  "depsHash": "48ca4a05861d2e61f2c8fd11c4fe7d9aceed787eeb54c5368a12e2143cd0e92d",
   "filesIndexed": 3,
   "generator": "kb-labs-mind@0.1.0",
-  "indexChecksum": "2717d4323a6c54a85e091a7aac15f1c5ac3ef2e4b71ea8aade71eb302205f401",
+  "indexChecksum": "076ace2ed0a8a2cf9ece1ab06e3afa8d8deb4fd3b83c1ccbaed3d067a3377800",
   "recentDiffHash": "a3e187f722868c6a0e57f158f47e599e818b80b11323dd392b9387310d39ed9e",
   "root": "/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind",
   "schemaVersion": "1.0",
-  "updatedAt": "2025-11-19T11:40:58.058Z"
+  "updatedAt": "2025-11-28T09:59:31.039Z"
 }

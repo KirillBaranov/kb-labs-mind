@@ -44,6 +44,7 @@ function generateRequestId(): string {
 export interface AgentQueryOrchestratorOptions {
   config?: Partial<OrchestratorConfig>;
   llmEngine?: MindLLMEngine;
+  broker?: any; // StateBroker-like interface (duck typing)
   analytics?: {
     enabled?: boolean;
     detailed?: boolean;
@@ -123,7 +124,7 @@ export class AgentQueryOrchestrator {
       config: this.config.compression,
     });
 
-    // Initialize query cache
+    // Initialize query cache with optional broker
     this.queryCache = new QueryCache({
       maxSize: 100,
       ttlByMode: {
@@ -131,6 +132,7 @@ export class AgentQueryOrchestrator {
         auto: 5 * 60 * 1000,      // 5 minutes
         thinking: 15 * 60 * 1000, // 15 minutes
       },
+      broker: options.broker, // Pass broker for persistent caching
     });
 
     // Initialize analytics
@@ -155,7 +157,7 @@ export class AgentQueryOrchestrator {
 
     // Check cache first (before analytics to avoid overhead)
     if (!options.noCache) {
-      const cached = this.queryCache.get(
+      const cached = await this.queryCache.get(
         options.text,
         options.scopeId ?? 'default',
         mode,
@@ -257,7 +259,7 @@ export class AgentQueryOrchestrator {
 
       // Store in cache
       if (!options.noCache) {
-        this.queryCache.set(
+        await this.queryCache.set(
           options.text,
           options.scopeId ?? 'default',
           mode,

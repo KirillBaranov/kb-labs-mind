@@ -3,6 +3,8 @@
  *
  * LRU cache for repeated queries to reduce LLM calls
  * and improve response times.
+ *
+ * Supports optional StateBroker backend for persistent cross-invocation caching.
  */
 
 import { createHash } from 'node:crypto';
@@ -15,16 +17,24 @@ export interface CacheEntry {
   queryHash: string;
 }
 
+export interface StateBrokerLike {
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+}
+
 export interface QueryCacheOptions {
-  /** Maximum cache entries */
+  /** Maximum cache entries (for in-memory fallback) */
   maxSize?: number;
   /** Default TTL in milliseconds */
   defaultTtlMs?: number;
   /** TTL by mode (more complex modes cache longer) */
   ttlByMode?: Record<AgentQueryMode, number>;
+  /** Optional state broker for persistent caching */
+  broker?: StateBrokerLike;
 }
 
-const DEFAULT_OPTIONS: Required<QueryCacheOptions> = {
+const DEFAULT_OPTIONS = {
   maxSize: 100,
   defaultTtlMs: 5 * 60 * 1000, // 5 minutes
   ttlByMode: {
@@ -36,14 +46,20 @@ const DEFAULT_OPTIONS: Required<QueryCacheOptions> = {
 
 /**
  * Query Cache - LRU cache for agent responses
+ *
+ * Two-tier caching strategy:
+ * 1. StateBroker (persistent, cross-invocation) - if available
+ * 2. In-memory LRU (fallback) - always available
  */
 export class QueryCache {
-  private readonly options: Required<QueryCacheOptions>;
+  private readonly options: Required<Omit<QueryCacheOptions, 'broker'>>;
+  private readonly broker?: StateBrokerLike;
   private readonly cache: Map<string, CacheEntry>;
   private readonly accessOrder: string[];
 
   constructor(options: QueryCacheOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.broker = options.broker;
     this.cache = new Map();
     this.accessOrder = [];
   }
@@ -67,12 +83,40 @@ export class QueryCache {
   /**
    * Get cached response if available and not expired
    */
-  get(
+  async get(
     query: string,
     scopeId: string,
     mode: AgentQueryMode,
-  ): AgentResponse | null {
+  ): Promise<AgentResponse | null> {
     const key = this.generateKey(query, scopeId, mode);
+    const ttl = this.options.ttlByMode[mode] ?? this.options.defaultTtlMs;
+
+    // Try StateBroker first (persistent cache)
+    if (this.broker) {
+      try {
+        const brokerKey = `mind:query:${key}`;
+        const entry = await this.broker.get<CacheEntry>(brokerKey);
+
+        if (entry) {
+          // Check TTL
+          const age = Date.now() - entry.timestamp;
+          if (age <= ttl) {
+            // Cache hit
+            return {
+              ...entry.response,
+              meta: {
+                ...entry.response.meta,
+                cached: true,
+              },
+            };
+          }
+        }
+      } catch (error) {
+        // Fallback to in-memory if broker fails
+      }
+    }
+
+    // Fallback to in-memory cache
     const entry = this.cache.get(key);
 
     if (!entry) {
@@ -80,7 +124,6 @@ export class QueryCache {
     }
 
     // Check TTL
-    const ttl = this.options.ttlByMode[mode] ?? this.options.defaultTtlMs;
     const age = Date.now() - entry.timestamp;
 
     if (age > ttl) {
@@ -106,23 +149,19 @@ export class QueryCache {
   /**
    * Store response in cache
    */
-  set(
+  async set(
     query: string,
     scopeId: string,
     mode: AgentQueryMode,
     response: AgentResponse,
-  ): void {
+  ): Promise<void> {
     // Don't cache error responses or low confidence
     if (response.confidence < 0.3) {
       return;
     }
 
     const key = this.generateKey(query, scopeId, mode);
-
-    // Evict if at capacity
-    if (this.cache.size >= this.options.maxSize && !this.cache.has(key)) {
-      this.evictLRU();
-    }
+    const ttl = this.options.ttlByMode[mode] ?? this.options.defaultTtlMs;
 
     const entry: CacheEntry = {
       response,
@@ -130,6 +169,22 @@ export class QueryCache {
       hits: 0,
       queryHash: key,
     };
+
+    // Store in StateBroker first (persistent cache)
+    if (this.broker) {
+      try {
+        const brokerKey = `mind:query:${key}`;
+        await this.broker.set(brokerKey, entry, ttl);
+      } catch (error) {
+        // Fallback to in-memory if broker fails
+      }
+    }
+
+    // Always store in in-memory cache too (L2 cache)
+    // Evict if at capacity
+    if (this.cache.size >= this.options.maxSize && !this.cache.has(key)) {
+      this.evictLRU();
+    }
 
     this.cache.set(key, entry);
     this.updateAccessOrder(key);

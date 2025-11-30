@@ -224,6 +224,7 @@ export interface AgentRagQueryOptions {
   mode?: AgentQueryMode;
   debug?: boolean;
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
+  broker?: any; // StateBroker-like interface (duck typing to avoid circular deps)
 }
 
 export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
@@ -256,9 +257,11 @@ export async function runAgentRagQuery(
     : undefined;
 
   // Reuse or create global orchestrator for cache persistence
+  // NOTE: Broker must be passed on first creation - cannot be changed later
   if (!globalOrchestrator) {
     globalOrchestrator = createAgentQueryOrchestrator({
       llmEngine,
+      broker: options.broker, // Pass broker for persistent caching
       config: {
         mode: options.mode ?? 'auto',
         autoDetectComplexity: true,

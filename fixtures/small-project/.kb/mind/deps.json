@@ -31,7 +31,8 @@
     "externalDeps": [
       "lodash",
       "@types/eslint",
-      "@types/estree"
+      "@types/estree",
+      "source-map"
     ],
     "hotspots": [],
     "internalEdges": 1,

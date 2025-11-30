@@ -14,7 +14,7 @@ cd /Users/kirillbaranov/Desktop/kb-labs
 rm -rf .kb/cache/*
 
 # Запустить индексацию (если нужно)
-env NODE_OPTIONS="--max-old-space-size=4096 --expose-gc" pnpm kb mind rag-index --scope default
+pnpm kb mind rag-index --scope default
 
 # Запустить все бенчмарки
 ./kb-labs-mind/packages/mind-engine/scripts/run-benchmarks.sh

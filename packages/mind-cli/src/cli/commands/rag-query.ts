@@ -160,12 +160,17 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
     // === AGENT MODE ===
     if (flags.agent) {
       try {
+        // Get state broker from runtime context (provided by platform)
+        // Gracefully falls back to in-memory if not available
+        const broker = ctx.runtime?.state;
+
         const result = await runAgentRagQuery({
           cwd,
           scopeId,
           text,
           mode,
           debug: flags.debug,
+          broker, // Pass broker from platform (undefined = in-memory fallback)
         });
 
         // Output clean JSON to stdout
