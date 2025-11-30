@@ -2,10 +2,10 @@
  * Mind init command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { initMindStructure } from '@kb-labs/mind-indexer';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 import { join } from 'node:path';
 import { promises as fsp } from 'node:fs';
 
