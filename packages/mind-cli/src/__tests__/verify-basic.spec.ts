@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/commands/verify.js';
-import type { CommandContext } from '../cli/types.js';
-import { getExitCode } from './helpers.js';
+import { run } from '../cli/commands/verify';
+import type { CommandContext } from '../cli/types';
+import { getExitCode } from './helpers';
 import * as mindCore from '@kb-labs/mind-core';
 
 // Mock dependencies

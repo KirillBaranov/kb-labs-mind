@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
-import { gitDiffSince, listStagedFiles } from '../index.js';
+import { gitDiffSince, listStagedFiles } from '../index';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 

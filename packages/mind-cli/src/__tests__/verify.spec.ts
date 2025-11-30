@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/commands/verify.js';
-import type { CommandContext } from '../cli/types.js';
+import { run } from '../cli/commands/verify';
+import type { CommandContext } from '../cli/types';
 
 // Mock dependencies
 vi.mock('node:fs', () => ({

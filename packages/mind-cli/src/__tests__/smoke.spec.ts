@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { manifest } from '../manifest.v2.js';
+import { manifest } from '../manifest.v2';
 
 describe('Mind CLI Smoke Tests', () => {
   it('should have manifest with required commands', () => {

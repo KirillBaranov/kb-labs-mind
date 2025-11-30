@@ -3,10 +3,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/commands/update.js';
-import type { CommandContext } from '../cli/types.js';
+import { run } from '../cli/commands/update';
+import type { CommandContext } from '../cli/types';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
-import { getExitCode, getProducedArtifacts } from './helpers.js';
+import { getExitCode, getProducedArtifacts } from './helpers';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-indexer', () => ({

@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { run } from '../cli/commands/init.js';
-import type { CommandContext } from '../cli/types.js';
-import { getExitCode } from './helpers.js';
+import { run } from '../cli/commands/init';
+import type { CommandContext } from '../cli/types';
+import { getExitCode } from './helpers';
 
 // Mock dependencies
 vi.mock('@kb-labs/mind-indexer', () => ({

@@ -12,7 +12,7 @@ import {
   box, 
   keyValue, 
   createSpinner 
-} from '../cli/utils.js';
+} from '../cli/utils';
 
 describe('CLI Utilities', () => {
   describe('colors', () => {
