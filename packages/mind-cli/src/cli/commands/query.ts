@@ -2,19 +2,19 @@
  * Mind query command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/cli-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { pluginContractsManifest } from '@kb-labs/mind-contracts';
-import { MIND_ERROR_CODES } from '../../errors/error-codes.js';
+import { MIND_ERROR_CODES } from '../../errors/error-codes';
 import { resolve, join } from 'node:path';
 import { mkdir, writeFile, stat } from 'node:fs/promises';
 import { encode } from '@byjohann/toon';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events.js';
+import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 import {
   runQueryCore,
   parseQueryFromCliFlags,
   parseQueryFromHttpRequest,
   type QueryRuntimeContext
-} from '../../application/index.js';
+} from '../../application/index';
 
 const QUERY_ARTIFACT_ID =
   pluginContractsManifest.artifacts['mind.query.output']?.id ?? 'mind.query.output';
