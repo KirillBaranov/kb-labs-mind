@@ -20,8 +20,8 @@
       "@app/studio/*": ["src/studio/*"],
       "@app/cli": ["src/cli/index.ts"],
       "@app/cli/*": ["src/cli/*"],
-      "@kb-labs/mind-contracts": ["../contracts/src/index.ts"],
-      "@kb-labs/mind-contracts/*": ["../contracts/src/*"]
+      "@kb-labs/mind-contracts": ["../mind-contracts/src/index.ts"],
+      "@kb-labs/mind-contracts/*": ["../mind-contracts/src/*"]
     }
   },
   "include": ["src"],
