@@ -99,18 +99,6 @@
       "@kb-labs/mind-orchestrator/*": [
         "packages/mind-orchestrator/src/*"
       ],
-      "@kb-labs/mind-pack": [
-        "packages/mind-pack/src/index.ts"
-      ],
-      "@kb-labs/mind-pack/*": [
-        "packages/mind-pack/src/*"
-      ],
-      "@kb-labs/mind-query": [
-        "packages/mind-query/src/index.ts"
-      ],
-      "@kb-labs/mind-query/*": [
-        "packages/mind-query/src/*"
-      ],
       "@kb-labs/mind-types": [
         "packages/mind-types/src/index.ts"
       ],
