@@ -34,6 +34,7 @@ export interface QueryStartedPayload {
   mode: AgentQueryMode;
   scopeId: string;
   agentMode: boolean;
+  [key: string]: unknown;
 }
 
 export interface QueryCompletedPayload {
@@ -73,6 +74,7 @@ export interface QueryCompletedPayload {
   subqueriesCount: number;
   iterationsCount: number;
   compressionApplied: boolean;
+  [key: string]: unknown;
 }
 
 export interface QueryFailedPayload {
@@ -81,6 +83,7 @@ export interface QueryFailedPayload {
   errorCode: string;
   errorMessage: string;
   recoverable: boolean;
+  [key: string]: unknown;
 }
 
 export interface StageCompletedPayload {
@@ -192,6 +195,9 @@ export function calculateLLMCost(
   model: string = 'gpt-4o-mini',
 ): number {
   const config = DEFAULT_LLM_COSTS[model] ?? DEFAULT_LLM_COSTS['gpt-4o-mini'];
+  if (!config) {
+    throw new Error(`No cost configuration found for model: ${model}`);
+  }
   const inputCost = (tokensIn / 1_000_000) * config.inputCostPerMillion;
   const outputCost = (tokensOut / 1_000_000) * config.outputCostPerMillion;
   return inputCost + outputCost;

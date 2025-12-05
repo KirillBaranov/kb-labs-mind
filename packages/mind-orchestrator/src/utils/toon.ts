@@ -28,7 +28,11 @@ export function arrayToToon<T extends Record<string, any>>(
   }
 
   // Auto-detect fields from first object if not provided
-  const fieldNames = fields ?? (Object.keys(array[0]) as (keyof T)[]);
+  const firstItem = array[0];
+  if (!firstItem) {
+    return '[0]';
+  }
+  const fieldNames = fields ?? (Object.keys(firstItem) as (keyof T)[]);
 
   // Header: [count]{field1,field2,...}:
   const header = `[${array.length}]{${fieldNames.join(',')}}:`;

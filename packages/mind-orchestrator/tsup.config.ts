@@ -1,8 +1,19 @@
 import { defineConfig } from 'tsup';
-import nodePreset from '@kb-labs/devkit/tsup/node.js';
 
 export default defineConfig({
-  ...nodePreset,
+  // Manual config without nodePreset to control bundling
+  format: ['esm'],
+  target: 'es2022',
+  sourcemap: true,
+  clean: true,
+  outDir: 'dist',
+  splitting: false,
+  minify: false,
+  skipNodeModulesBundle: false, // Allow bundling workspace packages
+  shims: false,
   tsconfig: "tsconfig.build.json",
-  dts: true, // Skip DTS generation due to cross-repo path resolution issues
+  entry: ['src/index.ts'],
+  external: [], // Bundle everything (no externals)
+  treeshake: false,
+  dts: false, // TEMPORARY: disabled until type resolution issues fixed
 });

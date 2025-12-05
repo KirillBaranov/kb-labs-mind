@@ -123,7 +123,7 @@ Do not include any text before or after the JSON object.
       } catch {
         // Try to extract JSON from markdown code block
         const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-        if (jsonMatch) {
+        if (jsonMatch && jsonMatch[1]) {
           return JSON.parse(jsonMatch[1].trim()) as T;
         }
 

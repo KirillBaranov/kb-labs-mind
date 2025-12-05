@@ -168,7 +168,7 @@ export class CompletenessChecker {
     for (const chunk of chunks) {
       if (chunk.path.startsWith('external://')) {
         const match = chunk.path.match(/external:\/\/([^/]+)/);
-        if (match) {
+        if (match && match[1]) {
           types.add(match[1]);
         }
       } else {

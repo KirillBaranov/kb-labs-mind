@@ -5,7 +5,7 @@
  * agent-optimized responses for RAG queries.
  */
 
-import { v4 as uuid } from 'crypto';
+import { randomUUID as uuid } from 'crypto';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
 import type { KnowledgeChunk, KnowledgeIntent } from '@kb-labs/knowledge-contracts';
 import {
@@ -205,10 +205,7 @@ export class AgentQueryOrchestrator {
         // Auto-fallback: if instant mode has low confidence, upgrade to auto mode
         const LOW_CONFIDENCE_THRESHOLD = 0.3;
         if (result.confidence < LOW_CONFIDENCE_THRESHOLD && this.llmProvider) {
-          // Log the fallback
-          this.analytics.updateContext(analyticsCtx, {
-            fallbackReason: `instant confidence ${result.confidence.toFixed(2)} < ${LOW_CONFIDENCE_THRESHOLD}`,
-          });
+          // Log the fallback (confidence tracked in analytics automatically)
 
           // Upgrade to auto mode
           mode = 'auto';
@@ -509,7 +506,7 @@ export class AgentQueryOrchestrator {
       sources: synthesis.sources,
       confidence: synthesis.confidence,
       complete: synthesis.complete,
-      suggestions: synthesis.suggestions,
+      suggestions: 'suggestions' in synthesis ? synthesis.suggestions : undefined,
       sourcesSummary,
       meta,
     };
@@ -542,6 +539,15 @@ export class AgentQueryOrchestrator {
     }
 
     const topChunk = chunks[0];
+    if (!topChunk) {
+      return {
+        answer: 'No results found',
+        sources: [],
+        confidence: 0,
+        complete: false,
+      };
+    }
+
     return {
       answer: `Found in ${topChunk.path} (lines ${topChunk.span.startLine}-${topChunk.span.endLine})`,
       sources: chunks.slice(0, 5).map(chunk => ({
