@@ -75,12 +75,6 @@
       "@kb-labs/mind-engine/*": [
         "packages/mind-engine/src/*"
       ],
-      "@kb-labs/mind-gateway": [
-        "packages/mind-gateway/src/index.ts"
-      ],
-      "@kb-labs/mind-gateway/*": [
-        "packages/mind-gateway/src/*"
-      ],
       "@kb-labs/mind-indexer": [
         "packages/mind-indexer/src/index.ts"
       ],
