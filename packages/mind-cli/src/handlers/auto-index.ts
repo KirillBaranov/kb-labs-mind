@@ -36,6 +36,7 @@ export const run: Handler<AutoIndexInput, AutoIndexOutput> = async (input, ctx) 
     const result = await runRagIndex({
       cwd: ctx.cwd,
       scopeId: input.scopeId,
+      platform: ctx.platform,
     });
 
     const duration = Date.now() - startTime;

@@ -17,6 +17,7 @@ import {
   registerMindKnowledgeEngine,
   type RuntimeAdapter,
 } from '@kb-labs/mind-engine';
+import type { PlatformServices } from '@kb-labs/plugin-runtime';
 
 export const MIND_PRODUCT_ID = 'mind';
 
@@ -50,6 +51,10 @@ export interface MindKnowledgeRuntimeOptions {
       metric(name: string, value: number, tags?: Record<string, string>): void;
     };
   };
+  /**
+   * Platform services (passed through to mind-engine for ports/adapters)
+   */
+  platform?: PlatformServices;
 }
 
 /**
@@ -69,6 +74,7 @@ export async function createMindKnowledgeRuntime(
   // Register Mind engine with runtime adapter if provided
   registerMindKnowledgeEngine(engineRegistry, {
     runtime: options.runtime,
+    platform: options.platform,
   });
 
   // Build capabilities registry for the 'mind' product

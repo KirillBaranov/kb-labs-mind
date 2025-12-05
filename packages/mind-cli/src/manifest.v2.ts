@@ -22,6 +22,10 @@ export const manifest: ManifestV2 = {
     description: 'AI-oriented dependency indexing and context packing for KB Labs',
     tags: ['mind', 'indexing', 'context'],
   },
+  platform: {
+    requires: ['vectorStore', 'embeddings', 'storage'],
+    optional: ['llm', 'cache', 'analytics', 'events', 'invoke', 'artifacts'],
+  },
   
   // CLI commands
   cli: {

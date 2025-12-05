@@ -1,6 +1,7 @@
 import type { KnowledgeIntent, KnowledgeResult, AgentQueryMode } from '@kb-labs/knowledge-contracts';
 import type { AgentResponse, AgentErrorResponse } from '@kb-labs/knowledge-contracts';
 import type { KnowledgeLogger } from '@kb-labs/knowledge-core';
+import type { PlatformServices } from '@kb-labs/plugin-runtime';
 import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
@@ -20,6 +21,7 @@ let globalOrchestrator: AgentQueryOrchestrator | null = null;
 export interface RagIndexOptions {
   cwd: string;
   scopeId?: string;
+  platform?: PlatformServices;
 }
 
 export interface RagIndexResult {
@@ -36,6 +38,7 @@ export async function runRagIndex(
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
     runtime: 'runtime' in options ? options.runtime : undefined,
+    platform: options.platform,
   });
   const allScopeIds = runtime.config.scopes?.map((scope: any) => scope.id) ?? [];
   if (!allScopeIds.length) {
@@ -74,6 +77,7 @@ export interface RagQueryOptions {
   profileId?: string;
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
   onProgress?: (stage: string, details?: string) => void;
+  platform?: PlatformServices;
 }
 
 export interface RagQueryResult {
@@ -182,6 +186,7 @@ export async function runRagQuery(
     runtime: wrappedRuntime,
     logger: silentLogger,
     onProgress: onProgressEvent,
+    platform: options.platform,
   });
   
   options.onProgress?.('Initializing Mind runtime');
@@ -225,6 +230,7 @@ export interface AgentRagQueryOptions {
   debug?: boolean;
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
   broker?: any; // StateBroker-like interface (duck typing to avoid circular deps)
+  platform?: PlatformServices;
 }
 
 export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
@@ -247,6 +253,13 @@ export async function runAgentRagQuery(
 ): Promise<AgentRagQueryResult> {
   // Get OpenAI API key from environment
   const apiKey = process.env.OPENAI_API_KEY;
+  const platformBroker = options.platform?.cache
+    ? {
+        get: <T>(key: string) => options.platform!.cache!.get<T>(key),
+        set: <T>(key: string, value: T, ttl?: number) => options.platform!.cache!.set(key, value, ttl),
+        delete: (key: string) => options.platform!.cache!.delete(key),
+      }
+    : undefined;
 
   // Create LLM engine if API key available
   const llmEngine = apiKey
@@ -261,7 +274,8 @@ export async function runAgentRagQuery(
   if (!globalOrchestrator) {
     globalOrchestrator = createAgentQueryOrchestrator({
       llmEngine,
-      broker: options.broker, // Pass broker for persistent caching
+      broker: options.broker ?? platformBroker, // Pass broker for persistent caching
+      analyticsAdapter: options.platform?.analytics ?? null,
       config: {
         mode: options.mode ?? 'auto',
         autoDetectComplexity: true,
@@ -284,6 +298,7 @@ export async function runAgentRagQuery(
     cwd: options.cwd,
     runtime: options.runtime,
     logger: silentLogger,
+    platform: options.platform,
   });
 
   // Get scope ID

@@ -41,6 +41,7 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
 
     const cwd = flags.cwd || ctx.cwd;
     const scopeId = flags.scope;
+    const platform = (ctx as any).platform;
 
     ctx.logger?.debug('Command started', { cwd, scopeId });
 
@@ -52,7 +53,12 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
     ctx.logger?.debug('About to call runRagIndex');
     ctx.tracker?.checkpoint('index');
 
-    const result = await runRagIndex({ cwd, scopeId });
+    const result = await runRagIndex({ cwd, scopeId, platform });
+
+    // Track analytics if available
+    platform?.analytics?.track?.('mind.rag-index', {
+      scopeIds: result.scopeIds,
+    }).catch(() => {});
 
     ctx.logger?.debug('runRagIndex completed successfully');
     ctx.tracker?.checkpoint('complete');

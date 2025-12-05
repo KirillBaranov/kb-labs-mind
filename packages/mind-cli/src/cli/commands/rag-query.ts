@@ -1,4 +1,4 @@
-import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import { defineCommand } from '@kb-labs/shared-command-kit';
 import { runRagQuery, runAgentRagQuery } from '../../application/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
@@ -41,12 +41,14 @@ type MindRagQueryFlags = {
   debug: { type: 'boolean'; description?: string; default?: boolean };
 };
 
-type MindRagQueryResult = CommandResult & {
+type MindRagQueryResult = {
+  ok: boolean;
   chunks?: Array<{ text: string; score: number }>;
   query?: string;
+  exitCode?: number;
 };
 
-export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
+export const run = defineCommand({
   name: 'mind:rag-query',
   flags: {
     cwd: {
@@ -109,13 +111,14 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       default: false,
     },
   },
-  async handler(ctx, argv, flags) {
+  async handler(ctx: any, argv: string[], flags: any) {
     const cwd = flags.cwd || ctx.cwd;
     const scopeId = flags.scope;
     const intent = flags.intent && isValidIntent(flags.intent) ? flags.intent : undefined;
     const text = flags.text?.trim() || '';
     const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
     const profileId = flags.profile;
+    const platform = (ctx as any).platform;
 
     // Handle mode flag
     const mode = flags.mode && isValidMode(flags.mode) ? flags.mode : 'auto';
@@ -172,7 +175,16 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
           mode,
           debug: flags.debug,
           broker, // Pass broker from platform (undefined = in-memory fallback)
+          platform,
         });
+
+        // Track analytics if available
+        platform?.analytics?.track?.('mind.rag-query', {
+          mode,
+          agent: true,
+          scopeId,
+          intent,
+        }).catch(() => {});
 
         // Output clean JSON to stdout
         console.log(JSON.stringify(result));
@@ -243,6 +255,7 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
         intent,
         limit,
         profileId,
+        platform,
         runtime: undefined, // Runtime context not available in CLI context
         onProgress: (stage: string, details?: string) => {
           if (flags.quiet || format === 'json' || format === 'json-pretty') return;
@@ -339,6 +352,14 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       if (timeUpdateInterval) {
         clearInterval(timeUpdateInterval);
       }
+
+      // Track analytics if available
+      platform?.analytics?.track?.('mind.rag-query', {
+        mode,
+        agent: false,
+        scopeId,
+        intent,
+      }).catch(() => {});
     }
   },
   // TODO: onError handler removed - no longer supported in CommandConfig
