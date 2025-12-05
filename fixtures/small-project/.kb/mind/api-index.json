@@ -21,8 +21,8 @@
           "signature": "export function createApp(name: string): App {"
         }
       ],
-      "sha256": "7df371d4720bb9d21466828eb2724ffc6dd2a7929f3f2412b2d24f23a4568458",
-      "size": 1025
+      "sha256": "b7393f665d3cc68dd30724ee62cc2e92fd3e640c322c5fa4be13e7e55270b532",
+      "size": 1022
     },
     "src/types.ts": {
       "exports": [
