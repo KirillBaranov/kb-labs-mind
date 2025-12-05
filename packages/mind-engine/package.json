@@ -37,7 +37,9 @@
     "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
+    "@kb-labs/core-runtime": "link:../../../kb-labs-core/packages/core-runtime",
     "@kb-labs/core-sys": "link:../../../kb-labs-core/packages/core-sys",
+    "@kb-labs/core-platform": "link:../../../kb-labs-core/packages/core-platform",
     "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts",
     "@kb-labs/knowledge-core": "link:../../../kb-labs-knowledge/packages/knowledge-core",
     "@kb-labs/mind-embeddings": "link:../mind-embeddings",

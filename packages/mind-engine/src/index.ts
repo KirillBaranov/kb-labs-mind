@@ -1,4 +1,5 @@
 import { getLogger } from '@kb-labs/core-sys/logging';
+import { platform as globalPlatform } from '@kb-labs/core-runtime';
 import * as path from 'node:path';
 import fs from 'fs-extra';
 import fg from 'fast-glob';
@@ -27,7 +28,6 @@ import {
   type KnowledgeIndexOptions,
 } from '@kb-labs/knowledge-core';
 import {
-  createDeterministicEmbeddingProvider,
   createEmbeddingProvider,
   type EmbeddingProvider,
   type EmbeddingProviderConfig,
@@ -35,15 +35,9 @@ import {
 } from '@kb-labs/mind-embeddings';
 import {
   createLocalStubLLMEngine,
-  createOpenAILLMEngine,
   type MindLLMEngine,
 } from '@kb-labs/mind-llm';
-import {
-  MindVectorStore,
-  type MindVectorStoreOptions,
-  type VectorSearchFilters,
-  type VectorSearchMatch,
-} from '@kb-labs/mind-vector-store';
+import type { VectorSearchFilters, VectorSearchMatch } from '@kb-labs/mind-vector-store';
 import type { RuntimeAdapter } from './adapters/runtime-adapter';
 import { createRuntimeAdapter } from './adapters/runtime-adapter';
 import { createVectorStore, type VectorStoreConfig } from './vector-store/index';
@@ -63,19 +57,14 @@ import { ParallelExecutor } from './reasoning/parallel-executor';
 import { ResultSynthesizer } from './reasoning/synthesizer';
 import { ReasoningEngine } from './reasoning/reasoning-engine';
 import type { ReasoningResult } from './reasoning/types';
-import {
-  type QueryHistoryStore,
-  QdrantQueryHistoryStore,
-  MemoryQueryHistoryStore,
-  type QueryHistoryEntry,
-} from './learning/query-history';
-import {
-  type FeedbackStore,
-  QdrantFeedbackStore,
-  MemoryFeedbackStore,
-  SelfFeedbackGenerator,
-  type FeedbackEntry,
-} from './learning/feedback';
+import type { QueryHistoryStore, QueryHistoryEntry } from './learning/query-history';
+import type { FeedbackStore, FeedbackEntry } from './learning/feedback';
+import { SelfFeedbackGenerator } from './learning/feedback';
+import { PlatformHistoryStoreAdapter } from './learning/platform-history-store';
+import { PlatformFeedbackStoreAdapter } from './learning/platform-feedback-store';
+import { MemoryHistoryStore, MemoryFeedbackStore } from '@kb-labs/core-platform';
+import { FileHistoryStore } from './learning/file-history-store';
+import { FileFeedbackStore } from './learning/file-feedback-store';
 import {
   PopularityBoostCalculator,
   type PopularityBoost,
@@ -89,6 +78,18 @@ import {
   AdaptiveWeightCalculator,
   type AdaptiveWeights,
 } from './learning/adaptive-weights';
+import {
+  PlatformEmbeddingProvider,
+  PlatformLLMEngine,
+  type MindPlatformBindings,
+} from './platform/platform-adapters';
+import { AdaptiveChunkerFactory } from './chunking/adaptive-factory';
+import { MemoryMonitor } from './indexing/memory-monitor';
+import { IndexingPipeline } from './indexing/pipeline';
+import { FileDiscoveryStage } from './indexing/stages/discovery';
+import { ParallelChunkingStage } from './indexing/stages/parallel-chunking';
+import { EmbeddingStage } from './indexing/stages/embedding';
+import { StorageStage } from './indexing/stages/storage';
 
 const DEFAULT_INDEX_DIR = '.kb/mind/rag';
 const DEFAULT_CODE_CHUNK_LINES = 120;
@@ -122,9 +123,8 @@ export interface MindEngineEmbeddingOptions {
 }
 
 export interface MindEngineVectorStoreOptions {
-  type?: 'auto' | 'local' | 'qdrant';
+  type?: 'local';
   local?: VectorStoreConfig['local'];
-  qdrant?: VectorStoreConfig['qdrant'];
 }
 
 export interface MindEngineSearchOptions {
@@ -227,10 +227,10 @@ export interface MindEngineSearchOptions {
     adaptiveWeights?: boolean;
 
     /**
-     * Use persistent storage (Qdrant) or memory
-     * Default: 'auto' (uses Qdrant if available, otherwise memory)
+     * Storage backend for learning data
+     * Default: 'memory'
      */
-    storage?: 'qdrant' | 'memory' | 'auto';
+    storage?: 'memory';
   };
 
   /**
@@ -292,11 +292,9 @@ export interface MindEngineSearchOptions {
       /**
        * Cache strategy for compressed chunks
        * 'memory' - in-memory cache for the duration of a query
-       * 'qdrant' - persistent storage in Qdrant (future)
-       * 'both' - use both (future)
        * Default: 'memory'
        */
-      cache?: 'memory' | 'qdrant' | 'both';
+      cache?: 'memory';
 
       /**
        * Smart truncation configuration
@@ -552,6 +550,7 @@ export interface MindEngineOptions {
   search?: MindEngineSearchOptions;
   learning?: MindEngineSearchOptions['learning'];
   llmEngineId?: string;
+  platform?: MindPlatformBindings;
   /**
    * Progress callback for tracking query execution stages
    */
@@ -615,7 +614,7 @@ interface NormalizedOptions {
       avgTokensPerChunk: number;
       compression: {
         enabled: boolean;
-        cache: 'memory' | 'qdrant' | 'both';
+        cache: 'memory';
         smartTruncation: {
           enabled: boolean;
           maxLength: number;
@@ -679,7 +678,19 @@ interface NormalizedOptions {
     popularityBoost: boolean;
     queryPatterns: boolean;
     adaptiveWeights: boolean;
-    storage: 'qdrant' | 'memory' | 'auto';
+    storage: 'platform' | 'memory';
+    storageOptions?: {
+      history?: {
+        basePath?: string;
+        maxRecordsPerFile?: number;
+        maxFiles?: number;
+      };
+      feedback?: {
+        basePath?: string;
+        maxRecordsPerFile?: number;
+        maxFiles?: number;
+      };
+    };
   };
 }
 
@@ -749,6 +760,11 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     this.workspaceRoot = context.workspaceRoot ?? (typeof process !== 'undefined' && process.cwd ? process.cwd() : '/');
     const rawOptions = (config.options ?? {}) as MindEngineOptions;
     this.options = normalizeOptions(rawOptions);
+
+    // DEBUG: Check learning configuration
+    console.error('[DEBUG MindEngine constructor] Raw learning config:', JSON.stringify(rawOptions.learning, null, 2));
+    console.error('[DEBUG MindEngine constructor] Normalized learning.enabled:', this.options.learning.enabled);
+
     this.onProgress = rawOptions.onProgress;
     
     // Extract runtime adapter from options (passed through from handlers)
@@ -756,131 +772,68 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     this.runtime = runtimeInput && 'fetch' in runtimeInput && typeof runtimeInput.fetch === 'function'
       ? runtimeInput as RuntimeAdapter
       : createRuntimeAdapter(runtimeInput as any);
-    
-    // Determine embedding dimension based on provider config
-    // Deterministic provider uses 384, OpenAI uses 1536
+
+    // Use global platform singleton as fallback if not explicitly provided
+    const platform = rawOptions.platform ?? globalPlatform;
     const embeddingConfig: EmbeddingProviderConfig = rawOptions.embedding
       ? {
           type: rawOptions.embedding.type,
-          provider: {
-            ...rawOptions.embedding.provider,
-            // Override OpenAI concurrency to 1 - rate limiting is handled by EmbeddingStage
-            openai: {
-              ...rawOptions.embedding.provider?.openai,
-              concurrency: rawOptions.embedding.provider?.openai?.concurrency ?? 1,
-              batchSize: rawOptions.embedding.provider?.openai?.batchSize ?? 100,
-            },
-          },
+          provider: rawOptions.embedding.provider,
         }
-      : {
-          type: 'auto',
-          provider: {
-            openai: {
-              // Safe defaults: sequential requests, rate limiting handled externally
-              concurrency: 1,
-              batchSize: 100,
-            },
-          },
-        };
+      : { type: 'deterministic' };
     
-    // Infer dimension from config: deterministic = 384, openai = 1536, default = 1536
-    // When type is 'auto', check if OpenAI API key is available to determine dimension
-    let embeddingDimension = 1536; // Default
-    if (embeddingConfig.type === 'deterministic') {
-      embeddingDimension = 384;
-    } else if (embeddingConfig.type === 'openai') {
-      embeddingDimension = 1536;
-    } else if (embeddingConfig.type === 'auto') {
-      // Auto mode: use deterministic (384) if no OpenAI API key, otherwise OpenAI (1536)
-      const hasOpenAIKey = this.runtime.env.get('OPENAI_API_KEY');
-      embeddingDimension = hasOpenAIKey ? 1536 : 384;
-    } else if (rawOptions.vectorStore?.qdrant?.dimension) {
-      embeddingDimension = rawOptions.vectorStore.qdrant.dimension;
+    // Infer dimension: prefer platform embeddings dimension, otherwise fallback to config/deterministic
+    let embeddingDimension = platform?.embeddings?.dimensions ?? 384;
+    if (!platform?.embeddings) {
+      if (embeddingConfig.type === 'openai') {
+        embeddingDimension = 1536;
+      } else if (embeddingConfig.type === 'deterministic') {
+        embeddingDimension = embeddingConfig.provider?.deterministic?.dimension ?? 384;
+      } else if (embeddingConfig.type === 'local') {
+        embeddingDimension = embeddingConfig.provider?.local?.dimension ?? 384;
+      }
     }
     
-    // Create vector store using factory with correct dimension
-    const vectorStoreConfig: VectorStoreConfig = rawOptions.vectorStore
-      ? {
-          type: rawOptions.vectorStore.type,
-          local: rawOptions.vectorStore.local
-            ? {
-                indexDir: path.resolve(this.workspaceRoot, rawOptions.vectorStore.local.indexDir ?? this.options.indexDir),
-              }
-            : undefined,
-          qdrant: rawOptions.vectorStore.qdrant
-            ? {
-                ...rawOptions.vectorStore.qdrant,
-                dimension: rawOptions.vectorStore.qdrant.dimension ?? embeddingDimension,
-              }
-            : rawOptions.vectorStore.type === 'qdrant'
-              ? {
-                  url: this.runtime.env.get('QDRANT_URL') ?? 'http://localhost:6333',
-                  dimension: embeddingDimension,
-                }
-              : undefined,
-        }
-      : {
-          type: 'auto',
-          local: {
-      indexDir: path.resolve(this.workspaceRoot, this.options.indexDir),
-          },
-          qdrant: this.runtime.env.get('QDRANT_URL')
-            ? {
-                url: this.runtime.env.get('QDRANT_URL')!,
-                dimension: embeddingDimension,
-              }
-            : undefined,
-        };
-    
-    this.vectorStore = createVectorStore(vectorStoreConfig, this.runtime);
-    
-    // Debug: log vector store configuration
-    this.runtime.log?.('debug', 'Vector store configuration', {
-      type: vectorStoreConfig.type,
-      qdrantUrl: vectorStoreConfig.qdrant?.url,
-      qdrantDimension: vectorStoreConfig.qdrant?.dimension,
-      embeddingDimension,
-      hasQdrantConfig: !!vectorStoreConfig.qdrant,
-      hasLocalConfig: !!vectorStoreConfig.local,
-      storeType: this.vectorStore.constructor.name,
-    });
-    
-    // Create embedding provider using new factory
-    // Convert RuntimeAdapter to EmbeddingRuntimeAdapter (subset interface)
-    const embeddingRuntime: EmbeddingRuntimeAdapter = {
-      fetch: this.runtime.fetch as any, // Type compatibility - EmbeddingRuntimeAdapter uses compatible fetch signature
-      env: this.runtime.env,
-      analytics: this.runtime.analytics,
+    // Create vector store using platform abstraction when provided
+    const vectorStoreConfig: VectorStoreConfig = {
+      type: 'local',
+      local: {
+        indexDir: path.resolve(this.workspaceRoot, this.options.indexDir),
+      },
     };
     
-    this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
+    this.vectorStore = createVectorStore(vectorStoreConfig, this.runtime, platform);
     
-    // Create LLM engine: use OpenAI if API key is available, otherwise use stub
-    const openaiApiKey = this.runtime.env.get('OPENAI_API_KEY');
-    if (openaiApiKey && this.options.search.optimization.compression.llm.enabled) {
-      this.llmEngine = createOpenAILLMEngine({
-        apiKey: openaiApiKey,
-        model: this.options.search.optimization.compression.llm.model ?? 'gpt-4o-mini',
-      });
-      this.runtime.log?.('info', 'Using OpenAI LLM engine for compression', {
-        model: this.options.search.optimization.compression.llm.model ?? 'gpt-4o-mini',
-      });
+    // Create embedding provider
+    if (platform?.embeddings) {
+      this.embeddingProvider = new PlatformEmbeddingProvider(platform.embeddings);
+    } else {
+      const embeddingRuntime: EmbeddingRuntimeAdapter = {
+        fetch: this.runtime.fetch as any,
+        env: this.runtime.env,
+        analytics: this.runtime.analytics,
+      };
+      this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
+    }
+    
+    // Create LLM engine: prefer platform LLM, otherwise use stub
+    if (platform?.llm) {
+      this.llmEngine = new PlatformLLMEngine(platform.llm);
     } else {
       this.llmEngine = createLocalStubLLMEngine({
         id: rawOptions.llmEngineId,
       });
-      if (this.options.search.optimization.compression.llm.enabled && !openaiApiKey) {
-        this.runtime.log?.('warn', 'LLM compression enabled but OPENAI_API_KEY not found, using stub');
-      }
     }
     
-    // Create LLM compressor if enabled
-    if (this.options.search.optimization.compression.llm.enabled && openaiApiKey) {
+    const llmAvailable = !!platform?.llm;
+    
+    // Create LLM compressor if enabled and LLM available
+    if (this.options.search.optimization.compression.llm.enabled && llmAvailable) {
       this.llmCompressor = new OpenAILLMCompressor({
         llmEngine: this.llmEngine,
         maxTokens: this.options.search.optimization.compression.llm.maxTokens,
-        compressionRatio: 0.5, // Compress to 50% of original
-        temperature: 0.2, // Low temperature for deterministic compression
+        compressionRatio: 0.5,
+        temperature: 0.2,
       });
       this.summarizer = new ChunkSummarizer({
         llmEngine: this.llmEngine,
@@ -904,45 +857,43 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     // Initialize self-learning components if enabled
     if (this.options.learning.enabled) {
-      // Determine storage: use Qdrant if explicitly set or if vector store is Qdrant (for 'auto')
       const storageType = this.options.learning.storage;
-      // For 'auto', check if vector store is Qdrant; for 'memory', never use Qdrant; for 'qdrant', always use Qdrant
-      const useQdrant = storageType === 'qdrant' || 
-                       (storageType === 'auto' && vectorStoreConfig.type === 'qdrant' && !!vectorStoreConfig.qdrant);
-      const qdrantUrl = useQdrant ? (vectorStoreConfig.qdrant?.url ?? 'http://localhost:6333') : undefined;
-      const qdrantApiKey = useQdrant ? this.runtime.env.get('QDRANT_API_KEY') : undefined;
-      
+      const resolvedStorage = platform?.storage;
+
       this.runtime.log?.('info', 'Initializing self-learning system', {
         enabled: this.options.learning.enabled,
         storageType,
-        useQdrant: Boolean(useQdrant),
-        qdrantUrl,
-        vectorStoreType: vectorStoreConfig.type,
-        hasQdrantConfig: !!vectorStoreConfig.qdrant,
+        platformStorage: !!platform?.storage,
+        resolvedStorage: !!resolvedStorage,
+        workspaceRoot: this.workspaceRoot,
       });
 
-      // Initialize query history
+      // Initialize query history (platform/fallback storage -> file store; otherwise memory)
       if (this.options.learning.queryHistory) {
-        this.queryHistory = useQdrant && qdrantUrl
-          ? new QdrantQueryHistoryStore({
-              url: qdrantUrl,
-              apiKey: qdrantApiKey,
-              runtime: this.runtime,
+        const historyConfig = this.options.learning.storageOptions?.history;
+        const historyStoreImpl = storageType === 'platform' && resolvedStorage
+          ? new FileHistoryStore(resolvedStorage, {
+              basePath: historyConfig?.basePath ?? '.kb/mind/learning/history/',
+              maxRecordsPerFile: historyConfig?.maxRecordsPerFile ?? 1000,
+              maxFiles: historyConfig?.maxFiles ?? 30,
             })
-          : new MemoryQueryHistoryStore();
+          : new MemoryHistoryStore();
+        this.queryHistory = new PlatformHistoryStoreAdapter(historyStoreImpl);
       } else {
         this.queryHistory = null;
       }
 
-      // Initialize feedback store
+      // Initialize feedback store (platform/fallback storage -> file store; otherwise memory)
       if (this.options.learning.feedback) {
-        this.feedbackStore = useQdrant && qdrantUrl
-          ? new QdrantFeedbackStore({
-              url: qdrantUrl,
-              apiKey: qdrantApiKey,
-              runtime: this.runtime,
+        const feedbackConfig = this.options.learning.storageOptions?.feedback;
+        const feedbackStoreImpl = storageType === 'platform' && resolvedStorage
+          ? new FileFeedbackStore(resolvedStorage, {
+              basePath: feedbackConfig?.basePath ?? '.kb/mind/learning/feedback/',
+              maxRecordsPerFile: feedbackConfig?.maxRecordsPerFile ?? 1000,
+              maxFiles: feedbackConfig?.maxFiles ?? 30,
             })
           : new MemoryFeedbackStore();
+        this.feedbackStore = new PlatformFeedbackStoreAdapter(feedbackStoreImpl);
       } else {
         this.feedbackStore = null;
       }
@@ -992,7 +943,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           llmBased: this.options.search.reasoning.complexityDetection.llmBased,
           llmModel: this.options.search.reasoning.complexityDetection.llmModel,
         },
-        openaiApiKey ? this.llmEngine : null,
+        llmAvailable ? this.llmEngine : null,
       );
 
       const queryPlanner = new QueryPlanner(
@@ -1002,7 +953,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           temperature: this.options.search.reasoning.planning.temperature,
           minSimilarity: this.options.search.reasoning.planning.minSimilarity,
         },
-        openaiApiKey ? this.llmEngine : null,
+        llmAvailable ? this.llmEngine : null,
       );
 
       const parallelExecutor = new ParallelExecutor({
@@ -1021,7 +972,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           temperature: this.options.search.reasoning.synthesis.temperature,
           progressiveRefinement: this.options.search.reasoning.synthesis.progressiveRefinement,
         },
-        openaiApiKey ? this.llmEngine : null,
+        llmAvailable ? this.llmEngine : null,
       );
 
       this.reasoningEngine = new ReasoningEngine(
@@ -1078,14 +1029,6 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   ): Promise<void> {
     // Pipeline-based Indexing Architecture
     // Breaks down monolithic index() into independent, testable stages
-    const { AdaptiveChunkerFactory } = await import('./chunking/adaptive-factory');
-    const { MemoryMonitor } = await import('./indexing/memory-monitor');
-    const { IndexingPipeline } = await import('./indexing/pipeline');
-    const { FileDiscoveryStage } = await import('./indexing/stages/discovery');
-    const { ParallelChunkingStage } = await import('./indexing/stages/parallel-chunking');
-    const { EmbeddingStage } = await import('./indexing/stages/embedding');
-    const { StorageStage } = await import('./indexing/stages/storage');
-    const { getLogger } = await import('@kb-labs/core-sys/logging');
 
     // Initialize components
     const memoryMonitor = new MemoryMonitor({
@@ -2063,6 +2006,7 @@ function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
   const rerankingType = raw.search?.reranking?.type ?? 'none';
   const rerankingEnabled = rerankingType !== 'none';
   const optimizationEnabled = raw.search?.optimization !== undefined;
+  const learningStorageOptions = (raw.learning as any)?.storageOptions;
 
   return {
     indexDir: raw.indexDir ?? DEFAULT_INDEX_DIR,
@@ -2165,11 +2109,21 @@ function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
       popularityBoost: raw.learning?.popularityBoost ?? (raw.learning?.enabled ? true : false),
       queryPatterns: raw.learning?.queryPatterns ?? (raw.learning?.enabled ? true : false),
       adaptiveWeights: raw.learning?.adaptiveWeights ?? false,
-      // Keep 'auto' as-is, it will be resolved in constructor based on vector store type
-      storage: (raw.learning?.storage === 'qdrant' || raw.learning?.storage === 'memory' || raw.learning?.storage === 'auto')
-        ? raw.learning.storage === 'auto' ? 'auto' as 'qdrant' | 'memory' | 'auto'
-        : raw.learning.storage
-        : 'memory' as 'qdrant' | 'memory',
+    storage: raw.learning?.storage === 'memory' ? 'memory' : 'platform',
+      storageOptions: learningStorageOptions
+        ? {
+            history: {
+              basePath: learningStorageOptions.history?.basePath,
+              maxRecordsPerFile: learningStorageOptions.history?.maxRecordsPerFile,
+              maxFiles: learningStorageOptions.history?.maxFiles,
+            },
+            feedback: {
+              basePath: learningStorageOptions.feedback?.basePath,
+              maxRecordsPerFile: learningStorageOptions.feedback?.maxRecordsPerFile,
+              maxFiles: learningStorageOptions.feedback?.maxFiles,
+            },
+          }
+        : undefined,
     },
   };
 }
@@ -2315,6 +2269,7 @@ export interface RegisterMindEngineOptions {
       metric(name: string, value: number, tags?: Record<string, string>): void;
     };
   };
+  platform?: MindPlatformBindings;
 }
 
 export function registerMindKnowledgeEngine(
@@ -2333,7 +2288,16 @@ export function registerMindKnowledgeEngine(
           },
         }
       : config;
-    return new MindKnowledgeEngine(configWithRuntime, context);
+    const configWithPlatform: KnowledgeEngineConfig = options?.platform
+      ? {
+          ...configWithRuntime,
+          options: {
+            ...(configWithRuntime.options as MindEngineOptions | undefined),
+            platform: options.platform,
+          },
+        }
+      : configWithRuntime;
+    return new MindKnowledgeEngine(configWithPlatform, context);
   };
 
   registry.register('mind', factory);

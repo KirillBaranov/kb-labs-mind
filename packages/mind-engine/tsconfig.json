@@ -4,6 +4,15 @@
     "src"
   ],
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@kb-labs/core-platform": [
+        "../../../kb-labs-core/packages/core-platform/src/index.ts"
+      ],
+      "@kb-labs/core-platform/*": [
+        "../../../kb-labs-core/packages/core-platform/src/*"
+      ]
+    }
   }
 }

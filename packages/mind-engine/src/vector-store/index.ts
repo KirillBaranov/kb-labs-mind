@@ -14,28 +14,20 @@ export type {
 export type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
 
 export { LocalVectorStore } from './local';
-export { QdrantVectorStore } from './qdrant';
 export type { LocalVectorStoreOptions } from './local';
-export type { QdrantVectorStoreOptions } from './qdrant';
 
 import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 import { LocalVectorStore } from './local';
-import { QdrantVectorStore } from './qdrant';
 import type { VectorStore } from './vector-store';
+import type { MindPlatformBindings } from '../platform/platform-adapters';
+import { PlatformVectorStore } from '../platform/platform-vector-store';
 
-export type VectorStoreType = 'auto' | 'local' | 'qdrant';
+export type VectorStoreType = 'local';
 
 export interface VectorStoreConfig {
   type?: VectorStoreType;
   local?: {
     indexDir: string;
-  };
-  qdrant?: {
-    url: string;
-    apiKey?: string;
-    collectionName?: string;
-    dimension?: number;
-    timeout?: number;
   };
 }
 
@@ -45,52 +37,16 @@ export interface VectorStoreConfig {
 export function createVectorStore(
   config: VectorStoreConfig,
   runtime: RuntimeAdapter,
+  platform?: MindPlatformBindings,
 ): VectorStore {
-  const type = config.type ?? 'auto';
-
-  // Auto mode: try Qdrant first if configured, fallback to local
-  if (type === 'auto') {
-    const qdrantUrl = runtime.env.get('QDRANT_URL') ?? config.qdrant?.url;
-    if (qdrantUrl) {
-      return new QdrantVectorStore({
-        url: qdrantUrl,
-        apiKey: runtime.env.get('QDRANT_API_KEY') ?? config.qdrant?.apiKey,
-        collectionName: config.qdrant?.collectionName,
-        dimension: config.qdrant?.dimension,
-        timeout: config.qdrant?.timeout,
-        runtime,
+  if (platform?.vectorStore) {
+    return new PlatformVectorStore({
+      vectorStore: platform.vectorStore,
+      storage: platform.storage,
       });
     }
 
-    // Fallback to local
-    const indexDir = config.local?.indexDir ?? '.kb/mind/indexes';
-    return new LocalVectorStore({ indexDir });
-  }
-
-  // Explicit type selection
-  switch (type) {
-    case 'qdrant': {
-      const qdrantUrl = runtime.env.get('QDRANT_URL') ?? config.qdrant?.url;
-      if (!qdrantUrl) {
-        throw new Error('Qdrant URL is required. Set QDRANT_URL environment variable or provide in config.');
-      }
-      return new QdrantVectorStore({
-        url: qdrantUrl,
-        apiKey: runtime.env.get('QDRANT_API_KEY') ?? config.qdrant?.apiKey,
-        collectionName: config.qdrant?.collectionName,
-        dimension: config.qdrant?.dimension,
-        timeout: config.qdrant?.timeout,
-        runtime,
-      });
-    }
-
-    case 'local': {
       const indexDir = config.local?.indexDir ?? '.kb/mind/indexes';
       return new LocalVectorStore({ indexDir });
-    }
-
-    default:
-      throw new Error(`Unknown vector store type: ${type}`);
-  }
 }
 
