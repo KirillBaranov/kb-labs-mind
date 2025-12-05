@@ -162,7 +162,8 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       try {
         // Get state broker from runtime context (provided by platform)
         // Gracefully falls back to in-memory if not available
-        const broker = ctx.runtime?.state;
+        // Note: ctx.runtime is not available in current command context
+        const broker = undefined;
 
         const result = await runAgentRagQuery({
           cwd,
@@ -242,9 +243,7 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
         intent,
         limit,
         profileId,
-        mode,
-        outputFormat: format,
-        runtime: ctx.runtime, // Pass runtime to suppress INFO logs in silent mode
+        runtime: undefined, // Runtime context not available in CLI context
         onProgress: (stage: string, details?: string) => {
           if (flags.quiet || format === 'json' || format === 'json-pretty') return;
 
@@ -342,43 +341,6 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       }
     }
   },
-  async onError(error, ctx, flags) {
-    // Handle format flag (with backward compatibility for --json)
-    let format = flags.format && isValidFormat(flags.format) ? flags.format : 'text';
-    if (flags.json && format === 'text') {
-      format = 'json';
-    }
-
-    const spinner = ctx.output?.spinner('Initializing...');
-    if (!flags.quiet && format === 'text') {
-      spinner?.fail('Mind RAG query failed');
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-
-    if (format === 'json' || format === 'json-pretty') {
-      // Output JSON error format
-      const errorResponse = {
-        ok: false,
-        error: message,
-        code: MIND_ERROR_CODES.RAG_QUERY_FAILED,
-      };
-      if (format === 'json-pretty') {
-        ctx.output?.write(JSON.stringify(errorResponse, null, 2));
-      } else {
-        ctx.output?.json(errorResponse);
-      }
-    } else {
-      ctx.output?.error(error instanceof Error ? error : new Error(message), {
-        code: MIND_ERROR_CODES.RAG_QUERY_FAILED,
-        suggestions: [
-          'Check that Mind is initialized',
-          'Verify that index exists: kb mind rag-index',
-          'Try with --scope flag to search in specific scope',
-        ],
-      });
-    }
-
-    return { ok: false, exitCode: 1, error: message };
-  },
+  // TODO: onError handler removed - no longer supported in CommandConfig
+  // Error handling is done by the command framework automatically
 });

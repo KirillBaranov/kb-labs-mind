@@ -91,22 +91,5 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
 
     return { ok: true, scopes: result.scopeIds };
   },
-  async onError(error, ctx, flags) {
-    const spinner = ctx.output?.spinner('Building Mind RAG index');
-    if (!flags.quiet && !flags.json) {
-      spinner?.fail('Mind RAG index failed');
-    }
-
-    const message = error instanceof Error ? error.message : String(error);
-    ctx.output?.error(error instanceof Error ? error : new Error(message), {
-      code: MIND_ERROR_CODES.RAG_INDEX_FAILED,
-      suggestions: [
-        'Check that Mind is initialized',
-        'Verify that source files are accessible',
-        'Try: kb mind init',
-      ],
-    });
-
-    return { ok: false, exitCode: 1, error: message };
-  },
+  // TODO: onError handler removed - no longer supported in CommandConfig
 });

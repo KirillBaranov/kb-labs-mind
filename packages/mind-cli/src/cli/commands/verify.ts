@@ -1,35 +1,38 @@
 /**
- * Mind verify command
+ * Mind verify command - checks Qdrant index status
  */
 
 import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
-import { promises as fsp } from 'node:fs';
-import { join } from 'node:path';
-import { sha256 } from '@kb-labs/mind-core';
-import type { MindIndex, ApiIndex, DepsGraph, RecentDiff } from '@kb-labs/mind-types';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 
 type MindVerifyFlags = {
-  cwd: { type: 'string'; description?: string };
   json: { type: 'boolean'; description?: string; default?: boolean };
   quiet: { type: 'boolean'; description?: string; default?: boolean };
+  qdrant: { type: 'string'; description?: string };
 };
+
+interface QdrantCollectionInfo {
+  status: 'green' | 'yellow' | 'red';
+  points_count: number;
+  indexed_vectors_count: number;
+  optimizer_status: string;
+}
 
 interface VerifyResult {
   ok: boolean;
   code: string | null;
-  inconsistencies: Array<{
-    file: string;
-    expected: string;
-    actual: string;
-    type: 'hash' | 'checksum';
-  }>;
+  qdrantUrl: string;
+  collections: {
+    name: string;
+    status: 'green' | 'yellow' | 'red' | 'missing';
+    points_count: number;
+    indexed_vectors_count: number;
+  }[];
+  issues: string[];
   hint?: string;
-  schemaVersion: string;
   meta: {
-    cwd: string;
-    filesChecked: number;
+    collectionsChecked: number;
     timingMs: number;
   };
 }
@@ -37,22 +40,19 @@ interface VerifyResult {
 type MindVerifyResult = CommandResult & VerifyResult;
 
 /**
- * Read JSON file safely
+ * Fetch Qdrant collection info
  */
-async function readJsonSafely<T>(path: string): Promise<T | null> {
+async function fetchCollectionInfo(qdrantUrl: string, collectionName: string): Promise<QdrantCollectionInfo | null> {
   try {
-    const content = await fsp.readFile(path, 'utf8');
-    return JSON.parse(content) as T;
+    const response = await fetch(`${qdrantUrl}/collections/${collectionName}`);
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json() as { result: QdrantCollectionInfo };
+    return data.result;
   } catch {
     return null;
   }
-}
-
-/**
- * Compute hash of JSON object
- */
-function computeJsonHash(obj: any): string {
-  return sha256(JSON.stringify(obj));
 }
 
 /**
@@ -61,10 +61,6 @@ function computeJsonHash(obj: any): string {
 export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
   name: 'mind:verify',
   flags: {
-    cwd: {
-      type: 'string',
-      description: 'Working directory',
-    },
     json: {
       type: 'boolean',
       description: 'Output in JSON format',
@@ -75,6 +71,10 @@ export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
       description: 'Quiet output',
       default: false,
     },
+    qdrant: {
+      type: 'string',
+      description: 'Qdrant URL (defaults to http://localhost:6333)',
+    },
   },
   analytics: {
     startEvent: ANALYTICS_EVENTS.VERIFY_STARTED,
@@ -82,192 +82,131 @@ export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
     actor: ANALYTICS_ACTOR.id,
   },
   async handler(ctx, argv, flags) {
-    const cwd = flags.cwd || ctx.cwd;
-    
     ctx.tracker.checkpoint('start');
-    
+
+    const qdrantUrl = flags.qdrant || process.env.QDRANT_URL || 'http://localhost:6333';
+
     ctx.logger?.info('Mind verify started', {
-      cwd,
+      qdrantUrl,
       command: 'mind:verify',
     });
-    
-    const mindDir = join(cwd, '.kb', 'mind');
-    
-    // Check if mind directory exists
+
+    // Check Qdrant health
+    ctx.tracker.checkpoint('qdrant-health-check');
     try {
-      await fsp.access(mindDir);
-      ctx.logger?.debug('Mind directory found', { mindDir });
-    } catch {
-      ctx.logger?.warn('Mind structure not initialized', {
-        cwd,
-        mindDir,
-        hint: 'Run: kb mind init',
-      });
-      
+      const healthResponse = await fetch(`${qdrantUrl}/healthz`);
+      if (!healthResponse.ok) {
+        const error: VerifyResult = {
+          ok: false,
+          code: 'QDRANT_UNAVAILABLE',
+          qdrantUrl,
+          collections: [],
+          issues: ['Qdrant is not responding'],
+          hint: 'Ensure Qdrant is running at ' + qdrantUrl,
+          meta: {
+            collectionsChecked: 0,
+            timingMs: ctx.tracker.total()
+          }
+        };
+
+        if (flags.json) {
+          ctx.output?.json(error);
+        } else {
+          ctx.output?.error(new Error('Qdrant is not responding'), {
+            code: MIND_ERROR_CODES.VERIFY_FAILED,
+            suggestions: ['Ensure Qdrant is running at ' + qdrantUrl],
+          });
+        }
+        return 1;
+      }
+    } catch (err) {
       const error: VerifyResult = {
         ok: false,
-        code: 'MIND_NO_INDEX',
-        inconsistencies: [],
-        hint: 'Run: kb mind init',
-        schemaVersion: '1.0',
+        code: 'QDRANT_CONNECTION_ERROR',
+        qdrantUrl,
+        collections: [],
+        issues: [`Cannot connect to Qdrant: ${err instanceof Error ? err.message : String(err)}`],
+        hint: 'Ensure Qdrant is running at ' + qdrantUrl,
         meta: {
-          cwd,
-          filesChecked: 0,
+          collectionsChecked: 0,
           timingMs: ctx.tracker.total()
         }
       };
-      
+
       if (flags.json) {
         ctx.output?.json(error);
       } else {
-        ctx.output?.error(new Error('Mind structure not initialized'), {
+        ctx.output?.error(new Error(`Cannot connect to Qdrant at ${qdrantUrl}`), {
           code: MIND_ERROR_CODES.VERIFY_FAILED,
-          suggestions: ['Run: kb mind init'],
+          suggestions: ['Ensure Qdrant is running', 'Check QDRANT_URL environment variable'],
         });
       }
-      return { ok: false, exitCode: 1, result: error };
+      return 1;
     }
 
-    ctx.tracker.checkpoint('load-start');
-    ctx.logger?.debug('Loading index files', { mindDir });
-    
-    // Load all index files
-    const [index, apiIndex, depsGraph, recentDiff, meta, docsPrimary, docsLegacy] = await Promise.all([
-      readJsonSafely<MindIndex>(join(mindDir, 'index.json')),
-      readJsonSafely<ApiIndex>(join(mindDir, 'api-index.json')),
-      readJsonSafely<DepsGraph>(join(mindDir, 'deps.json')),
-      readJsonSafely<RecentDiff>(join(mindDir, 'recent-diff.json')),
-      readJsonSafely<any>(join(mindDir, 'meta.json')),
-      readJsonSafely<any>(join(mindDir, 'docs.json')),
-      readJsonSafely<any>(join(mindDir, 'docs-index.json'))
-    ]);
-    const docs = docsPrimary ?? docsLegacy ?? null;
-    ctx.tracker.checkpoint('load-complete');
-    
-    ctx.logger?.info('Index files loaded', {
-      hasIndex: !!index,
-      hasApiIndex: !!apiIndex,
-      hasDepsGraph: !!depsGraph,
-      hasRecentDiff: !!recentDiff,
-      hasMeta: !!meta,
-      hasDocs: !!docs,
-    });
+    // Check Mind collections in Qdrant
+    ctx.tracker.checkpoint('collections-check');
+    const requiredCollections = ['mind_chunks', 'mind_feedback', 'mind_query_history'];
 
-    ctx.tracker.checkpoint('verify-start');
-    ctx.logger?.debug('Starting verification', {});
-    
-    const inconsistencies: Array<{
-      file: string;
-      expected: string;
-      actual: string;
-      type: 'hash' | 'checksum';
-    }> = [];
+    const collectionsData: VerifyResult['collections'] = [];
+    const issues: string[] = [];
 
-    let filesChecked = 0;
+    for (const collectionName of requiredCollections) {
+      const info = await fetchCollectionInfo(qdrantUrl, collectionName);
 
-    // Verify individual file hashes
-    if (index) {
-      filesChecked++;
-      
-      // Check API index hash
-      if (apiIndex && index.apiIndexHash) {
-        const actualHash = computeJsonHash(apiIndex);
-        if (actualHash !== index.apiIndexHash) {
-          ctx.logger?.warn('API index hash mismatch', {
-            file: 'api-index.json',
-            expected: index.apiIndexHash,
-            actual: actualHash,
-          });
-          inconsistencies.push({
-            file: 'api-index.json',
-            expected: index.apiIndexHash,
-            actual: actualHash,
-            type: 'hash'
-          });
-        }
-      }
+      if (!info) {
+        collectionsData.push({
+          name: collectionName,
+          status: 'missing',
+          points_count: 0,
+          indexed_vectors_count: 0,
+        });
+        issues.push(`Collection ${collectionName} is missing`);
+        ctx.logger?.warn('Collection missing', { collectionName });
+      } else {
+        collectionsData.push({
+          name: collectionName,
+          status: info.status,
+          points_count: info.points_count,
+          indexed_vectors_count: info.indexed_vectors_count,
+        });
 
-      // Check deps hash
-      if (depsGraph && index.depsHash) {
-        const actualHash = computeJsonHash(depsGraph);
-        if (actualHash !== index.depsHash) {
-          inconsistencies.push({
-            file: 'deps.json',
-            expected: index.depsHash,
-            actual: actualHash,
-            type: 'hash'
-          });
-        }
-      }
-
-      // Check recentDiff hash (only if it exists)
-      if (recentDiff && index.recentDiffHash && recentDiff.files?.length > 0) {
-        const actualHash = computeJsonHash(recentDiff);
-        if (actualHash !== index.recentDiffHash) {
-          inconsistencies.push({
-            file: 'recent-diff.json',
-            expected: index.recentDiffHash,
-            actual: actualHash,
-            type: 'hash'
-          });
-        }
-      }
-
-      // Check combined checksum
-      if (index.indexChecksum) {
-        interface ChecksumInput {
-          apiIndex: ApiIndex;
-          deps: DepsGraph;
-          meta: any;
-          docs: any;
-          recentDiff?: RecentDiff;
+        // Check for issues
+        if (info.status !== 'green') {
+          issues.push(`Collection ${collectionName} status is ${info.status}`);
+          ctx.logger?.warn('Collection unhealthy', { collectionName, status: info.status });
         }
 
-        const hashInputs: ChecksumInput = {
-          apiIndex: apiIndex || { schemaVersion: '1.0', generator: '', files: {} },
-          deps: depsGraph || { schemaVersion: '1.0', generator: '', root: '', packages: {}, edges: [] },
-          meta: meta || {},
-          docs: docs || {}
-        };
-
-        // Only include recentDiff if present (same logic as update.ts)
-        if (recentDiff?.files && recentDiff.files.length > 0) {
-          hashInputs.recentDiff = recentDiff;
+        if (collectionName === 'mind_chunks' && info.points_count === 0) {
+          issues.push('mind_chunks is empty - no indexed content');
+          ctx.logger?.warn('mind_chunks is empty');
         }
 
-        const actualChecksum = sha256(JSON.stringify(hashInputs));
-        if (actualChecksum !== index.indexChecksum) {
-          ctx.logger?.warn('Index checksum mismatch', {
-            file: 'index.json',
-            expected: index.indexChecksum,
-            actual: actualChecksum,
-          });
-          inconsistencies.push({
-            file: 'index.json',
-            expected: index.indexChecksum,
-            actual: actualChecksum,
-            type: 'checksum'
-          });
+        if (info.indexed_vectors_count < info.points_count) {
+          const unindexed = info.points_count - info.indexed_vectors_count;
+          issues.push(`Collection ${collectionName} has ${unindexed} unindexed vectors`);
+          ctx.logger?.warn('Unindexed vectors', { collectionName, unindexed });
         }
       }
     }
+
     ctx.tracker.checkpoint('verify-complete');
-    
+
     ctx.logger?.info('Verification completed', {
-      filesChecked,
-      inconsistenciesCount: inconsistencies.length,
-      ok: inconsistencies.length === 0,
+      collectionsChecked: collectionsData.length,
+      issuesCount: issues.length,
+      ok: issues.length === 0,
     });
-    
+
     const result: VerifyResult = {
-      ok: inconsistencies.length === 0,
-      code: inconsistencies.length > 0 ? 'MIND_INDEX_INCONSISTENT' : null,
-      inconsistencies,
-      hint: inconsistencies.length > 0 ? 'Run: kb mind update' : undefined,
-      schemaVersion: '1.0',
+      ok: issues.length === 0,
+      code: issues.length > 0 ? 'QDRANT_INDEX_ISSUES' : null,
+      qdrantUrl,
+      collections: collectionsData,
+      issues,
+      hint: issues.length > 0 ? 'Run: pnpm kb mind rag-index --scope default' : undefined,
       meta: {
-        cwd,
-        filesChecked,
+        collectionsChecked: collectionsData.length,
         timingMs: ctx.tracker.total()
       }
     };
@@ -280,35 +219,42 @@ export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
 
         const sections: Array<{ header?: string; items: string[] }> = [
           {
+            header: 'Qdrant',
             items: [
-              `Files Checked: ${filesChecked}`,
+              `URL: ${qdrantUrl}`,
+              `Collections: ${collectionsData.length}`,
             ],
           },
         ];
 
-        if (!result.ok) {
-          sections[0].items.push(`Inconsistencies: ${inconsistencies.length}`);
+        // Add collections details
+        const collectionItems: string[] = [];
+        for (const coll of collectionsData) {
+          const statusSymbol = coll.status === 'green' ? '✓' : coll.status === 'missing' ? '✗' : '⚠';
+          collectionItems.push(
+            `${statusSymbol} ${coll.name}: ${coll.points_count} points, ${coll.indexed_vectors_count} indexed (${coll.status})`
+          );
+        }
+        sections.push({
+          header: 'Collections',
+          items: collectionItems,
+        });
 
-          if (inconsistencies.length > 0) {
-            const detailItems: string[] = [];
-            for (const inc of inconsistencies) {
-              detailItems.push(`${ui.symbols.warning} ${inc.file} (${inc.type} mismatch)`);
-            }
-            sections.push({
-              header: 'Details',
-              items: detailItems,
-            });
-          }
+        if (!result.ok && issues.length > 0) {
+          sections.push({
+            header: 'Issues',
+            items: issues.map(issue => `${ui.symbols.warning} ${issue}`),
+          });
 
           sections.push({
             header: 'Hint',
-            items: ['Run kb mind update'],
+            items: ['Run: pnpm kb mind rag-index --scope default'],
           });
         }
 
         const status = result.ok ? 'success' : 'warning';
         const outputText = ui.sideBox({
-          title: 'Mind Verify',
+          title: 'Mind Verify - Qdrant Index',
           sections,
           status,
           timing: ctx.tracker.total(),
@@ -317,39 +263,9 @@ export const run = defineCommand<MindVerifyFlags, MindVerifyResult>({
       }
     }
 
-    // Return appropriate code
-    return inconsistencies.length > 0 ? { ok: false, exitCode: 1, result } : { ok: true, result };
+    // Return result object (contains ok field)
+    return result;
   },
-  async onError(error, ctx, flags) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    
-    ctx.logger?.error('Verification failed', {
-      error: errorMessage,
-      cwd: flags.cwd || ctx.cwd,
-    });
-    
-    const errorResult: VerifyResult = {
-      ok: false,
-      code: 'MIND_VERIFY_ERROR',
-      inconsistencies: [],
-      hint: 'Check file permissions and try again',
-      schemaVersion: '1.0',
-      meta: {
-        cwd: flags.cwd || ctx.cwd,
-        filesChecked: 0,
-        timingMs: ctx.tracker.total()
-      }
-    };
-
-    if (flags.json) {
-      ctx.output?.json(errorResult);
-    } else {
-      ctx.output?.error(error instanceof Error ? error : new Error(errorMessage), {
-        code: MIND_ERROR_CODES.VERIFY_FAILED,
-        suggestions: ['Check file permissions and try again'],
-      });
-    }
-
-    return { ok: false, exitCode: 1, result: errorResult };
-  },
+  // TODO: onError handler removed - no longer supported in CommandConfig
+  // Error handling is done by the command framework automatically
 });

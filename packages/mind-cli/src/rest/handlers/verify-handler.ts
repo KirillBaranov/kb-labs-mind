@@ -5,9 +5,11 @@
 
 import type { MindVerifyRequest, MindVerifyResponse, MindGatewayError } from '../types';
 import type { CardData } from '@kb-labs/plugin-manifest';
-// @ts-ignore - Circular dependency during build, types available at runtime
-import { verifyIndexes } from '@kb-labs/mind-gateway';
-import { findRepoRoot } from '@kb-labs/core';
+// TODO: docs/tasks/TASK-002-mind-architecture-cleanup.md
+// TEMPORARY: verifyIndexes should be in mind-core, not mind-gateway
+// Removed mind-gateway dependency to break circular dependency
+// import { verifyIndexes } from '@kb-labs/mind-gateway';
+import { resolveWorkspaceRoot } from '@kb-labs/core';
 
 /**
  * Handler for GET /v1/plugins/mind/verify
@@ -55,17 +57,22 @@ export async function handleVerify(
         // Auto-detect monorepo root by finding pnpm-workspace.yaml or .git
         // Start from current working directory
         try {
-          const repoRoot = await findRepoRoot(process.cwd());
-          // findRepoRoot finds the directory with .git or pnpm-workspace.yaml
+          const result = await resolveWorkspaceRoot({ startDir: process.cwd() });
+          // resolveWorkspaceRoot finds the directory with .git or pnpm-workspace.yaml
           // This should be the monorepo root (kb-labs)
-          cwd = repoRoot;
+          cwd = result.rootDir;
         } catch {
           // Fallback to current directory
           cwd = '.';
         }
       }
     }
-    
+
+    // Final fallback if cwd is still undefined
+    if (!cwd) {
+      cwd = '.';
+    }
+
     const result = await verifyIndexes(cwd);
 
     log('info', 'Mind verification completed', {

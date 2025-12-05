@@ -74,10 +74,10 @@ export async function createMindKnowledgeRuntime(
   // Build capabilities registry for the 'mind' product
   // This allows queries with productId: 'mind' to succeed
   const allScopeIds = config.scopes?.map((scope: any) => scope.id) ?? [];
-  const capabilities = {
+  const capabilities: KnowledgeCapabilityRegistry = {
     [MIND_PRODUCT_ID]: {
       productId: MIND_PRODUCT_ID,
-      allowedIntents: ['summary', 'search', 'similar', 'nav'] as const,
+      allowedIntents: ['summary', 'search', 'similar', 'nav'],
       allowedScopes: allScopeIds,
       defaultScopeId: allScopeIds[0],
       description: 'Mind knowledge engine capability',
@@ -107,7 +107,12 @@ export async function createMindKnowledgeRuntime(
 async function findAndReadConfig(cwd: string): Promise<KnowledgeConfigInput> {
   const { path: configPath } = await findNearestConfig({
     startDir: cwd,
-    filenames: ['kb.config.json', 'knowledge.json'],
+    filenames: [
+      '.kb/kb.config.json',      // Prioritize .kb/ location (new standard)
+      'kb.config.json',           // Fallback to root (deprecated)
+      '.kb/knowledge.json',
+      'knowledge.json',
+    ],
   });
   if (!configPath) {
     throw new Error('No kb.config.json or knowledge.json found. Run "kb mind init" first.');

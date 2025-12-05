@@ -177,24 +177,6 @@ export const run = defineCommand<MindInitFlags, MindInitResult>({
 
     return { ok: true, mindDir, artifacts };
   },
-  async onError(error, ctx, flags) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    ctx.logger?.error('Mind init failed', {
-      error: errorMessage,
-      cwd: flags.cwd || ctx.cwd,
-      force: flags.force,
-    });
-
-    ctx.output?.error(error instanceof Error ? error : new Error(errorMessage), {
-      code: MIND_ERROR_CODES.INIT_FAILED,
-      suggestions: [
-        'Check file permissions',
-        'Verify workspace is writable',
-        'Try with --force flag to overwrite existing structure',
-      ],
-    });
-
-    return { ok: false, exitCode: 1, error: errorMessage };
-  },
+  // TODO: onError handler was removed as it's no longer supported in CommandConfig
+  // Error handling is done by the command framework automatically
 });
