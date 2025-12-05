@@ -49,6 +49,7 @@ export interface AgentQueryOrchestratorOptions {
     enabled?: boolean;
     detailed?: boolean;
   };
+  analyticsAdapter?: import('@kb-labs/core-platform').IAnalytics | null;
 }
 
 /**
@@ -140,6 +141,7 @@ export class AgentQueryOrchestrator {
       enabled: options.analytics?.enabled ?? true,
       detailed: options.analytics?.detailed ?? false,
       llmModel: this.config.llm.model,
+      analyticsAdapter: options.analyticsAdapter ?? null,
     });
   }
 

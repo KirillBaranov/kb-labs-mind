@@ -12,6 +12,12 @@
       "@kb-labs/core": [
         "../kb-labs-core/src/index.ts"
       ],
+      "@kb-labs/core-platform": [
+        "../kb-labs-core/packages/core-platform/src/index.ts"
+      ],
+      "@kb-labs/core-platform/*": [
+        "../kb-labs-core/packages/core-platform/src/*"
+      ],
       "@kb-labs/core-sandbox": [
         "../kb-labs-core/packages/core-sandbox/src/index.ts"
       ],

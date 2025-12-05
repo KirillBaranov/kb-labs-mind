@@ -1,8 +1,9 @@
 /**
  * Mind Analytics - tracking for orchestrator queries
+ * Transport is delegated to platform analytics adapter (IAnalytics).
  */
 
-import { emit } from '@kb-labs/analytics-sdk-node';
+import type { IAnalytics } from '@kb-labs/core-platform';
 import type { AgentResponse, AgentErrorResponse } from '@kb-labs/knowledge-contracts';
 import type {
   MindAnalyticsContext,
@@ -26,18 +27,18 @@ export interface MindAnalyticsOptions {
   enabled?: boolean;
   detailed?: boolean;
   llmModel?: string;
+  analyticsAdapter?: IAnalytics | null;
 }
 
 export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
-  const { enabled = true, detailed = false, llmModel = 'gpt-4o-mini' } = options;
+  const { enabled = true, detailed = false, llmModel = 'gpt-4o-mini', analyticsAdapter = null } = options;
 
   const safeEmit = async (type: string, payload: Record<string, unknown>) => {
-    if (!enabled) return;
+    if (!enabled || !analyticsAdapter?.track) return;
     try {
-      await emit({
-        type,
+      await analyticsAdapter.track(type, {
         source: MIND_SOURCE,
-        payload,
+        ...payload,
       });
     } catch {
       // Silently ignore analytics errors - never break query flow
