@@ -14,9 +14,9 @@ describe('LineBasedChunker', () => {
     const chunks = chunker.chunk(text, 'test.txt', { maxLines: 2 });
 
     expect(chunks.length).toBeGreaterThan(0);
-    expect(chunks[0].text).toContain('line 1');
-    expect(chunks[0].span.startLine).toBe(1);
-    expect(chunks[0].type).toBe('line-based');
+    expect(chunks[0]?.text).toContain('line 1');
+    expect(chunks[0]?.span.startLine).toBe(1);
+    expect(chunks[0]?.type).toBe('line-based');
   });
 
   it('should respect maxLines option', () => {
@@ -57,9 +57,11 @@ describe('LineBasedChunker', () => {
 
     if (chunks.length > 1) {
       // Check that chunks overlap
-      const firstEnd = chunks[0].span.endLine;
-      const secondStart = chunks[1].span.startLine;
-      expect(secondStart).toBeLessThan(firstEnd);
+      const firstEnd = chunks[0]?.span.endLine;
+      const secondStart = chunks[1]?.span.startLine;
+      if (firstEnd !== undefined && secondStart !== undefined) {
+        expect(secondStart).toBeLessThan(firstEnd);
+      }
     }
   });
 

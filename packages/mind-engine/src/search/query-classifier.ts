@@ -126,7 +126,7 @@ export function classifyQuery(query: string): QueryClassification {
   // These should be treated as lookup queries, not concept queries
   const whatIsMatch = normalizedQuery.match(/^what\s+is\s+(?:the\s+)?([A-Z][a-zA-Z0-9]+)/i);
   if (whatIsMatch) {
-    const identifier = whatIsMatch[1];
+    const identifier = whatIsMatch[1] ?? '';
     // If it's a PascalCase identifier, treat as lookup
     if (/^[A-Z][a-z]+[A-Z]?\w*$/.test(identifier)) {
       return {

@@ -313,7 +313,7 @@ export class QdrantQueryHistoryStore implements QueryHistoryStore {
       return [];
     }
 
-    const data = await response.json() as { result: { points: Array<{ payload: QueryHistoryEntry['payload'] }> } };
+    const data = await response.json() as { result: { points: Array<{ payload: Record<string, unknown> }> } };
     return data.result.points.map(point => ({
       queryId: point.payload.queryId as string,
       queryText: point.payload.queryText as string,
@@ -362,7 +362,7 @@ export class QdrantQueryHistoryStore implements QueryHistoryStore {
 
     const data = await response.json() as {
       result: Array<{
-        payload: QueryHistoryEntry['payload'];
+        payload: Record<string, unknown>;
         score: number;
       }>;
     };
@@ -413,7 +413,7 @@ export class QdrantQueryHistoryStore implements QueryHistoryStore {
     }
 
     const data = await response.json() as {
-      result: { points: Array<{ payload: QueryHistoryEntry['payload'] }> };
+      result: { points: Array<{ payload: Record<string, unknown> }> };
     };
 
     const queryCounts = new Map<string, number>();

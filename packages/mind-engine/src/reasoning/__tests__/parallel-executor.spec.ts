@@ -6,7 +6,8 @@ import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
 
 describe('ParallelExecutor', () => {
   const createMockContext = (): KnowledgeExecutionContext => ({
-    scope: { id: 'test-scope' },
+    scope: { id: 'test-scope', sources: [] },
+    sources: [],
     limit: 10,
   });
 

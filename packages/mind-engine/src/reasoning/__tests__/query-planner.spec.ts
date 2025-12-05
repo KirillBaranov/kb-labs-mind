@@ -19,8 +19,7 @@ describe('QueryPlanner', () => {
     it('should generate multiple sub-queries when LLM available', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockResolvedValue('["sub-query 1", "sub-query 2", "sub-query 3"]'),
-        generate: vi.fn(),
+        generate: vi.fn().mockResolvedValue({ text: '["sub-query 1", "sub-query 2", "sub-query 3"]' }),
       };
 
       const planner = new QueryPlanner(
@@ -31,14 +30,13 @@ describe('QueryPlanner', () => {
       const plan = await planner.plan('complex query about compression', 0.8);
       expect(plan.originalQuery).toBe('complex query about compression');
       expect(plan.subqueries.length).toBeGreaterThan(1);
-      expect(mockLLM.complete).toHaveBeenCalled();
+      expect(mockLLM.generate).toHaveBeenCalled();
     });
 
     it('should handle LLM errors gracefully', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockRejectedValue(new Error('LLM error')),
-        generate: vi.fn(),
+        generate: vi.fn().mockRejectedValue(new Error('LLM error')),
       };
 
       const planner = new QueryPlanner(
@@ -54,8 +52,7 @@ describe('QueryPlanner', () => {
     it('should limit sub-queries to maxSubqueries', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockResolvedValue('["q1", "q2", "q3", "q4", "q5", "q6", "q7"]'),
-        generate: vi.fn(),
+        generate: vi.fn().mockResolvedValue({ text: '["q1", "q2", "q3", "q4", "q5", "q6", "q7"]' }),
       };
 
       const planner = new QueryPlanner(

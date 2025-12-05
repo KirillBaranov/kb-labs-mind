@@ -130,17 +130,8 @@ export class ContextCompressor {
     const prompt = this.buildCompressionPrompt(query, candidates);
 
     // Call cheap AI (GPT-4o-mini)
-    const response = await this.options.llmEngine.generate({
-      messages: [
-        {
-          role: 'system',
-          content: COMPRESSION_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const fullPrompt = `${COMPRESSION_SYSTEM_PROMPT}\n\n${prompt}`;
+    const response = await this.options.llmEngine.generate(fullPrompt, {
       temperature: this.options.temperature,
       maxTokens: this.options.maxOutputTokens,
     });
@@ -249,7 +240,7 @@ Focus on brevity and relevance. Remove redundant code. Keep only what's needed f
       const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/) ||
                        response.match(/```\n([\s\S]*?)\n```/);
 
-      const jsonStr = jsonMatch ? jsonMatch[1] : response;
+      const jsonStr = jsonMatch ? (jsonMatch[1] ?? response) : response;
       const parsed = JSON.parse(jsonStr);
 
       return {

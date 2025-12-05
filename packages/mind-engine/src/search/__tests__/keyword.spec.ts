@@ -47,8 +47,8 @@ describe('keywordSearch', () => {
 
     // Chunk with higher frequency should rank higher
     expect(results.length).toBeGreaterThan(0);
-    if (results.length >= 2) {
-      expect(results[0]?.score).toBeGreaterThanOrEqual(results[1]?.score);
+    if (results.length >= 2 && results[0] && results[1]) {
+      expect(results[0].score).toBeGreaterThanOrEqual(results[1].score);
     }
   });
 

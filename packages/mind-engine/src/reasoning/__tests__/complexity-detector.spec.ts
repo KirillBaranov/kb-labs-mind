@@ -44,8 +44,7 @@ describe('ComplexityDetector', () => {
     it('should use LLM when enabled', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockResolvedValue('0.7'),
-        generate: vi.fn(),
+        generate: vi.fn().mockResolvedValue({ text: '{"score": 0.7, "reason": "test"}' }),
       };
 
       const detector = new ComplexityDetector(
@@ -54,7 +53,7 @@ describe('ComplexityDetector', () => {
       );
 
       const result = await detector.detectComplexity('test query');
-      expect(mockLLM.complete).toHaveBeenCalled();
+      expect(mockLLM.generate).toHaveBeenCalled();
       expect(result.score).toBeGreaterThanOrEqual(0);
       expect(result.score).toBeLessThanOrEqual(1);
     });
@@ -62,8 +61,7 @@ describe('ComplexityDetector', () => {
     it('should fallback to heuristics if LLM fails', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockRejectedValue(new Error('LLM error')),
-        generate: vi.fn(),
+        generate: vi.fn().mockRejectedValue(new Error('LLM error')),
       };
 
       const detector = new ComplexityDetector(

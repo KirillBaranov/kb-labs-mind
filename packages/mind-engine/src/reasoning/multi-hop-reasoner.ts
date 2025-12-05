@@ -147,17 +147,8 @@ export class MultiHopReasoner {
   ): Promise<ReasoningHop> {
     const prompt = this.buildHopPrompt(hopNumber, query, context);
 
-    const response = await this.options.cheapAI.generate({
-      messages: [
-        {
-          role: 'system',
-          content: HOP_SYSTEM_PROMPT,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const fullPrompt = `${HOP_SYSTEM_PROMPT}\n\n${prompt}`;
+    const response = await this.options.cheapAI.generate(fullPrompt, {
       temperature: 0.2,
       maxTokens: 1000,
     });
@@ -235,7 +226,7 @@ If confidence >= 0.9, return empty missingContext array.
   } {
     try {
       const jsonMatch = response.match(/```json\n([\s\S]*?)\n```/);
-      const jsonStr = jsonMatch ? jsonMatch[1] : response;
+      const jsonStr = jsonMatch ? (jsonMatch[1] ?? response) : response;
       const parsed = JSON.parse(jsonStr);
 
       return {
@@ -289,17 +280,9 @@ Format:
 Be specific and cite file names/line numbers.
 `;
 
-    const response = await this.options.expensiveAI.generate({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert code assistant. Provide clear, accurate answers based on the context provided.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+    const systemPrompt = 'You are an expert code assistant. Provide clear, accurate answers based on the context provided.';
+    const fullPrompt = `${systemPrompt}\n\n${prompt}`;
+    const response = await this.options.expensiveAI.generate(fullPrompt, {
       temperature: 0.3,
       maxTokens: 2000,
     });

@@ -155,8 +155,12 @@ export class EmbeddingStage implements PipelineStage {
         nextBatchIndex++;
         mutex.locked = false;
 
-        const { chunks: batch, index: batchStart } = batches[currentIndex];
-        const texts = batch.map(c => c.text);
+        const batchItem = batches[currentIndex];
+        if (!batchItem) {
+          throw new Error(`Batch at index ${currentIndex} is undefined`);
+        }
+        const { chunks: batch, index: batchStart } = batchItem;
+        const texts = batch.map((c: { text: string }) => c.text);
 
         // Estimate tokens for this batch
         const estimatedTokens = estimateBatchTokens(texts);
@@ -183,9 +187,13 @@ export class EmbeddingStage implements PipelineStage {
           const batchResults: ChunkWithEmbedding[] = [];
           for (let j = 0; j < batch.length; j++) {
             const embedding = embeddings[j];
-            if (embedding) {
+            const chunk = batch[j];
+            if (embedding && chunk) {
               batchResults.push({
-                ...batch[j],
+                ...chunk,
+                chunkId: chunk.chunkId ?? '',
+                sourceId: chunk.sourceId ?? '',
+                path: chunk.path ?? '',
                 embedding,
               });
             }

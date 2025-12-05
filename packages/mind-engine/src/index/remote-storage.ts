@@ -226,7 +226,7 @@ class LocalIndexStorageImpl implements RemoteIndexStorage {
       }
     }
 
-    const sourceDir = path.join(this.basePath, branch, revision);
+    const sourceDir = path.join(this.basePath, branch, revision ?? 'latest');
 
     // Read manifest
     const manifestPath = path.join(sourceDir, 'manifest.json');

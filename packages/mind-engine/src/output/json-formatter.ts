@@ -76,12 +76,12 @@ export function formatAsJSON(
   }
 
   // Add reasoning information if available and requested
-  if (reasoning && options.includeReasoning) {
+  if (reasoning?.reasoning && options.includeReasoning) {
     response.reasoning = {
-      wasComplex: reasoning.isComplex,
-      subqueries: reasoning.subqueries?.map((sq) => sq.text),
-      synthesis: reasoning.synthesis?.summary,
-      complexityScore: reasoning.complexityScore,
+      wasComplex: reasoning.reasoning.complexityScore > 0.5,
+      subqueries: reasoning.reasoning.plan.subqueries?.map((sq) => sq.text),
+      synthesis: result.contextText,
+      complexityScore: reasoning.reasoning.complexityScore,
     };
   }
 
@@ -107,6 +107,8 @@ function formatCandidate(
     : {
         code: chunkText,
         lines: [chunkStartLine, chunkEndLine] as [number, number],
+        before: undefined,
+        after: undefined,
         highlights: [],
         relevance: 1,
       };
@@ -118,8 +120,8 @@ function formatCandidate(
     snippet: {
       code: snippetResult.code,
       lines: snippetResult.lines,
-      before: snippetResult.before,
-      after: snippetResult.after,
+      before: 'before' in snippetResult ? snippetResult.before : undefined,
+      after: 'after' in snippetResult ? snippetResult.after : undefined,
       highlights: snippetResult.highlights,
       relevance: snippetResult.relevance,
     },

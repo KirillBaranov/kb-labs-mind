@@ -1320,19 +1320,18 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           },
         );
         
-        this.reportProgress('reasoning_completed', `${reasoningResult.chunks.length} chunks`, {
-          chunks: reasoningResult.chunks.length,
-          subqueries: reasoningResult.metadata?.subqueries,
+        // ReasoningResult extends KnowledgeResult, so all properties are available
+        const result = reasoningResult as unknown as KnowledgeResult;
+
+        this.reportProgress('reasoning_completed', `${result.chunks.length} chunks`, {
+          chunks: result.chunks.length,
+          subqueries: result.metadata?.subqueries,
         });
-        
-        // Convert ReasoningResult to KnowledgeResult
+
+        // Return the result directly - it already has all required KnowledgeResult fields
         return {
-          query,
-          chunks: reasoningResult.chunks,
-          contextText: reasoningResult.contextText,
+          ...result,
           engineId: this.id,
-          generatedAt: new Date().toISOString(),
-          metadata: reasoningResult.metadata,
         };
       } catch (error) {
         // Fallback to regular query if reasoning fails

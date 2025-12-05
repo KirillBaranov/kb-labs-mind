@@ -167,6 +167,8 @@ export class ParallelExecutor {
     reasoningContext: ReasoningContext,
   ): Promise<KnowledgeResult> {
     const query: KnowledgeQuery = {
+      productId: context.scope.id, // Use scope ID as product ID for sub-queries
+      scopeId: context.scope.id,
       text: subquery.text,
       intent: 'search',
     };

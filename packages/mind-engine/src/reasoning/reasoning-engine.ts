@@ -87,6 +87,20 @@ export class ReasoningEngine {
   }
 
   /**
+   * Report progress event
+   */
+  private reportProgress(stage: string, details?: string, data?: Record<string, unknown>): void {
+    if (this.onProgress) {
+      this.onProgress({
+        stage,
+        details,
+        timestamp: Date.now(),
+        metadata: data,
+      });
+    }
+  }
+
+  /**
    * Execute reasoning chain for a query
    */
   async execute(

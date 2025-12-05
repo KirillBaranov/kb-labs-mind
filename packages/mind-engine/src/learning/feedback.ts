@@ -179,7 +179,7 @@ export class QdrantFeedbackStore implements FeedbackStore {
     }
 
     const data = await response.json() as {
-      result: { points: Array<{ payload: FeedbackEntry['payload'] & { feedbackId: string } }> };
+      result: { points: Array<{ payload: Record<string, unknown> & { feedbackId: string } }> };
     };
 
     return data.result.points.map(point => ({

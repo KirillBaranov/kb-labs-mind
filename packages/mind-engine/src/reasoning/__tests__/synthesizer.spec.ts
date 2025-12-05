@@ -14,7 +14,7 @@ describe('ResultSynthesizer', () => {
   });
 
   const createMockResult = (chunks: KnowledgeChunk[]): KnowledgeResult => ({
-    query: { text: 'test', intent: 'search' },
+    query: { productId: 'test-product', scopeId: 'test-scope', text: 'test', intent: 'search' },
     chunks,
     contextText: chunks.map(c => c.text).join('\n'),
     generatedAt: new Date().toISOString(),
@@ -63,8 +63,7 @@ describe('ResultSynthesizer', () => {
     it('should use LLM when enabled', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockResolvedValue('Synthesized context from chunks'),
-        generate: vi.fn(),
+        generate: vi.fn().mockResolvedValue({ text: 'Synthesized context from chunks' }),
       };
 
       const synthesizer = new ResultSynthesizer(
@@ -80,15 +79,14 @@ describe('ResultSynthesizer', () => {
       const results = [createMockResult(chunks)];
       const synthesized = await synthesizer.synthesize(results, 'test query');
 
-      expect(mockLLM.complete).toHaveBeenCalled();
+      expect(mockLLM.generate).toHaveBeenCalled();
       expect(synthesized.contextText).toBe('Synthesized context from chunks');
     });
 
     it('should fallback to concatenation if LLM fails', async () => {
       const mockLLM: MindLLMEngine = {
         id: 'test',
-        complete: vi.fn().mockRejectedValue(new Error('LLM error')),
-        generate: vi.fn(),
+        generate: vi.fn().mockRejectedValue(new Error('LLM error')),
       };
 
       const synthesizer = new ResultSynthesizer(

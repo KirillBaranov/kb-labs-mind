@@ -247,30 +247,30 @@ Respond ONLY with valid JSON, no other text.`;
 
       // Try to parse JSON response
       const cleaned = response.trim();
-      let parsed: { score?: number; reason?: string };
-      
+      let parsed: { score?: number; reason?: string } | undefined;
+
       // Try to extract JSON from response (in case LLM adds extra text)
       const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
+      if (jsonMatch && jsonMatch[0]) {
         try {
           parsed = JSON.parse(jsonMatch[0]);
         } catch {
           // If JSON parsing fails, try to extract score as number
           const scoreMatch = cleaned.match(/["']?score["']?\s*:\s*([0-9.]+)/);
-          if (scoreMatch) {
+          if (scoreMatch && scoreMatch[1]) {
             parsed = { score: parseFloat(scoreMatch[1]) };
           }
         }
       } else {
         // Fallback: try to parse as plain number
         const numMatch = cleaned.match(/[0-9]+\.[0-9]+|[0-9]+/);
-        if (numMatch) {
+        if (numMatch && numMatch[0]) {
           parsed = { score: parseFloat(numMatch[0]) };
         }
       }
 
       const score = parsed?.score;
-      if (score !== undefined && !isNaN(score) && score >= 0 && score <= 1) {
+      if (score !== undefined && !isNaN(score) && score >= 0 && score <= 1 && parsed) {
         return {
           score: Math.min(1, Math.max(0, score)),
           reasons: parsed.reason ? [parsed.reason] : [`LLM complexity score: ${(score * 100).toFixed(0)}%`],

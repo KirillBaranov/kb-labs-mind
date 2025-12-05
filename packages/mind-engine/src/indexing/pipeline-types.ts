@@ -42,6 +42,7 @@ export interface PipelineContext {
   // Runtime
   logger: Logger;
   memoryMonitor: MemoryMonitor;
+  workspaceRoot?: string;
   onProgress?: ProgressReporter;
 
   // Stage outputs (populated as pipeline progresses)
