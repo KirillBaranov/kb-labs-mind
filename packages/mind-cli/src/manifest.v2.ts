@@ -3,14 +3,17 @@
  * Manifest v2 for Mind CLI
  */
 
-import { createManifestV2 } from '@kb-labs/plugin-manifest';
-import { pluginContractsManifest } from '@kb-labs/mind-contracts';
+import type { ManifestV2 } from '@kb-labs/plugin-manifest';
 
 /**
  * Mind CLI Manifest v2
  * Level 2: Типизация через contracts для автодополнения и проверки ID
+ *
+ * Note: We export plain object instead of using createManifestV2() wrapper
+ * to avoid runtime dependency on @kb-labs/plugin-manifest.
+ * Type safety is provided by TypeScript at build time.
  */
-export const manifest = createManifestV2<typeof pluginContractsManifest>({
+export const manifest: ManifestV2 = {
   schema: 'kb.plugin/2',
   id: '@kb-labs/mind',
   version: '0.1.0',
@@ -671,7 +674,7 @@ export const manifest = createManifestV2<typeof pluginContractsManifest>({
       description: 'Query output in TOON format',
     },
   ],
-});
+} satisfies ManifestV2;
 
 // Export as default for compatibility
 export default manifest;

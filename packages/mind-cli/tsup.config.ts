@@ -1,9 +1,19 @@
 import { defineConfig } from 'tsup'
-import nodePreset from '@kb-labs/devkit/tsup/node.js'
 
 export default defineConfig({
-  ...nodePreset,
-  tsconfig: "tsconfig.build.json", // Use build-specific tsconfig without paths
+  // Development mode: workspace packages via pnpm symlinks
+  // For production packaging, use separate plugin SDK build
+  format: ['esm'],
+  target: 'es2022',
+  sourcemap: true,
+  clean: true,
+  outDir: 'dist',
+  splitting: false,
+  minify: false,
+  skipNodeModulesBundle: true,
+  shims: false,
+  tsconfig: "tsconfig.build.json",
+
   entry: [
     'src/index.ts',
     'src/manifest.v2.ts',
@@ -27,19 +37,17 @@ export default defineConfig({
     'src/studio/widgets/query-widget.tsx',
     'src/studio/widgets/verify-widget.tsx',
   ],
+
+  // Development: all workspace packages external (resolved via pnpm workspace)
   external: [
-    '@kb-labs/mind-query',
-    '@kb-labs/mind-indexer',
-    '@kb-labs/mind-types',
-    '@kb-labs/mind-gateway',
-    '@kb-labs/mind-contracts',
-    '@kb-labs/shared-cli-ui',
+    /^@kb-labs\/.*/,  // All @kb-labs/* packages
     'react',
     'react-dom',
   ],
+
   treeshake: false,
-  dts: true, // Disabled for OOM debugging
-  // Ensure TypeScript declarations are generated for React components
+  dts: false, // TEMPORARY: disabled until type issues fixed
+
   esbuildOptions(options) {
     options.jsx = 'automatic';
     return options;
