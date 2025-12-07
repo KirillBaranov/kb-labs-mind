@@ -28,6 +28,11 @@ export interface MindKnowledgeRuntime {
 
 export interface MindKnowledgeRuntimeOptions {
   cwd: string;
+  /**
+   * Mind configuration (from ctx.config)
+   * If provided, will be used instead of reading from file
+   */
+  config?: KnowledgeConfigInput;
   logger?: KnowledgeLogger;
   /**
    * Progress callback for tracking query execution stages
@@ -63,7 +68,8 @@ export interface MindKnowledgeRuntimeOptions {
 export async function createMindKnowledgeRuntime(
   options: MindKnowledgeRuntimeOptions,
 ): Promise<MindKnowledgeRuntime> {
-  const config = await findAndReadConfig(options.cwd);
+  // Use provided config (from ctx.config) or fallback to file reading for backward compatibility
+  const config = options.config ?? await findAndReadConfig(options.cwd);
 
   // Create engine registry
   // Note: createKnowledgeEngineRegistry expects KnowledgeLogger directly, not an options object
@@ -108,7 +114,7 @@ export async function createMindKnowledgeRuntime(
 
 /**
  * Find and read knowledge config
- * Supports both kb.config.json (with knowledge key) and knowledge.json (flat format)
+ * Supports Profiles v2 (profiles[].products.mind) and legacy formats
  */
 async function findAndReadConfig(cwd: string): Promise<KnowledgeConfigInput> {
   const { path: configPath } = await findNearestConfig({
@@ -130,12 +136,28 @@ async function findAndReadConfig(cwd: string): Promise<KnowledgeConfigInput> {
     throw new Error(`Failed to read config: ${result.diagnostics.map(d => d.message).join(', ')}`);
   }
 
-  // Check if this is kb.config.json (has 'knowledge' key) or flat knowledge.json
   const rawData = result.data;
-  const knowledgeConfig = (rawData.knowledge as KnowledgeConfigInput) ?? (rawData as unknown as KnowledgeConfigInput);
+  let knowledgeConfig: KnowledgeConfigInput | undefined;
+
+  // Try Profiles v2 format first: profiles[0].products.mind
+  if (Array.isArray(rawData.profiles) && rawData.profiles.length > 0) {
+    const defaultProfile = rawData.profiles.find((p: any) => p.id === 'default') ?? rawData.profiles[0];
+    if (defaultProfile && typeof defaultProfile === 'object' && 'products' in defaultProfile) {
+      const products = (defaultProfile as any).products;
+      if (products && typeof products === 'object' && MIND_PRODUCT_ID in products) {
+        knowledgeConfig = products[MIND_PRODUCT_ID] as KnowledgeConfigInput;
+      }
+    }
+  }
+
+  // Fallback to legacy formats
+  if (!knowledgeConfig) {
+    // Legacy: kb.config.json with top-level 'knowledge' key
+    knowledgeConfig = (rawData.knowledge as KnowledgeConfigInput) ?? (rawData as unknown as KnowledgeConfigInput);
+  }
 
   // Validate required fields
-  if (!knowledgeConfig.sources || !knowledgeConfig.scopes || !knowledgeConfig.engines) {
+  if (!knowledgeConfig?.sources || !knowledgeConfig?.scopes || !knowledgeConfig?.engines) {
     throw new Error('Invalid knowledge configuration. Must have sources, scopes, and engines.');
   }
 

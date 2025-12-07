@@ -48,7 +48,7 @@ type MindRagQueryResult = {
   exitCode?: number;
 };
 
-export const run = defineCommand({
+export const run = defineCommand<any, MindRagQueryFlags, MindRagQueryResult, string[]>({
   name: 'mind:rag-query',
   flags: {
     cwd: {
@@ -111,7 +111,7 @@ export const run = defineCommand({
       default: false,
     },
   },
-  async handler(ctx: any, argv: string[], flags: any) {
+  async handler(ctx, argv, flags) {
     const cwd = flags.cwd || ctx.cwd;
     const scopeId = flags.scope;
     const intent = flags.intent && isValidIntent(flags.intent) ? flags.intent : undefined;
@@ -119,6 +119,21 @@ export const run = defineCommand({
     const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
     const profileId = flags.profile;
     const platform = (ctx as any).platform;
+
+    // ✨ NEW: Access typed environment variables
+    // ctx.env.OPENAI_API_KEY is typed as string | undefined
+    // ctx.env.KB_LOG_LEVEL is typed as string | undefined
+    // ctx.env.DEBUG is typed as string | undefined
+    const hasOpenAI = !!ctx.env.OPENAI_API_KEY;
+    const logLevel = ctx.env.KB_LOG_LEVEL || 'info';
+    const debugMode = ctx.env.DEBUG === 'true' || ctx.env.DEBUG === '1';
+
+    // Show env status in debug mode
+    if (flags.debug && !flags.quiet && !flags.agent) {
+      ctx.output?.info(`🔧 Environment: OpenAI=${hasOpenAI ? 'configured' : 'not configured (using deterministic embeddings)'}, LogLevel=${logLevel}, Debug=${debugMode}`);
+      ctx.output?.info(`🔧 Config: ${ctx.config ? JSON.stringify(ctx.config) : 'not set'}`);
+      ctx.output?.info(`🔧 ProfileId: ${ctx.profileId ?? 'not set'}`);
+    }
 
     // Handle mode flag
     const mode = flags.mode && isValidMode(flags.mode) ? flags.mode : 'auto';
@@ -176,6 +191,7 @@ export const run = defineCommand({
           debug: flags.debug,
           broker, // Pass broker from platform (undefined = in-memory fallback)
           platform,
+          // Config will be loaded automatically if not provided
         });
 
         // Track analytics if available
@@ -257,6 +273,7 @@ export const run = defineCommand({
         profileId,
         platform,
         runtime: undefined, // Runtime context not available in CLI context
+        // Config will be loaded automatically if not provided
         onProgress: (stage: string, details?: string) => {
           if (flags.quiet || format === 'json' || format === 'json-pretty') return;
 

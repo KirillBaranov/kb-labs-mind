@@ -18,3 +18,12 @@ export type { ApiContract, RestApiContract, RestRouteContract, SchemaReference }
 export type { ArtifactKind, ArtifactContractsMap, PluginArtifactContract, ArtifactExample } from './types/artifacts';
 export type { CommandContract, CommandContractsMap } from './types/commands';
 export type { WorkflowContract, WorkflowContractsMap, WorkflowStepContract } from './types/workflows';
+export type {
+  MindConfig,
+  MindSyncConfig,
+  MindSyncRegistryConfig,
+  MindSyncSoftDeleteConfig,
+  MindSyncPartialUpdatesConfig,
+  MindSyncBatchConfig,
+} from './types/config';
+export { defaultMindSyncConfig } from './types/config';

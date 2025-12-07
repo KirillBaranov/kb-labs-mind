@@ -53,6 +53,7 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
     ctx.logger?.debug('About to call runRagIndex');
     ctx.tracker?.checkpoint('index');
 
+    //  Config will be loaded automatically by createMindKnowledgeRuntime if not provided
     const result = await runRagIndex({ cwd, scopeId, platform });
 
     // Track analytics if available

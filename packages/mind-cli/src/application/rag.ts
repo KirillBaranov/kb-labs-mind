@@ -22,6 +22,11 @@ export interface RagIndexOptions {
   cwd: string;
   scopeId?: string;
   platform?: PlatformServices;
+  /**
+   * Mind configuration (from ctx.config)
+   * If provided, will be used instead of reading from file
+   */
+  config?: any;
 }
 
 export interface RagIndexResult {
@@ -37,6 +42,7 @@ export async function runRagIndex(
 ): Promise<RagIndexResult> {
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
+    config: options.config,
     runtime: 'runtime' in options ? options.runtime : undefined,
     platform: options.platform,
   });
@@ -78,6 +84,11 @@ export interface RagQueryOptions {
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
   onProgress?: (stage: string, details?: string) => void;
   platform?: PlatformServices;
+  /**
+   * Mind configuration (from ctx.config)
+   * If provided, will be used instead of reading from file
+   */
+  config?: any;
 }
 
 export interface RagQueryResult {
@@ -183,6 +194,7 @@ export async function runRagQuery(
 
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
+    config: options.config,
     runtime: wrappedRuntime,
     logger: silentLogger,
     onProgress: onProgressEvent,
@@ -231,6 +243,11 @@ export interface AgentRagQueryOptions {
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
   broker?: any; // StateBroker-like interface (duck typing to avoid circular deps)
   platform?: PlatformServices;
+  /**
+   * Mind configuration (from ctx.config)
+   * If provided, will be used instead of reading from file
+   */
+  config?: any;
 }
 
 export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
@@ -296,6 +313,7 @@ export async function runAgentRagQuery(
   // Create runtime
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
+    config: options.config,
     runtime: options.runtime,
     logger: silentLogger,
     platform: options.platform,
