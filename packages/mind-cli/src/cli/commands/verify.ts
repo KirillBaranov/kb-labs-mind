@@ -2,7 +2,7 @@
  * Mind verify command - checks platform services readiness
  */
 
-import { defineCommand } from '@kb-labs/shared-command-kit';
+import { defineCommand, usePlatform } from '@kb-labs/shared-command-kit';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 
 type MindVerifyFlags = {
@@ -40,7 +40,8 @@ export const run = defineCommand({
   async handler(ctx: any, argv: string[], flags: any) {
     ctx.tracker.checkpoint('start');
 
-    const platform = (ctx as any).platform;
+    // Use global platform singleton (clean approach with usePlatform helper)
+    const platform = usePlatform();
     const services: ServiceStatus[] = [];
 
     if (!platform) {

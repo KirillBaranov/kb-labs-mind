@@ -1,4 +1,4 @@
-import { defineCommand } from '@kb-labs/shared-command-kit';
+import { defineCommand, usePlatform } from '@kb-labs/shared-command-kit';
 import { runRagQuery, runAgentRagQuery } from '../../application/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
@@ -118,7 +118,9 @@ export const run = defineCommand<any, MindRagQueryFlags, MindRagQueryResult, str
     const text = flags.text?.trim() || '';
     const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
     const profileId = flags.profile;
-    const platform = (ctx as any).platform;
+
+    // Use global platform singleton (clean approach with usePlatform helper)
+    const platform = usePlatform();
 
     // ✨ NEW: Access typed environment variables
     // ctx.env.OPENAI_API_KEY is typed as string | undefined
