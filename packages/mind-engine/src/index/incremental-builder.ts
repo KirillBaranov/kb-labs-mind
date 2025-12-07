@@ -292,6 +292,36 @@ export async function buildAndStoreOverlay(
   const result = await builder.buildOverlay(changedFiles, options);
 
   // Store chunks in overlay vector store
+  // DEBUG: Early exit with fake chunk to test vectorStore calls
+  const fs = await import('node:fs/promises');
+  await fs.appendFile('/tmp/platform-vector-debug.log', `[incremental-builder] Testing vectorStore with fake chunk\n`);
+
+  const fakeChunk = {
+    chunkId: 'test-chunk-123',
+    scopeId: options.scopeId,
+    sourceId: 'test-source',
+    path: '/test/path.ts',
+    span: { start: { line: 1, column: 0 }, end: { line: 10, column: 0 }, startLine: 1, endLine: 10 },
+    contentHash: 'fake-hash',
+    text: 'test content',
+    embedding: { values: new Array(1536).fill(0.1), dim: 1536 },
+    metadata: {},
+  };
+
+  if (vectorStore.upsertChunks) {
+    await fs.appendFile('/tmp/platform-vector-debug.log', `[incremental-builder] Calling vectorStore.upsertChunks with 1 fake chunk\n`);
+    await vectorStore.upsertChunks(options.scopeId, [fakeChunk]);
+  } else {
+    await fs.appendFile('/tmp/platform-vector-debug.log', `[incremental-builder] Calling vectorStore.replaceScope with 1 fake chunk\n`);
+    await vectorStore.replaceScope(options.scopeId, [fakeChunk]);
+  }
+
+  await fs.appendFile('/tmp/platform-vector-debug.log', `[incremental-builder] vectorStore call completed, exiting early (DEBUG MODE)\n`);
+
+  // Return early for debug
+  return { ...result, chunks: [fakeChunk] };
+
+  /* COMMENTED OUT FOR DEBUG
   if (result.chunks.length > 0) {
     options.onProgress?.({
       stage: 'storing',
@@ -307,6 +337,7 @@ export async function buildAndStoreOverlay(
   }
 
   return result;
+  */
 }
 
 /**

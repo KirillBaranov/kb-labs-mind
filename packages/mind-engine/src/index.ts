@@ -761,20 +761,26 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const rawOptions = (config.options ?? {}) as MindEngineOptions;
     this.options = normalizeOptions(rawOptions);
 
+    // Use global platform singleton as fallback if not explicitly provided
+    const platform = rawOptions.platform ?? globalPlatform;
+
     // DEBUG: Check learning configuration
-    console.error('[DEBUG MindEngine constructor] Raw learning config:', JSON.stringify(rawOptions.learning, null, 2));
-    console.error('[DEBUG MindEngine constructor] Normalized learning.enabled:', this.options.learning.enabled);
+    platform?.logger?.debug('MindEngine constructor: Raw learning config', { learning: rawOptions.learning });
+    platform?.logger?.debug('MindEngine constructor: Normalized learning.enabled', { enabled: this.options.learning.enabled });
 
     this.onProgress = rawOptions.onProgress;
-    
+
     // Extract runtime adapter from options (passed through from handlers)
     const runtimeInput = rawOptions._runtime;
     this.runtime = runtimeInput && 'fetch' in runtimeInput && typeof runtimeInput.fetch === 'function'
       ? runtimeInput as RuntimeAdapter
       : createRuntimeAdapter(runtimeInput as any);
 
-    // Use global platform singleton as fallback if not explicitly provided
-    const platform = rawOptions.platform ?? globalPlatform;
+    // DEBUG: Check platform.vectorStore
+    platform?.logger?.debug('MindEngine: platform source', { source: rawOptions.platform ? 'rawOptions.platform' : 'globalPlatform' });
+    platform?.logger?.debug('MindEngine: platform.vectorStore exists', { exists: !!platform?.vectorStore });
+    platform?.logger?.debug('MindEngine: platform.vectorStore type', { type: platform?.vectorStore?.constructor?.name });
+
     const embeddingConfig: EmbeddingProviderConfig = rawOptions.embedding
       ? {
           type: rawOptions.embedding.type,
@@ -1169,10 +1175,17 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           },
         }));
 
+        // DEBUG: Test vectorStore upsertChunks with minimal data
+        const fs = await import('node:fs/promises');
+        await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] About to call vectorStore.upsertChunks with ${storedChunks.length} chunks\n`);
+
         if (this.vectorStore.upsertChunks) {
+          await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] vectorStore.upsertChunks exists, calling it...\n`);
           await this.vectorStore.upsertChunks(options.scope.id, storedChunks);
+          await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] upsertChunks completed successfully\n`);
           return storedChunks.length;
         }
+        await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] ERROR: vectorStore.upsertChunks does not exist!\n`);
         throw new Error('Vector store does not support upsert operation');
       },
       updateBatch: async (chunks: any[]) => {

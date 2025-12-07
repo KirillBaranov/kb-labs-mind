@@ -157,6 +157,9 @@ importers:
 
   packages/mind-contracts:
     dependencies:
+      '@kb-labs/knowledge-contracts':
+        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
+        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -238,6 +241,9 @@ importers:
       '@kb-labs/core-platform':
         specifier: link:../../../kb-labs-core/packages/core-platform
         version: link:../../../kb-labs-core/packages/core-platform
+      '@kb-labs/core-runtime':
+        specifier: link:../../../kb-labs-core/packages/core-runtime
+        version: link:../../../kb-labs-core/packages/core-runtime
       '@kb-labs/core-sys':
         specifier: link:../../../kb-labs-core/packages/core-sys
         version: link:../../../kb-labs-core/packages/core-sys

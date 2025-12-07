@@ -17,7 +17,7 @@ const DEFAULT_OPTIONS: Required<MarkdownChunkingOptions> = {
   byHeadings: true,
   includeCodeBlocks: true,
   maxLines: 150,
-  minLines: 30,
+  minLines: 5, // Lowered from 30 to index short ADR sections (see ADR-0038)
   preserveContext: true,
 };
 

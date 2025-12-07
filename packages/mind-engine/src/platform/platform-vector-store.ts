@@ -27,23 +27,41 @@ export class PlatformVectorStore implements VectorStore {
   }
 
   async replaceScope(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
+    const fs = await import('node:fs/promises');
+    const log = (msg: string) => fs.appendFile('/tmp/platform-vector-debug.log', msg + '\n');
+
+    await log(`[replaceScope] START scopeId=${scopeId} chunks=${chunks.length}`);
+
     const existing = await this.loadScope(scopeId);
+    await log(`[replaceScope] existing=${existing.length}`);
+
     if (existing.length) {
       const ids = existing.map(chunk => this.recordId(scopeId, chunk.chunkId));
+      await log(`[replaceScope] Deleting ${ids.length} existing chunks from Qdrant`);
       await this.options.vectorStore.delete(ids);
+      await log(`[replaceScope] Delete completed`);
     }
 
     if (chunks.length) {
-      await this.options.vectorStore.upsert(
-        chunks.map(chunk => ({
-          id: this.recordId(scopeId, chunk.chunkId),
-          vector: chunk.embedding.values,
-          metadata: this.buildMetadata(scopeId, chunk),
-        })),
-      );
+      await log(`[replaceScope] Upserting ${chunks.length} chunks to Qdrant`);
+      await log(`[replaceScope] vectorStore type: ${this.options.vectorStore.constructor.name}`);
+      await log(`[replaceScope] vectorStore.upsert exists: ${typeof this.options.vectorStore.upsert}`);
+
+      const records = chunks.map(chunk => ({
+        id: this.recordId(scopeId, chunk.chunkId),
+        vector: chunk.embedding.values,
+        metadata: this.buildMetadata(scopeId, chunk),
+      }));
+      await log(`[replaceScope] Prepared ${records.length} records for upsert`);
+      await log(`[replaceScope] Calling vectorStore.upsert NOW...`);
+
+      await this.options.vectorStore.upsert(records);
+
+      await log(`[replaceScope] Upsert completed successfully`);
     }
 
     await this.saveScope(scopeId, chunks);
+    await log(`[replaceScope] saveScope completed - DONE`);
   }
 
   async updateScope(
@@ -55,7 +73,12 @@ export class PlatformVectorStore implements VectorStore {
   }
 
   async upsertChunks(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
+    const fs = await import('node:fs/promises');
+    const log = (msg: string) => fs.appendFile('/tmp/platform-vector-debug.log', msg + '\n');
+
+    await log(`[upsertChunks] START scopeId=${scopeId} newChunks=${chunks.length}`);
     const existing = await this.loadScope(scopeId);
+    await log(`[upsertChunks] existing=${existing.length}`);
     const byId = new Map<string, StoredMindChunk>();
     for (const chunk of existing) {
       byId.set(chunk.chunkId, chunk);
@@ -64,7 +87,9 @@ export class PlatformVectorStore implements VectorStore {
       byId.set(chunk.chunkId, chunk);
     }
     const merged = Array.from(byId.values());
+    await log(`[upsertChunks] merged=${merged.length} calling replaceScope...`);
     await this.replaceScope(scopeId, merged);
+    await log(`[upsertChunks] DONE`);
   }
 
   async search(

@@ -39,13 +39,21 @@ export function createVectorStore(
   runtime: RuntimeAdapter,
   platform?: MindPlatformBindings,
 ): VectorStore {
+  console.error('[DEBUG createVectorStore] platform exists:', !!platform);
+  console.error('[DEBUG createVectorStore] platform.vectorStore exists:', !!platform?.vectorStore);
+  console.error('[DEBUG createVectorStore] platform.vectorStore type:', platform?.vectorStore?.constructor?.name);
+
   if (platform?.vectorStore) {
+    console.error('[DEBUG createVectorStore] Creating PlatformVectorStore (Qdrant)');
+    console.error('[DEBUG createVectorStore] platform.storage exists:', !!platform.storage);
+    console.error('[DEBUG createVectorStore] platform.storage type:', platform.storage?.constructor?.name);
     return new PlatformVectorStore({
       vectorStore: platform.vectorStore,
       storage: platform.storage,
       });
     }
 
+      console.error('[DEBUG createVectorStore] Fallback to LocalVectorStore (files)');
       const indexDir = config.local?.indexDir ?? '.kb/mind/indexes';
       return new LocalVectorStore({ indexDir });
 }
