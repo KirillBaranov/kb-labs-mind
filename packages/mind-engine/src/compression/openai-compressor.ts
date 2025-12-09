@@ -3,12 +3,12 @@
  * OpenAI-based LLM compression implementation
  */
 
-import { getLogger } from '@kb-labs/core-sys/logging';
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import { useLogger } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
 import type { LLMCompressor } from './llm-compressor';
 
-const logger = getLogger('mind:engine:compression');
+const getCompressionLogger = () => useLogger().child({ category: 'mind:engine:compression' });
 
 export interface OpenAICompressorOptions {
   /**
@@ -77,7 +77,7 @@ export class OpenAILLMCompressor implements LLMCompressor {
       return result.text.trim();
     } catch (error) {
       // Fallback to original text on error
-      logger.warn(`LLM compression failed for chunk ${chunk.id}, using original text`, {
+      getCompressionLogger().warn(`LLM compression failed for chunk ${chunk.id}, using original text`, {
         error: error instanceof Error ? error.message : String(error),
       });
       return originalText;

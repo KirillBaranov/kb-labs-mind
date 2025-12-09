@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ParallelExecutor } from '../parallel-executor';
 import type { QueryPlan, ReasoningContext } from '../types';
-import type { KnowledgeQuery, KnowledgeResult, KnowledgeChunk } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
+import type { KnowledgeQuery, KnowledgeResult, KnowledgeChunk, KnowledgeExecutionContext } from '@kb-labs/sdk';
 
 describe('ParallelExecutor', () => {
   const createMockContext = (): KnowledgeExecutionContext => ({

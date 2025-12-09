@@ -12,7 +12,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
 import type { VectorStore, StoredMindChunk, VectorSearchMatch } from '../vector-store/vector-store';
-import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
+import type { EmbeddingVector } from '@kb-labs/sdk';
 import { GitDiffDetector, type ChangedFile } from './git-diff';
 import { MergedVectorStore, type MergedIndexStats } from './merged-store';
 import { IncrementalIndexBuilder, type OverlayBuildResult } from './incremental-builder';

@@ -15,7 +15,7 @@
  * - Automatic context expansion (related code)
  */
 
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 
 export interface ContextChunk {
   chunkId: string;

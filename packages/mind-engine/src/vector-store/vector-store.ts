@@ -6,7 +6,7 @@
 import type {
   EmbeddingVector,
   SpanRange,
-} from '@kb-labs/knowledge-contracts';
+} from '@kb-labs/sdk';
 
 // Re-export for convenience
 export type { EmbeddingVector };

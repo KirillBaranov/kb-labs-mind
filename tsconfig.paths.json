@@ -33,12 +33,6 @@
       "@kb-labs/knowledge-contracts/*": [
         "../kb-labs-knowledge/packages/knowledge-contracts/src/*"
       ],
-      "@kb-labs/knowledge-core": [
-        "../kb-labs-knowledge/packages/knowledge-core/src/index.ts"
-      ],
-      "@kb-labs/knowledge-core/*": [
-        "../kb-labs-knowledge/packages/knowledge-core/src/*"
-      ],
       "@kb-labs/mind-adapters": [
         "packages/mind-adapters/src/index.ts"
       ],

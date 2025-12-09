@@ -3,7 +3,7 @@
  * LLM-based summarization for chunks
  */
 
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
 
 export interface SummarizerOptions {

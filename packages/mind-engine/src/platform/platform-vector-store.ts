@@ -1,4 +1,4 @@
-import type { IStorage, IVectorStore } from '@kb-labs/core-platform';
+import type { IStorage, IVectorStore } from '@kb-labs/sdk';
 import type {
   StoredMindChunk,
   VectorSearchFilters,

@@ -4,8 +4,7 @@ import { ComplexityDetector } from '../complexity-detector';
 import { QueryPlanner } from '../query-planner';
 import { ParallelExecutor } from '../parallel-executor';
 import { ResultSynthesizer } from '../synthesizer';
-import type { KnowledgeQuery, KnowledgeResult } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
+import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '@kb-labs/sdk';
 
 describe('ReasoningEngine', () => {
   let complexityDetector: ComplexityDetector;

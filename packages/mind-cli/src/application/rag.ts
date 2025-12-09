@@ -1,13 +1,13 @@
-import type {
-  KnowledgeIntent,
-  KnowledgeResult,
-  AgentQueryMode,
-  AgentResponse,
-  AgentErrorResponse,
-  KnowledgeLogger,
-  PlatformServices,
+import {
+  usePlatform,
+  type KnowledgeIntent,
+  type KnowledgeResult,
+  type AgentQueryMode,
+  type AgentResponse,
+  type AgentErrorResponse,
+  type KnowledgeLogger,
+  type PlatformServices,
 } from '@kb-labs/sdk';
-import { platform as globalPlatform } from '@kb-labs/core-runtime';
 import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
@@ -71,8 +71,8 @@ function getAdapterName(service: any, fallback: string): string {
 export async function runRagIndex(
   options: RagIndexOptions | RagIndexOptionsWithRuntime,
 ): Promise<RagIndexResult> {
-  // Use globalPlatform as fallback (same logic as mind-engine)
-  const platform = options.platform ?? globalPlatform;
+  // Use SDK's usePlatform() to get global platform singleton
+  const platform = options.platform ?? usePlatform();
 
   // Collect adapter info - shows actual adapters being used
   const adapters: AdapterInfo = {

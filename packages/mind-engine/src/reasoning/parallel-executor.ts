@@ -1,9 +1,8 @@
-import { getLogger } from '@kb-labs/core-sys/logging';
-import type { KnowledgeQuery, KnowledgeResult } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
+import { useLogger } from '@kb-labs/sdk';
+import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '@kb-labs/sdk';
 import type { QueryPlan, ReasoningContext } from './types';
 
-const logger = getLogger('mind:engine:reasoning:parallel');
+const getParallelLogger = () => useLogger().child({ category: 'mind:engine:reasoning:parallel' });
 
 export interface ParallelExecutorOptions {
   /**
@@ -117,7 +116,7 @@ export class ParallelExecutor {
           }
         } catch (error) {
           // Log error but continue with other queries
-          logger.warn(`Failed to execute sub-query "${subquery.text}"`, { error });
+          getParallelLogger().warn(`Failed to execute sub-query "${subquery.text}"`, { error });
         }
       }
     } else {
@@ -133,7 +132,7 @@ export class ParallelExecutor {
         const groupPromises = group.map(subquery =>
           this.executeWithTimeout(subquery, context, executor, reasoningContext)
             .catch(error => {
-              logger.warn(`Failed to execute sub-query "${subquery.text}"`, { error });
+              getParallelLogger().warn(`Failed to execute sub-query "${subquery.text}"`, { error });
               return null;
             })
         );

@@ -3,11 +3,11 @@
  * Re-ranking interface and implementations
  */
 
-import { getLogger } from '@kb-labs/core-sys/logging';
+import { useLogger } from '@kb-labs/sdk';
 import type { VectorSearchMatch } from '../vector-store/vector-store';
 import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 
-const logger = getLogger('mind:engine:reranking');
+const getRerankLogger = () => useLogger().child({ category: 'mind:engine:reranking' });
 
 export interface Reranker {
   /**
@@ -178,7 +178,7 @@ export class CrossEncoderReranker implements Reranker {
       return score;
     } catch (error) {
       // Fallback to original score if LLM call fails
-      logger.warn('Re-ranking LLM call failed, using original score', { error });
+      getRerankLogger().warn('Re-ranking LLM call failed, using original score', { error });
       return match.score;
     }
   }

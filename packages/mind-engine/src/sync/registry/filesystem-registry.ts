@@ -3,13 +3,13 @@
  * Filesystem-based document registry implementation
  */
 
-import { getLogger } from '@kb-labs/core-sys/logging';
+import { useLogger } from '@kb-labs/sdk';
 import { promises as fs } from 'node:fs';
 import { dirname } from 'node:path';
 import type { DocumentRecord } from '../types';
 import type { DocumentRegistry } from './document-registry';
 
-const logger = getLogger('mind:engine:sync:registry');
+const getRegistryLogger = () => useLogger().child({ category: 'mind:engine:sync:registry' });
 
 export interface FileSystemRegistryOptions {
   path: string; // Path to registry.json file
@@ -73,7 +73,7 @@ export class FileSystemRegistry implements DocumentRegistry {
         }
       } catch (error) {
         // Backup failed, but continue with save
-        logger.warn('Failed to create backup', { error });
+        getRegistryLogger().warn('Failed to create backup', { error });
       }
     }
 

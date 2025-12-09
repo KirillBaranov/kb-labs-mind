@@ -13,12 +13,12 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import { getLogger } from '@kb-labs/core-sys/logging';
+import { useLogger } from '@kb-labs/sdk';
 import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
 import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory';
 import type { FileMetadata } from './discovery';
 
-const logger = getLogger('mind:engine:chunking');
+const getChunkingLogger = () => useLogger().child({ category: 'mind:engine:chunking' });
 
 export interface MindChunk {
   chunkId: string;
@@ -169,7 +169,7 @@ export class ChunkingStage implements PipelineStage {
     });
 
     // DEBUG: Log which chunker is selected for which file
-    logger.debug(`File: ${normalizedPath}, Size: ${(size / 1024).toFixed(1)}KB, Chunker: ${chunker.id}`);
+    getChunkingLogger().debug(`File: ${normalizedPath}, Size: ${(size / 1024).toFixed(1)}KB, Chunker: ${chunker.id}`);
 
     // Calculate file hash (for deduplication)
     const hashStream = createHash('sha256');

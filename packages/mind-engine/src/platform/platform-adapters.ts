@@ -6,7 +6,7 @@ import type {
   ILogger,
   IStorage,
   IVectorStore,
-} from '@kb-labs/core-platform';
+} from '@kb-labs/sdk';
 import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
 import type {
   MindLLMEngine,
@@ -29,7 +29,7 @@ export class PlatformEmbeddingProvider implements EmbeddingProvider {
 
   constructor(private readonly embeddings: IEmbeddings) {}
 
-  async embed(texts: string[]): Promise<import('@kb-labs/knowledge-contracts').EmbeddingVector[]> {
+  async embed(texts: string[]): Promise<import('@kb-labs/sdk').EmbeddingVector[]> {
     const vectors = await this.embeddings.embedBatch(texts);
     const dim = this.embeddings.dimensions ?? (vectors[0]?.length ?? 0);
     return vectors.map(values => ({

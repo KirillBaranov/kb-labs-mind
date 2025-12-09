@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ResultSynthesizer } from '../synthesizer';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
-import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/sdk';
 
 describe('ResultSynthesizer', () => {
   const createMockChunk = (id: string, text: string, score: number = 0.8): KnowledgeChunk => ({

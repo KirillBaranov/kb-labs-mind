@@ -3,7 +3,7 @@
  * Context optimization: deduplication, diversification, adaptive selection
  */
 
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface ContextOptimizationOptions {

@@ -1,5 +1,23 @@
-import { getLogger } from '@kb-labs/core-sys/logging';
-import { platform as globalPlatform } from '@kb-labs/core-runtime';
+import {
+  usePlatform,
+  useLogger,
+  MemoryHistoryStore,
+  MemoryFeedbackStore,
+  createKnowledgeError,
+  type KnowledgeChunk,
+  type KnowledgeEngineConfig,
+  type KnowledgeQuery,
+  type KnowledgeResult,
+  type KnowledgeScope,
+  type KnowledgeSource,
+  type SpanRange,
+  type KnowledgeEngine,
+  type KnowledgeEngineFactory,
+  type KnowledgeEngineFactoryContext,
+  type KnowledgeEngineRegistry,
+  type KnowledgeExecutionContext,
+  type KnowledgeIndexOptions,
+} from '@kb-labs/sdk';
 import * as path from 'node:path';
 import fs from 'fs-extra';
 import fg from 'fast-glob';
@@ -7,25 +25,20 @@ import picomatch from 'picomatch';
 import { createHash } from 'node:crypto';
 import { getChunkerForFile, type Chunk } from './chunking/index';
 
-const logger = getLogger('mind:engine');
-import type {
-  KnowledgeChunk,
-  KnowledgeEngineConfig,
-  KnowledgeQuery,
-  KnowledgeResult,
-  KnowledgeScope,
-  KnowledgeSource,
-  SpanRange,
-} from '@kb-labs/knowledge-contracts';
-import {
-  createKnowledgeError,
-  type KnowledgeEngine,
-  type KnowledgeEngineFactory,
-  type KnowledgeEngineFactoryContext,
-  type KnowledgeEngineRegistry,
-  type KnowledgeExecutionContext,
-  type KnowledgeIndexOptions,
-} from '@kb-labs/knowledge-core';
+// Use SDK logger (lazy initialization)
+const getEngineLogger = () => useLogger().child({ category: 'mind:engine' });
+const logger = {
+  debug: (msg: string, meta?: Record<string, unknown>) => getEngineLogger().debug(msg, meta),
+  info: (msg: string, meta?: Record<string, unknown>) => getEngineLogger().info(msg, meta),
+  warn: (msg: string, meta?: Record<string, unknown>) => getEngineLogger().warn(msg, meta),
+  error: (msg: string, errorOrMeta?: Error | Record<string, unknown>, meta?: Record<string, unknown>) => {
+    if (errorOrMeta instanceof Error) {
+      getEngineLogger().error(msg, errorOrMeta, meta);
+    } else {
+      getEngineLogger().error(msg, undefined, errorOrMeta);
+    }
+  },
+};
 import {
   createEmbeddingProvider,
   type EmbeddingProvider,
@@ -61,7 +74,6 @@ import type { FeedbackStore, FeedbackEntry } from './learning/feedback';
 import { SelfFeedbackGenerator } from './learning/feedback';
 import { PlatformHistoryStoreAdapter } from './learning/platform-history-store';
 import { PlatformFeedbackStoreAdapter } from './learning/platform-feedback-store';
-import { MemoryHistoryStore, MemoryFeedbackStore } from '@kb-labs/core-platform';
 import { FileHistoryStore } from './learning/file-history-store';
 import { FileFeedbackStore } from './learning/file-feedback-store';
 import {
@@ -760,8 +772,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const rawOptions = (config.options ?? {}) as MindEngineOptions;
     this.options = normalizeOptions(rawOptions);
 
-    // Use global platform singleton as fallback if not explicitly provided
-    const platform = rawOptions.platform ?? globalPlatform;
+    // Use SDK's usePlatform() as fallback if not explicitly provided
+    const platform = rawOptions.platform ?? usePlatform();
 
     // DEBUG: Check learning configuration
     platform?.logger?.debug('MindEngine constructor: Raw learning config', { learning: rawOptions.learning });
@@ -776,7 +788,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       : createRuntimeAdapter(runtimeInput as any);
 
     // DEBUG: Check platform.vectorStore
-    platform?.logger?.debug('MindEngine: platform source', { source: rawOptions.platform ? 'rawOptions.platform' : 'globalPlatform' });
+    platform?.logger?.debug('MindEngine: platform source', { source: rawOptions.platform ? 'rawOptions.platform' : 'usePlatform()' });
     platform?.logger?.debug('MindEngine: platform.vectorStore exists', { exists: !!platform?.vectorStore });
     platform?.logger?.debug('MindEngine: platform.vectorStore type', { type: platform?.vectorStore?.constructor?.name });
 
@@ -1045,8 +1057,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     const chunkerFactory = new AdaptiveChunkerFactory();
 
-    // Create logger using official logging system
-    const logger = getLogger('mind:engine');
+    // Use global logger (defined at module level via SDK)
+    // logger is already available from module scope
 
     // Incremental indexing: don't clear scope, let deduplication handle updates
     // await this.vectorStore.replaceScope(options.scope.id, []);

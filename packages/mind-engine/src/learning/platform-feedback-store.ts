@@ -1,4 +1,4 @@
-import type { IFeedbackStore, FeedbackRecord } from '@kb-labs/core-platform';
+import type { IFeedbackStore, FeedbackRecord } from '@kb-labs/sdk';
 import type { FeedbackEntry, FeedbackStore } from './feedback';
 
 /**

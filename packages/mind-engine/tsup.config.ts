@@ -7,6 +7,6 @@ export default defineConfig({
   dts: true,
   external: [
     ...(nodePreset.external || []),
-    '@kb-labs/core-platform',
+    '@kb-labs/sdk', // All platform access goes through SDK only
   ],
 });

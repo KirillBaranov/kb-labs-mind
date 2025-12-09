@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { KnowledgeQuery, KnowledgeResult } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeExecutionContext } from '@kb-labs/knowledge-core';
+import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '@kb-labs/sdk';
 import type { ComplexityDetector } from './complexity-detector';
 import type { QueryPlanner } from './query-planner';
 import type { ParallelExecutor, QueryExecutor } from './parallel-executor';

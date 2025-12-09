@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { IHistoryStore, HistoryRecord } from '@kb-labs/core-platform';
+import type { IHistoryStore, HistoryRecord } from '@kb-labs/sdk';
 import type { QueryHistoryEntry, QueryHistoryStore, ReasoningPlanMetadata } from './query-history';
 
 /**
