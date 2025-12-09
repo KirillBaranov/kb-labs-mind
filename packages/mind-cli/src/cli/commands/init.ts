@@ -2,7 +2,7 @@
  * Mind init command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/sdk';
 import { initMindStructure } from '@kb-labs/mind-indexer';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';

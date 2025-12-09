@@ -1,4 +1,4 @@
-import { defineCommand, usePlatform } from '@kb-labs/shared-command-kit';
+import { defineCommand, usePlatform } from '@kb-labs/sdk';
 import { runRagQuery, runAgentRagQuery } from '../../application/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
@@ -48,7 +48,7 @@ type MindRagQueryResult = {
   exitCode?: number;
 };
 
-export const run = defineCommand<any, MindRagQueryFlags, MindRagQueryResult, string[]>({
+export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
   name: 'mind:rag-query',
   flags: {
     cwd: {

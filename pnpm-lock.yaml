@@ -78,21 +78,6 @@ importers:
       '@kb-labs/analytics-sdk-node':
         specifier: link:../../../kb-labs-analytics/packages/analytics-sdk-node
         version: link:../../../kb-labs-analytics/packages/analytics-sdk-node
-      '@kb-labs/core':
-        specifier: link:../../../kb-labs-core
-        version: link:../../../kb-labs-core
-      '@kb-labs/core-sandbox':
-        specifier: link:../../../kb-labs-core/packages/core-sandbox
-        version: link:../../../kb-labs-core/packages/core-sandbox
-      '@kb-labs/core-sys':
-        specifier: link:../../../kb-labs-core/packages/core-sys
-        version: link:../../../kb-labs-core/packages/core-sys
-      '@kb-labs/knowledge-contracts':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-      '@kb-labs/knowledge-core':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-core
-        version: link:../../../kb-labs-knowledge/packages/knowledge-core
       '@kb-labs/mind-contracts':
         specifier: link:../mind-contracts
         version: link:../mind-contracts
@@ -114,15 +99,9 @@ importers:
       '@kb-labs/mind-types':
         specifier: link:../mind-types
         version: link:../mind-types
-      '@kb-labs/plugin-manifest':
-        specifier: link:../../../kb-labs-plugin/packages/plugin-manifest
-        version: link:../../../kb-labs-plugin/packages/plugin-manifest
-      '@kb-labs/shared-cli-ui':
-        specifier: link:../../../kb-labs-shared/packages/shared-cli-ui
-        version: link:../../../kb-labs-shared/packages/shared-cli-ui
-      '@kb-labs/shared-command-kit':
-        specifier: link:../../../kb-labs-shared/packages/shared-command-kit
-        version: link:../../../kb-labs-shared/packages/shared-command-kit
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
       fast-glob:
         specifier: ^3.3.2
         version: 3.3.3
@@ -407,6 +386,9 @@ importers:
 
   packages/mind-orchestrator:
     dependencies:
+      '@kb-labs/core-platform':
+        specifier: link:../../../kb-labs-core/packages/core-platform
+        version: link:../../../kb-labs-core/packages/core-platform
       '@kb-labs/core-sys':
         specifier: link:../../../kb-labs-core/packages/core-sys
         version: link:../../../kb-labs-core/packages/core-sys

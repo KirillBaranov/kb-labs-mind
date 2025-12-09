@@ -1,4 +1,4 @@
-import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/sdk';
 import {
   runSyncAdd,
   runSyncUpdate,

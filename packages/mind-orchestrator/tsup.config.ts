@@ -15,5 +15,5 @@ export default defineConfig({
   entry: ['src/index.ts'],
   external: [], // Bundle everything (no externals)
   treeshake: false,
-  dts: false, // TEMPORARY: disabled until type resolution issues fixed
+  dts: true,
 });

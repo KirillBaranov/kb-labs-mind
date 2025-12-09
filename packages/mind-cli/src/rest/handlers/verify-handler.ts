@@ -4,12 +4,19 @@
  */
 
 import type { MindVerifyRequest, MindVerifyResponse, MindGatewayError } from '../types';
-import type { CardData } from '@kb-labs/plugin-manifest';
+import type { CardData } from '@kb-labs/sdk';
 // TODO: docs/tasks/TASK-002-mind-architecture-cleanup.md
 // TEMPORARY: verifyIndexes should be in mind-core, not mind-gateway
 // Removed mind-gateway dependency to break circular dependency
 // import { verifyIndexes } from '@kb-labs/mind-gateway';
-import { resolveWorkspaceRoot } from '@kb-labs/core';
+import { resolveWorkspaceRoot } from '@kb-labs/sdk';
+
+// TEMPORARY: Stub until verifyIndexes is moved to mind-core
+// TODO: docs/tasks/TASK-002-mind-architecture-cleanup.md
+async function verifyIndexes(_cwd: string): Promise<{ ok: boolean; inconsistencies: string[]; hint: string }> {
+  // TODO: Implement verification logic
+  return { ok: true, inconsistencies: [], hint: 'Run "kb mind rag-index" to rebuild indexes if needed' };
+}
 
 /**
  * Handler for GET /v1/plugins/mind/verify

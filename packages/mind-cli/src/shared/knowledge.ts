@@ -1,23 +1,20 @@
-import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/core';
 import {
+  findNearestConfig,
+  readJsonWithDiagnostics,
   createKnowledgeService,
   createKnowledgeEngineRegistry,
   type KnowledgeServiceOptions,
-} from '@kb-labs/knowledge-core';
-import type {
-  KnowledgeCapability,
-  KnowledgeCapabilityRegistry,
-  KnowledgeConfigInput,
-} from '@kb-labs/knowledge-contracts';
-import type {
-  KnowledgeLogger,
-  KnowledgeService,
-} from '@kb-labs/knowledge-core';
+  type KnowledgeCapability,
+  type KnowledgeCapabilityRegistry,
+  type KnowledgeConfigInput,
+  type KnowledgeLogger,
+  type KnowledgeService,
+  type PlatformServices,
+} from '@kb-labs/sdk';
 import {
   registerMindKnowledgeEngine,
   type RuntimeAdapter,
 } from '@kb-labs/mind-engine';
-import type { PlatformServices } from '@kb-labs/plugin-runtime';
 
 export const MIND_PRODUCT_ID = 'mind';
 

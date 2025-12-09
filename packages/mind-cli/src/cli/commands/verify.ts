@@ -2,7 +2,7 @@
  * Mind verify command - checks platform services readiness
  */
 
-import { defineCommand, usePlatform } from '@kb-labs/shared-command-kit';
+import { defineCommand, usePlatform } from '@kb-labs/sdk';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 
 type MindVerifyFlags = {

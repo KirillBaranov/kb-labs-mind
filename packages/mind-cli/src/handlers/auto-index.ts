@@ -3,7 +3,7 @@
  * Auto-index handler - runs Mind RAG indexing automatically on schedule
  */
 
-import type { Handler } from '@kb-labs/plugin-manifest';
+import type { PlatformServices } from '@kb-labs/sdk';
 import { runRagIndex } from '../application/rag';
 
 interface AutoIndexInput {
@@ -17,6 +17,16 @@ interface AutoIndexOutput {
   error?: string;
 }
 
+// Extended handler context with optional platform
+// TODO: docs/tasks/TASK-003-plugin-context-platform-unification.md
+// Temporary workaround: Handler<I,O> from plugin-manifest doesn't have platform
+interface AutoIndexContext {
+  requestId: string;
+  cwd: string;
+  logger?: { info(...a: any[]): void; error(...a: any[]): void };
+  platform?: PlatformServices;
+}
+
 /**
  * Auto-index handler
  *
@@ -24,7 +34,7 @@ interface AutoIndexOutput {
  * This handler is invoked by the worker daemon based on the schedule defined
  * in manifest.v2.ts jobs section.
  */
-export const run: Handler<AutoIndexInput, AutoIndexOutput> = async (input, ctx) => {
+export const run = async (input: AutoIndexInput, ctx: AutoIndexContext): Promise<AutoIndexOutput> => {
   const startTime = Date.now();
 
   ctx.logger?.info('Auto-index job started', {

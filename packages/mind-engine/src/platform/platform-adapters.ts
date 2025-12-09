@@ -52,7 +52,7 @@ export class PlatformLLMEngine implements MindLLMEngine {
     options?: MindLLMGenerateOptions,
   ): Promise<MindLLMGenerateResult> {
     const response = await this.llm.complete(prompt, {
-      model: options?.metadata?.model ?? options?.systemPrompt ?? options?.model,
+      model: options?.model ?? (options?.metadata?.model as string | undefined),
       temperature: options?.temperature,
       maxTokens: options?.maxTokens,
       stop: options?.stop,

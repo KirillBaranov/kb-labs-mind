@@ -1,6 +1,7 @@
 export type MindLLMFinishReason = 'stop' | 'length';
 
 export interface MindLLMGenerateOptions {
+  model?: string;
   maxTokens?: number;
   temperature?: number;
   stop?: string[];

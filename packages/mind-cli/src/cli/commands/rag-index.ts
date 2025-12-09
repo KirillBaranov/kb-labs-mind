@@ -1,4 +1,4 @@
-import { defineCommand, type CommandResult } from '@kb-labs/shared-command-kit';
+import { defineCommand, type CommandResult } from '@kb-labs/sdk';
 import { runRagIndex } from '../../application/rag';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
 
@@ -74,15 +74,31 @@ export const run = defineCommand<MindRagIndexFlags, MindRagIndexResult>({
         : `${result.scopeIds.length} scopes`;
 
     if (flags.json) {
-      ctx.output?.json({ ok: true, scopes: result.scopeIds });
+      ctx.output?.json({ ok: true, scopes: result.scopeIds, adapters: result.adapters });
     } else if (!flags.quiet) {
       const { ui } = ctx.output!;
+
+      // Check if any adapter is a fallback
+      const formatAdapter = (name: string): string => {
+        const isFallback = name.includes('(fallback)');
+        return isFallback ? `⚠️  ${name}` : `✓ ${name}`;
+      };
 
       const sections: Array<{ header?: string; items: string[] }> = [
         {
           items: [
             `Updated ${scopesLabel}`,
             `Scopes: ${result.scopeIds.join(', ')}`,
+          ],
+        },
+        {
+          header: 'Adapters',
+          items: [
+            `Vector Store: ${formatAdapter(result.adapters.vectorStore)}`,
+            `Embeddings:   ${formatAdapter(result.adapters.embeddings)}`,
+            `Storage:      ${formatAdapter(result.adapters.storage)}`,
+            `LLM:          ${formatAdapter(result.adapters.llm)}`,
+            `Cache:        ${formatAdapter(result.adapters.cache)}`,
           ],
         },
       ];

@@ -5,7 +5,7 @@
 
 export { manifest } from './manifest.v2';
 export { manifest as manifestV2 } from './manifest.v2';
-export type { ManifestV2 } from '@kb-labs/plugin-manifest';
+export type { ManifestV2 } from '@kb-labs/sdk';
 
 export * from './shared/index';
 export * from './domain/index';

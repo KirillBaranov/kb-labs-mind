@@ -13,7 +13,7 @@ import {
   runSyncRestore,
   runSyncCleanup,
 } from '../../application/sync';
-import { findRepoRoot } from '@kb-labs/core';
+import { findRepoRoot } from '@kb-labs/sdk';
 
 export interface SyncAddRequest {
   source: string;

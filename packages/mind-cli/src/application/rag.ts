@@ -1,7 +1,13 @@
-import type { KnowledgeIntent, KnowledgeResult, AgentQueryMode } from '@kb-labs/knowledge-contracts';
-import type { AgentResponse, AgentErrorResponse } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeLogger } from '@kb-labs/knowledge-core';
-import type { PlatformServices } from '@kb-labs/plugin-runtime';
+import type {
+  KnowledgeIntent,
+  KnowledgeResult,
+  AgentQueryMode,
+  AgentResponse,
+  AgentErrorResponse,
+  KnowledgeLogger,
+  PlatformServices,
+} from '@kb-labs/sdk';
+import { platform as globalPlatform } from '@kb-labs/core-runtime';
 import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
@@ -9,14 +15,14 @@ import {
 import {
   createAgentQueryOrchestrator,
   isAgentError,
-  type AgentQueryOrchestrator,
+  AgentQueryOrchestrator,
 } from '@kb-labs/mind-orchestrator';
 import { createOpenAILLMEngine } from '@kb-labs/mind-llm';
 
 /**
  * Global orchestrator instance for cache persistence across queries
  */
-let globalOrchestrator: AgentQueryOrchestrator | null = null;
+let globalOrchestrator: InstanceType<typeof AgentQueryOrchestrator> | null = null;
 
 export interface RagIndexOptions {
   cwd: string;
@@ -29,17 +35,54 @@ export interface RagIndexOptions {
   config?: any;
 }
 
+/**
+ * Information about which adapters were used during indexing
+ */
+export interface AdapterInfo {
+  vectorStore: string;
+  embeddings: string;
+  storage: string;
+  llm: string;
+  cache: string;
+}
+
 export interface RagIndexResult {
   scopeIds: string[];
+  adapters: AdapterInfo;
 }
 
 export interface RagIndexOptionsWithRuntime extends RagIndexOptions {
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
 }
 
+/**
+ * Get adapter name from platform service or fallback
+ */
+function getAdapterName(service: any, fallback: string): string {
+  if (!service) return fallback;
+  // Try to get constructor name or class name
+  const name = service.constructor?.name || service.name || service.id;
+  if (name && name !== 'Object' && name !== 'Function') {
+    return name;
+  }
+  return fallback;
+}
+
 export async function runRagIndex(
   options: RagIndexOptions | RagIndexOptionsWithRuntime,
 ): Promise<RagIndexResult> {
+  // Use globalPlatform as fallback (same logic as mind-engine)
+  const platform = options.platform ?? globalPlatform;
+
+  // Collect adapter info - shows actual adapters being used
+  const adapters: AdapterInfo = {
+    vectorStore: getAdapterName(platform?.vectorStore, 'LocalVectorStore (fallback)'),
+    embeddings: getAdapterName(platform?.embeddings, 'DeterministicEmbeddings (fallback)'),
+    storage: getAdapterName(platform?.storage, 'MemoryStorage (fallback)'),
+    llm: getAdapterName(platform?.llm, 'LocalStubLLM (fallback)'),
+    cache: getAdapterName(platform?.cache, 'MemoryCache (fallback)'),
+  };
+
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
     config: options.config,
@@ -71,7 +114,7 @@ export async function runRagIndex(
     globalOrchestrator.invalidateCache(scopeIds);
   }
 
-  return { scopeIds };
+  return { scopeIds, adapters };
 }
 
 export interface RagQueryOptions {

@@ -3,7 +3,15 @@
   "compilerOptions": {
     "outDir": "dist",
     "baseUrl": ".",
-    "paths": {}
+    "paths": {},
+    "moduleResolution": "bundler",
+    "module": "ESNext",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "declarationDir": "dist",
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*"

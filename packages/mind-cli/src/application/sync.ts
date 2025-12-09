@@ -3,7 +3,7 @@
  * Application layer for document synchronization
  */
 
-import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/core';
+import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/sdk';
 import {
   DocumentSyncAPI,
   createRegistry,

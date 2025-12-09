@@ -3,7 +3,6 @@ import { platform as globalPlatform } from '@kb-labs/core-runtime';
 import * as path from 'node:path';
 import fs from 'fs-extra';
 import fg from 'fast-glob';
-// @ts-expect-error - picomatch doesn't have types
 import picomatch from 'picomatch';
 import { createHash } from 'node:crypto';
 import { getChunkerForFile, type Chunk } from './chunking/index';

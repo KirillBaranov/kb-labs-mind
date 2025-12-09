@@ -3,7 +3,7 @@
  * Manifest v2 for Mind CLI
  */
 
-import type { ManifestV2 } from '@kb-labs/plugin-manifest';
+import type { ManifestV2 } from '@kb-labs/sdk';
 
 /**
  * Mind CLI Manifest v2
@@ -17,7 +17,6 @@ export const manifest: ManifestV2 = {
   schema: 'kb.plugin/2',
   id: '@kb-labs/mind',
   version: '0.1.0',
-  productId: 'mind',
   display: {
     name: 'Mind',
     description: 'AI-oriented dependency indexing and context packing for KB Labs',

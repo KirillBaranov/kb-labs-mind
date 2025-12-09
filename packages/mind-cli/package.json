@@ -48,11 +48,8 @@
   "dependencies": {
     "@byjohann/toon": "0.4.0",
     "@kb-labs/analytics-sdk-node": "link:../../../kb-labs-analytics/packages/analytics-sdk-node",
-    "@kb-labs/core": "link:../../../kb-labs-core",
-    "@kb-labs/core-sandbox": "link:../../../kb-labs-core/packages/core-sandbox",
-    "@kb-labs/core-sys": "link:../../../kb-labs-core/packages/core-sys",
-    "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts",
-    "@kb-labs/knowledge-core": "link:../../../kb-labs-knowledge/packages/knowledge-core",
+    "@kb-labs/core-runtime": "link:../../../kb-labs-core/packages/core-runtime",
+    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-contracts": "link:../mind-contracts",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-engine": "link:../mind-engine",
@@ -60,9 +57,6 @@
     "@kb-labs/mind-llm": "link:../mind-llm",
     "@kb-labs/mind-orchestrator": "link:../mind-orchestrator",
     "@kb-labs/mind-types": "link:../mind-types",
-    "@kb-labs/plugin-manifest": "link:../../../kb-labs-plugin/packages/plugin-manifest",
-    "@kb-labs/shared-cli-ui": "link:../../../kb-labs-shared/packages/shared-cli-ui",
-    "@kb-labs/shared-command-kit": "link:../../../kb-labs-shared/packages/shared-command-kit",
     "fast-glob": "^3.3.2",
     "react": "^18.3.1",
     "zod": "^3.23.8"
