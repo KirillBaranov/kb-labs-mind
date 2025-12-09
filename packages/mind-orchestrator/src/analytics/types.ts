@@ -2,7 +2,7 @@
  * Analytics event payload types for Mind orchestrator
  */
 
-import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
+import type { AgentQueryMode } from '@kb-labs/sdk';
 
 // === EVENT TYPES ===
 

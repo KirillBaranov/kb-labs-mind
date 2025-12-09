@@ -13,6 +13,11 @@ export * from './error/mind-error';
 export * from './utils/token';
 export * from './utils/hash';
 export * from './utils/paths';
+export * from './utils/math';
+export * from './utils/file-rotation';
+
+// Verification
+export * from './verification/verify-indexes';
 
 // Defaults
 export * from './defaults';

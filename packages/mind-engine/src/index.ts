@@ -1,3 +1,5 @@
+// TODO: docs/tasks/TASK-003-mind-engine-index-splitting.md
+// This file is 2,350 lines (10x max recommended). Split into focused modules.
 import {
   usePlatform,
   useLogger,

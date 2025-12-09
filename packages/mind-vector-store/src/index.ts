@@ -1,9 +1,10 @@
 import path from 'node:path';
 import fs from 'fs-extra';
+import { cosineSimilarity as calculateCosineSimilarity } from '@kb-labs/mind-core';
 import type {
   EmbeddingVector,
   SpanRange,
-} from '@kb-labs/knowledge-contracts';
+} from '@kb-labs/sdk';
 
 export interface StoredMindChunk {
   chunkId: string;
@@ -213,22 +214,12 @@ function applyFilters(
   return true;
 }
 
+/**
+ * Wrapper for cosineSimilarity that works with EmbeddingVector types
+ */
 function cosineSimilarity(a: EmbeddingVector, b: EmbeddingVector): number {
   if (a.dim !== b.dim) {
     return 0;
   }
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.values.length; i++) {
-    const av = a.values[i] ?? 0;
-    const bv = b.values[i] ?? 0;
-    dot += av * bv;
-    normA += av * av;
-    normB += bv * bv;
-  }
-  if (normA === 0 || normB === 0) {
-    return 0;
-  }
-  return dot / Math.sqrt(normA * normB);
+  return calculateCosineSimilarity(a.values, b.values);
 }

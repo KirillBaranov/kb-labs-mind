@@ -29,7 +29,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/core-sys": "link:../../../kb-labs-core/packages/core-sys",
+    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-adapters": "link:../mind-adapters",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-types": "link:../mind-types",

@@ -4,8 +4,7 @@
 
 export * from './handlers/query';
 export * from './handlers/verify';
-// Sync handlers moved to mind-cli to avoid circular dependency
-export { verifyIndexes } from './handlers/verify-utils';
+// verifyIndexes moved to @kb-labs/mind-core to break circular dependency (TASK-004)
 export * from './types/request';
 
 // Re-export types for convenience

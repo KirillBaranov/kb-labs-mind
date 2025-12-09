@@ -39,7 +39,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts",
+    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "zod": "^3.23.8"
   },
   "devDependencies": {

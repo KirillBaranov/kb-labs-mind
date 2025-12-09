@@ -3,8 +3,7 @@
  * Transport is delegated to platform analytics adapter (IAnalytics).
  */
 
-import type { IAnalytics } from '@kb-labs/core-platform';
-import type { AgentResponse, AgentErrorResponse } from '@kb-labs/knowledge-contracts';
+import type { IAnalytics, AgentResponse, AgentErrorResponse } from '@kb-labs/sdk';
 import type {
   MindAnalyticsContext,
   QueryStartedPayload,

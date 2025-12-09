@@ -8,7 +8,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import type { AgentQueryMode, AgentResponse } from '@kb-labs/knowledge-contracts';
+import type { AgentQueryMode, AgentResponse } from '@kb-labs/sdk';
 
 export interface CacheEntry {
   response: AgentResponse;

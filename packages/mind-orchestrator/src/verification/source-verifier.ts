@@ -5,8 +5,8 @@
  * and contain the claimed content. Key anti-hallucination layer.
  */
 
-import type { AgentSource, AgentWarning } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { AgentSource, AgentWarning } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 
 export interface SourceVerificationResult {
   source: AgentSource;

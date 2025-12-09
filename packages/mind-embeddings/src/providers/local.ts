@@ -3,7 +3,7 @@
  * Local Embedding Provider implementations (Ollama, in-process)
  */
 
-import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
+import type { EmbeddingVector } from '@kb-labs/sdk';
 import type { EmbeddingProvider } from '../index';
 import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types';
 

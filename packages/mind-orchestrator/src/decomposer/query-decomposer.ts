@@ -4,7 +4,7 @@
  * Breaks complex queries into focused sub-queries for better search results.
  */
 
-import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
+import type { AgentQueryMode } from '@kb-labs/sdk';
 import type { LLMProvider } from '../llm/llm-provider';
 import type { DecomposedQuery, QueryComplexity, OrchestratorConfig } from '../types';
 import {

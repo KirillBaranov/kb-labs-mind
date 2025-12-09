@@ -5,8 +5,8 @@
  * actually exist in the source code. Catches hallucinated parameters.
  */
 
-import type { AgentWarning } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { AgentWarning } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 
 export interface FieldCheckResult {
   verified: string[];

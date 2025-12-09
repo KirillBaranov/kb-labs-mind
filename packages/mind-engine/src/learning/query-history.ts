@@ -4,6 +4,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { cosineSimilarity } from '@kb-labs/mind-core';
 import type { KnowledgeChunk } from '@kb-labs/sdk';
 import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 
@@ -87,7 +88,7 @@ export class MemoryQueryHistoryStore implements QueryHistoryStore {
     const scored = this.entries
       .filter(entry => entry.scopeId === scopeId && entry.queryVector)
       .map(entry => {
-        const similarity = this.cosineSimilarity(queryVector, entry.queryVector!);
+        const similarity = cosineSimilarity(queryVector, entry.queryVector!);
         return { entry, similarity };
       })
       .filter(item => item.similarity > 0.7) // Threshold for similarity
@@ -147,22 +148,6 @@ export class MemoryQueryHistoryStore implements QueryHistoryStore {
     }
   }
 
-  private cosineSimilarity(vec1: number[], vec2: number[]): number {
-    if (vec1.length !== vec2.length) return 0;
-    
-    let dotProduct = 0;
-    let norm1 = 0;
-    let norm2 = 0;
-    
-    for (let i = 0; i < vec1.length; i++) {
-      dotProduct += vec1[i]! * vec2[i]!;
-      norm1 += vec1[i]! * vec1[i]!;
-      norm2 += vec2[i]! * vec2[i]!;
-    }
-    
-    const denominator = Math.sqrt(norm1) * Math.sqrt(norm2);
-    return denominator === 0 ? 0 : dotProduct / denominator;
-  }
 }
 
 /**

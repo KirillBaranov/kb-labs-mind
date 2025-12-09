@@ -2,14 +2,14 @@
  * Documentation indexer for KB Labs Mind
  */
 
-import { getLogger } from '@kb-labs/core-sys/logging';
+import { useLogger } from '@kb-labs/sdk';
 import { promises as fsp } from 'node:fs';
 import { join, basename, extname } from 'node:path';
 import type { DocsIndex, DocEntry } from '@kb-labs/mind-types';
 import type { IndexerContext } from '../types/index';
 import { getGenerator, toPosix } from '@kb-labs/mind-core';
 
-const logger = getLogger('mind:indexer:docs');
+const getLogger = () => useLogger().child({ category: 'mind:indexer:docs' });
 
 export async function indexDocs(ctx: IndexerContext): Promise<void> {
   try {
@@ -72,7 +72,7 @@ async function scanMarkdownFiles(dir: string, root: string, docs: DocEntry[]): P
       // Skip files larger than 10MB to prevent OOM
       const MAX_FILE_SIZE_MB = 10;
       if (fileSizeMB > MAX_FILE_SIZE_MB) {
-        logger.warn('Skipping large markdown file', {
+        getLogger().warn('Skipping large markdown file', {
           file: fullPath,
           sizeMB: fileSizeMB.toFixed(2),
           maxSizeMB: MAX_FILE_SIZE_MB,

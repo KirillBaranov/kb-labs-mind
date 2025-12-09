@@ -9,29 +9,11 @@
       "@kb-labs/analytics-sdk-node/*": [
         "../kb-labs-analytics/packages/analytics-sdk-node/src/*"
       ],
-      "@kb-labs/core-platform": [
-        "../kb-labs-core/packages/core-platform/src/index.ts"
-      ],
-      "@kb-labs/core-platform/*": [
-        "../kb-labs-core/packages/core-platform/src/*"
-      ],
       "@kb-labs/core-runtime": [
         "../kb-labs-core/packages/core-runtime/src/index.ts"
       ],
       "@kb-labs/core-runtime/*": [
         "../kb-labs-core/packages/core-runtime/src/*"
-      ],
-      "@kb-labs/core-sys": [
-        "../kb-labs-core/packages/core-sys/src/index.ts"
-      ],
-      "@kb-labs/core-sys/*": [
-        "../kb-labs-core/packages/core-sys/src/*"
-      ],
-      "@kb-labs/knowledge-contracts": [
-        "../kb-labs-knowledge/packages/knowledge-contracts/src/index.ts"
-      ],
-      "@kb-labs/knowledge-contracts/*": [
-        "../kb-labs-knowledge/packages/knowledge-contracts/src/*"
       ],
       "@kb-labs/mind-adapters": [
         "packages/mind-adapters/src/index.ts"

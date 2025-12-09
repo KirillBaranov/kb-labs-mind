@@ -29,7 +29,7 @@
     "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
-    "@kb-labs/knowledge-contracts": "link:../../../kb-labs-knowledge/packages/knowledge-contracts"
+    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",

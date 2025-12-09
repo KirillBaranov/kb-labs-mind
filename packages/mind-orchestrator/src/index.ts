@@ -122,4 +122,4 @@ export {
   isAgentSuccess,
   AGENT_RESPONSE_SCHEMA_VERSION,
   CONFIDENCE_THRESHOLDS,
-} from '@kb-labs/knowledge-contracts';
+} from '@kb-labs/sdk';

@@ -1,9 +1,11 @@
 /**
  * Gateway handler for /mind/query endpoint
+ * TODO: Restore when @kb-labs/mind-query is implemented
  */
 
 import type { QueryRequest, QueryResponse, GatewayError } from '../types/request';
-import { executeQuery } from '@kb-labs/mind-query';
+// TEMPORARY: @kb-labs/mind-query package does not exist yet
+// import { executeQuery } from '@kb-labs/mind-query';
 
 export async function handleQuery(req: QueryRequest): Promise<QueryResponse | GatewayError> {
   try {
@@ -26,22 +28,13 @@ export async function handleQuery(req: QueryRequest): Promise<QueryResponse | Ga
       };
     }
 
-    // Execute query
-    const result = await executeQuery(
-      req.query as any,
-      req.params,
-      {
-        cwd: req.options?.cwd || '.',
-        limit: req.options?.limit || 500,
-        depth: req.options?.depth || 5,
-        cacheTtl: req.options?.cacheTtl || 60,
-        noCache: req.options?.noCache || false,
-        pathMode: req.options?.pathMode || 'id',
-        aiMode: req.options?.aiMode || false
-      }
-    );
-
-    return result;
+    // TEMPORARY: Return not implemented until @kb-labs/mind-query exists
+    return {
+      ok: false,
+      code: 'MIND_NOT_IMPLEMENTED',
+      message: 'Query handler not implemented',
+      hint: '@kb-labs/mind-query package does not exist yet'
+    };
   } catch (error: any) {
     return {
       ok: false,

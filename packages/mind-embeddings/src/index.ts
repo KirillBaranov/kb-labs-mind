@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { EmbeddingVector } from '@kb-labs/knowledge-contracts';
+import type { EmbeddingVector } from '@kb-labs/sdk';
 import type { EmbeddingRuntimeAdapter } from './runtime-adapter-types';
 import { createOpenAIEmbeddingProvider } from './providers/openai';
 import { createLocalEmbeddingProvider } from './providers/local';

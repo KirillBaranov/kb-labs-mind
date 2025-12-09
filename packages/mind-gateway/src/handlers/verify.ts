@@ -3,7 +3,7 @@
  */
 
 import type { VerifyRequest, VerifyResponse, GatewayError } from '../types/request';
-import { verifyIndexes as verifyIndexesUtil } from './verify-utils';
+import { verifyIndexes as verifyIndexesUtil } from '@kb-labs/mind-core';
 
 export async function handleVerify(req: VerifyRequest): Promise<VerifyResponse | GatewayError> {
   try {

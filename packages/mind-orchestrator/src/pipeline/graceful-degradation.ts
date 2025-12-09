@@ -5,8 +5,8 @@
  * thinking → auto → instant → raw chunks
  */
 
-import type { AgentQueryMode, AgentWarning, AgentResponse, AgentErrorResponse } from '@kb-labs/knowledge-contracts';
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { AgentQueryMode, AgentWarning, AgentResponse, AgentErrorResponse } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 
 export interface DegradationResult {
   /** Whether fallback was triggered */

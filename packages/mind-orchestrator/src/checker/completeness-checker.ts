@@ -5,14 +5,14 @@
  * Can suggest additional searches if information is missing.
  */
 
-import { getLogger } from '@kb-labs/core-sys/logging';
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
-import type { AgentQueryMode } from '@kb-labs/knowledge-contracts';
+import { useLogger } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { AgentQueryMode } from '@kb-labs/sdk';
 import type { LLMProvider } from '../llm/llm-provider';
 import type { CompletenessResult, OrchestratorConfig } from '../types';
 import { COMPLETENESS_SYSTEM_PROMPT, COMPLETENESS_PROMPT_TEMPLATE } from './prompts';
 
-const logger = getLogger('mind:orchestrator:checker');
+const getLogger = () => useLogger().child({ category: 'mind:orchestrator:checker' });
 
 interface CompletenessResponse {
   complete: boolean;
@@ -89,7 +89,7 @@ export class CompletenessChecker {
       };
     } catch (error) {
       // On LLM error, fall back to heuristics
-      logger.warn('Completeness check LLM failed, using heuristics', { error });
+      getLogger().warn('Completeness check LLM failed, using heuristics', { error });
       return this.heuristicCheck(query, chunks);
     }
   }

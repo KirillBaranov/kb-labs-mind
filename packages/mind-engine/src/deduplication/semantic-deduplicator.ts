@@ -6,6 +6,7 @@
  * while preserving diversity and relevance.
  */
 
+import { cosineSimilarity } from '@kb-labs/mind-core';
 import type { VectorSearchMatch } from '@kb-labs/mind-vector-store';
 
 export interface DeduplicationOptions {
@@ -378,7 +379,7 @@ export class SemanticDeduplicator {
     }
 
     // Embedding cosine similarity
-    const embeddingSimilarity = this.cosineSimilarity(
+    const embeddingSimilarity = cosineSimilarity(
       match1.chunk.embedding.values,
       match2.chunk.embedding.values,
     );
@@ -393,27 +394,6 @@ export class SemanticDeduplicator {
     return embeddingSimilarity * 0.7 + textSimilarity * 0.3;
   }
 
-  /**
-   * Cosine similarity between two vectors
-   */
-  private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) return 0;
-
-    let dot = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-      const av = a[i] ?? 0;
-      const bv = b[i] ?? 0;
-      dot += av * bv;
-      normA += av * av;
-      normB += bv * bv;
-    }
-
-    if (normA === 0 || normB === 0) return 0;
-    return dot / Math.sqrt(normA * normB);
-  }
 
   /**
    * Jaccard similarity between two texts

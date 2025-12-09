@@ -5,7 +5,7 @@
  * while staying within LLM context limits.
  */
 
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 
 export interface TokenBudgetConfig {
   /** Total token budget for context */

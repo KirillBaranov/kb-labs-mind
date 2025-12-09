@@ -78,6 +78,9 @@ importers:
       '@kb-labs/analytics-sdk-node':
         specifier: link:../../../kb-labs-analytics/packages/analytics-sdk-node
         version: link:../../../kb-labs-analytics/packages/analytics-sdk-node
+      '@kb-labs/core-runtime':
+        specifier: link:../../../kb-labs-core/packages/core-runtime
+        version: link:../../../kb-labs-core/packages/core-runtime
       '@kb-labs/mind-contracts':
         specifier: link:../mind-contracts
         version: link:../mind-contracts
@@ -217,21 +220,6 @@ importers:
 
   packages/mind-engine:
     dependencies:
-      '@kb-labs/core-platform':
-        specifier: link:../../../kb-labs-core/packages/core-platform
-        version: link:../../../kb-labs-core/packages/core-platform
-      '@kb-labs/core-runtime':
-        specifier: link:../../../kb-labs-core/packages/core-runtime
-        version: link:../../../kb-labs-core/packages/core-runtime
-      '@kb-labs/core-sys':
-        specifier: link:../../../kb-labs-core/packages/core-sys
-        version: link:../../../kb-labs-core/packages/core-sys
-      '@kb-labs/knowledge-contracts':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-      '@kb-labs/knowledge-core':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-core
-        version: link:../../../kb-labs-knowledge/packages/knowledge-core
       '@kb-labs/mind-embeddings':
         specifier: link:../mind-embeddings
         version: link:../mind-embeddings
@@ -244,6 +232,9 @@ importers:
       '@kb-labs/mind-vector-store':
         specifier: link:../mind-vector-store
         version: link:../mind-vector-store
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
       fast-glob:
         specifier: ^3.3.2
         version: 3.3.3
@@ -386,21 +377,15 @@ importers:
 
   packages/mind-orchestrator:
     dependencies:
-      '@kb-labs/core-platform':
-        specifier: link:../../../kb-labs-core/packages/core-platform
-        version: link:../../../kb-labs-core/packages/core-platform
-      '@kb-labs/core-sys':
-        specifier: link:../../../kb-labs-core/packages/core-sys
-        version: link:../../../kb-labs-core/packages/core-sys
-      '@kb-labs/knowledge-contracts':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
       '@kb-labs/mind-engine':
         specifier: link:../mind-engine
         version: link:../mind-engine
       '@kb-labs/mind-llm':
         specifier: link:../mind-llm
         version: link:../mind-llm
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
     devDependencies:
       '@kb-labs/devkit':
         specifier: link:../../../kb-labs-devkit

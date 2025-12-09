@@ -10,8 +10,8 @@ import type {
   AgentErrorResponse,
   AgentSource,
   AgentWarning,
-} from '@kb-labs/knowledge-contracts';
-import type { KnowledgeChunk } from '@kb-labs/knowledge-contracts';
+} from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '@kb-labs/sdk';
 
 // === ORCHESTRATOR CONFIG ===
 

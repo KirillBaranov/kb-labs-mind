@@ -7,16 +7,16 @@
 
 import { randomUUID as uuid } from 'crypto';
 import type { MindLLMEngine } from '@kb-labs/mind-llm';
-import type { KnowledgeChunk, KnowledgeIntent } from '@kb-labs/knowledge-contracts';
-import {
-  type AgentResponse,
-  type AgentErrorResponse,
-  type AgentQueryMode,
-  type AgentMeta,
-  type AgentSourcesSummary,
-  AGENT_RESPONSE_SCHEMA_VERSION,
-  isAgentError,
-} from '@kb-labs/knowledge-contracts';
+import type {
+  KnowledgeChunk,
+  KnowledgeIntent,
+  AgentResponse,
+  AgentErrorResponse,
+  AgentQueryMode,
+  AgentMeta,
+  AgentSourcesSummary,
+} from '@kb-labs/sdk';
+import { AGENT_RESPONSE_SCHEMA_VERSION, isAgentError } from '@kb-labs/sdk';
 
 import { createLLMProvider, type LLMProvider } from './llm/llm-provider';
 import { QueryDecomposer } from './decomposer/query-decomposer';
@@ -49,7 +49,7 @@ export interface AgentQueryOrchestratorOptions {
     enabled?: boolean;
     detailed?: boolean;
   };
-  analyticsAdapter?: import('@kb-labs/core-platform').IAnalytics | null;
+  analyticsAdapter?: import('@kb-labs/sdk').IAnalytics | null;
 }
 
 /**

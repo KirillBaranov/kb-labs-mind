@@ -1,4 +1,4 @@
-import type { KnowledgeConfigInput } from '@kb-labs/knowledge-contracts';
+import type { KnowledgeConfigInput } from '@kb-labs/sdk';
 
 /**
  * Registry configuration for Mind sync

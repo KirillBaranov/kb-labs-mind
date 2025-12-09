@@ -4,7 +4,7 @@
  * Compresses agent responses to fit within token budget.
  */
 
-import type { AgentResponse, AgentSource } from '@kb-labs/knowledge-contracts';
+import type { AgentResponse, AgentSource } from '@kb-labs/sdk';
 import type { LLMProvider } from '../llm/llm-provider';
 import type { OrchestratorCompressionConfig } from '../types';
 
