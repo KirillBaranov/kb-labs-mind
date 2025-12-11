@@ -20,7 +20,7 @@ import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 import { LocalVectorStore } from './local';
 import type { VectorStore } from './vector-store';
 import type { MindPlatformBindings } from '../platform/platform-adapters';
-import { PlatformVectorStore } from '../platform/platform-vector-store';
+import { PlatformVectorStoreAdapter } from './platform-adapter';
 
 export type VectorStoreType = 'local';
 
@@ -40,7 +40,7 @@ export function createVectorStore(
   platform?: MindPlatformBindings,
 ): VectorStore {
   if (platform?.vectorStore) {
-    return new PlatformVectorStore({
+    return new PlatformVectorStoreAdapter({
       vectorStore: platform.vectorStore,
       storage: platform.storage,
     });

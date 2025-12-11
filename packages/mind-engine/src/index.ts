@@ -1166,86 +1166,41 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     await embeddingStage.execute(context);
     const chunksWithEmbeddings = embeddingStage.getChunksWithEmbeddings();
 
-    // Create vector store adapter
-    const vectorStoreAdapter = {
-      insertBatch: async (chunks: any[]) => {
-        const storedChunks = chunks.map(c => ({
-          chunkId: c.chunkId,
-          scopeId: options.scope.id,
-          sourceId: c.sourceId,
-          path: c.path,
-          span: c.span,
-          text: c.text,
-          metadata: {
-            ...c.metadata,
-            fileHash: c.hash,
-            fileMtime: c.mtime,
-          },
-          // Convert number[] to EmbeddingVector { values: number[], dim: number }
-          embedding: {
-            values: c.embedding as number[],
-            dim: (c.embedding as number[]).length,
-          },
-        }));
-
-        // DEBUG: Test vectorStore upsertChunks with minimal data
-        const fs = await import('node:fs/promises');
-        await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] About to call vectorStore.upsertChunks with ${storedChunks.length} chunks\n`);
-
-        if (this.vectorStore.upsertChunks) {
-          await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] vectorStore.upsertChunks exists, calling it...\n`);
-          await this.vectorStore.upsertChunks(options.scope.id, storedChunks);
-          await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] upsertChunks completed successfully\n`);
-          return storedChunks.length;
-        }
-        await fs.appendFile('/tmp/platform-vector-debug.log', `[MindEngine.index] ERROR: vectorStore.upsertChunks does not exist!\n`);
-        throw new Error('Vector store does not support upsert operation');
-      },
-      updateBatch: async (chunks: any[]) => {
-        return await vectorStoreAdapter.insertBatch(chunks);
-      },
-      checkExistence: async (chunkIds: string[]) => {
-        // Check which chunks already exist in vector store
-        if (!this.vectorStore.getAllChunks) {
-          return new Set<string>();
-        }
-        try {
-          const existingChunks = await this.vectorStore.getAllChunks(options.scope.id);
-          const existingIds = new Set(existingChunks.map(c => c.chunkId));
-          return new Set(chunkIds.filter(id => existingIds.has(id)));
-        } catch {
-          return new Set<string>();
-        }
-      },
-      getChunksByHash: async (hashes: string[]) => {
-        // Find chunks by file hash for deduplication
-        if (!this.vectorStore.getAllChunks) {
-          return new Map<string, string[]>();
-        }
-        try {
-          const allChunks = await this.vectorStore.getAllChunks(options.scope.id);
-          const result = new Map<string, string[]>();
-          for (const hash of hashes) {
-            const matching = allChunks.filter(c => c.metadata?.fileHash === hash);
-            if (matching.length > 0) {
-              result.set(hash, matching.map(c => c.chunkId));
+    // Create scoped vector store adapter for StorageStage
+    // This uses the optimized batch methods in PlatformVectorStoreAdapter
+    const vectorStoreAdapter = this.vectorStore.createScopedAdapter
+      ? this.vectorStore.createScopedAdapter(options.scope.id)
+      : {
+          // Fallback adapter for vector stores that don't support createScopedAdapter
+          insertBatch: async (chunks: any[]) => {
+            const storedChunks = chunks.map(c => ({
+              chunkId: c.chunkId,
+              scopeId: options.scope.id,
+              sourceId: c.sourceId,
+              path: c.path,
+              span: c.span,
+              text: c.text,
+              metadata: { ...c.metadata, fileHash: c.hash, fileMtime: c.mtime },
+              embedding: { values: c.embedding as number[], dim: (c.embedding as number[]).length },
+            }));
+            if (this.vectorStore.upsertChunks) {
+              await this.vectorStore.upsertChunks(options.scope.id, storedChunks);
             }
-          }
-          return result;
-        } catch {
-          return new Map<string, string[]>();
-        }
-      },
-      deleteBatch: async (_chunkIds: string[]) => {
-        return 0;
-      },
-    };
+            return chunks.length;
+          },
+          updateBatch: async (chunks: any[]) => chunks.length,
+          checkExistence: async (_chunkIds: string[]) => new Set<string>(),
+          getChunksByHash: async (_hashes: string[]) => new Map<string, string[]>(),
+          deleteBatch: async (_chunkIds: string[]) => 0,
+        };
 
-    // Create storage stage
+    // Create storage stage with optimized batch processing
+    // Check if deduplication should be skipped (via environment variable for now)
+    const skipDedup = process.env.KB_SKIP_DEDUPLICATION === 'true' || (options as any).skipDeduplication === true;
     const storageStage = new StorageStage(
       vectorStoreAdapter,
       chunksWithEmbeddings as any[],
-      { batchSize: 100, deduplication: true, updateExisting: true }
+      { batchSize: 100, deduplication: !skipDedup, updateExisting: true } // Optimized batch size (was 50)
     );
     pipeline.addStage(storageStage);
 
@@ -2323,6 +2278,7 @@ export function registerMindKnowledgeEngine(
           },
         }
       : configWithRuntime;
+
     return new MindKnowledgeEngine(configWithPlatform, context);
   };
 

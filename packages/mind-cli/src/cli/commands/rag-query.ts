@@ -119,8 +119,10 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
     const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
     const profileId = flags.profile;
 
-    // Use global platform singleton (clean approach with usePlatform helper)
-    const platform = usePlatform();
+    // IMPORTANT: Do NOT get platform here - it runs in parent process with real adapters.
+    // Mind runs in child process and must use usePlatform() there to get IPC proxies.
+    // If we pass parent platform to child, child will try to use real adapters which breaks!
+    const platform = usePlatform(); // Only for analytics tracking, not passed to Mind
 
     // ✨ NEW: Access typed environment variables
     // ctx.env.OPENAI_API_KEY is typed as string | undefined
@@ -192,7 +194,8 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
           mode,
           debug: flags.debug,
           broker, // Pass broker from platform (undefined = in-memory fallback)
-          platform,
+          // DON'T pass platform - let child process use usePlatform() to get IPC proxies
+          platform: undefined,
           // Config will be loaded automatically if not provided
         });
 
@@ -273,7 +276,8 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
         intent,
         limit,
         profileId,
-        platform,
+        // DON'T pass platform - let child process use usePlatform() to get IPC proxies
+        platform: undefined,
         runtime: undefined, // Runtime context not available in CLI context
         // Config will be loaded automatically if not provided
         onProgress: (stage: string, details?: string) => {

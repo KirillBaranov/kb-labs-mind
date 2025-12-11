@@ -2,7 +2,7 @@
  * Mind init command
  */
 
-import { defineCommand, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, type CommandResult, useConfig } from '@kb-labs/sdk';
 import { initMindStructure } from '@kb-labs/mind-indexer';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
@@ -56,8 +56,17 @@ export const run = defineCommand<MindInitFlags, MindInitResult>({
     includeFlags: true,
   },
   async handler(ctx, argv, flags) {
+    // TEST: useConfig() auto-detection (no parameter)
+    const mindConfig = await useConfig();
+    console.log('[init] await useConfig() AUTO-DETECT:', mindConfig ? 'EXISTS' : 'UNDEFINED');
+    if (mindConfig) {
+      console.log('[init] mindConfig.scopes:', (mindConfig as any)?.scopes ? 'EXISTS' : 'NO SCOPES');
+      console.log('[init] mindConfig keys:', Object.keys(mindConfig));
+      console.log('[init] mindConfig FULL:', JSON.stringify(mindConfig, null, 2));
+    }
+
     const cwd = flags.cwd || ctx.cwd;
-    
+
     ctx.tracker.checkpoint('start');
 
     ctx.logger?.info('Mind init started', {

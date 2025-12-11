@@ -27,6 +27,9 @@ let globalOrchestrator: InstanceType<typeof AgentQueryOrchestrator> | null = nul
 export interface RagIndexOptions {
   cwd: string;
   scopeId?: string;
+  include?: string;
+  exclude?: string;
+  skipDeduplication?: boolean;
   platform?: PlatformServices;
   /**
    * Mind configuration (from ctx.config)
@@ -83,9 +86,61 @@ export async function runRagIndex(
     cache: getAdapterName(platform?.cache, 'MemoryCache (fallback)'),
   };
 
+  // If include/exclude provided, override paths in all sources (ESLint-style)
+  let effectiveConfig = options.config;
+  if (options.include || options.exclude) {
+    console.log('[runRagIndex] Overriding sources with include/exclude', { include: options.include, exclude: options.exclude });
+
+    // If config already provided (from useConfig), clone and modify it
+    // Otherwise load from file
+    let knowledgeConfig = effectiveConfig;
+    if (!knowledgeConfig) {
+      // Load config from file (fallback)
+      const { findNearestConfig, readJsonWithDiagnostics } = await import('@kb-labs/sdk');
+      const { path: configPath } = await findNearestConfig({
+        startDir: options.cwd,
+        filenames: ['.kb/kb.config.json', 'kb.config.json', '.kb/knowledge.json', 'knowledge.json'],
+      });
+      console.log('[runRagIndex] Found config at:', configPath);
+      if (configPath) {
+        const result = await readJsonWithDiagnostics(configPath);
+        if (result.ok) {
+          const rawConfig = result.data as any;
+          // Extract knowledge config (support Profiles v2 and legacy)
+          knowledgeConfig = rawConfig.profiles?.[0]?.products?.mind ?? rawConfig.knowledge ?? rawConfig;
+        }
+      }
+    }
+
+    // Override paths/exclude in ALL sources (ESLint-style override)
+    if (knowledgeConfig?.sources && Array.isArray(knowledgeConfig.sources)) {
+      console.log('[runRagIndex] Original sources count:', knowledgeConfig.sources.length);
+      knowledgeConfig = { ...knowledgeConfig };
+      knowledgeConfig.sources = knowledgeConfig.sources.map((source: any) => {
+        const overriddenSource = { ...source };
+
+        // --include overrides paths
+        if (options.include) {
+          overriddenSource.paths = [options.include];
+        }
+
+        // --exclude overrides exclude
+        if (options.exclude) {
+          overriddenSource.exclude = options.exclude.split(',').map(s => s.trim());
+        }
+
+        return overriddenSource;
+      });
+      console.log('[runRagIndex] Overridden sources:', JSON.stringify(knowledgeConfig.sources, null, 2));
+      effectiveConfig = knowledgeConfig;
+    }
+  }
+
+  console.log('[runRagIndex] Passing config to createMindKnowledgeRuntime:', effectiveConfig ? 'CUSTOM CONFIG' : 'undefined (will load from file)');
+
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
-    config: options.config,
+    config: effectiveConfig,
     runtime: 'runtime' in options ? options.runtime : undefined,
     platform: options.platform,
   });
@@ -104,8 +159,23 @@ export async function runRagIndex(
     );
   }
 
-  for (const scopeId of scopeIds) {
-    await runtime.service.index(scopeId);
+  // Set skip deduplication env var if requested
+  const originalSkipDedup = process.env.KB_SKIP_DEDUPLICATION;
+  if (options.skipDeduplication) {
+    process.env.KB_SKIP_DEDUPLICATION = 'true';
+  }
+
+  try {
+    for (const scopeId of scopeIds) {
+      await runtime.service.index(scopeId);
+    }
+  } finally {
+    // Restore original env var value
+    if (originalSkipDedup === undefined) {
+      delete process.env.KB_SKIP_DEDUPLICATION;
+    } else {
+      process.env.KB_SKIP_DEDUPLICATION = originalSkipDedup;
+    }
   }
 
   // Invalidate query cache after re-indexing

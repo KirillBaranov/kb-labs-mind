@@ -100,7 +100,7 @@ export class StorageStage implements PipelineStage {
     // Calculate batch size
     const batchSize = this.options.batchSize ?? 100;
 
-    // Process chunks in batches
+    // Process chunks in batches (sequentially for now - parallelism handled by platform)
     for (let i = 0; i < chunksToStore.length; i += batchSize) {
       const batch = chunksToStore.slice(i, i + batchSize);
 

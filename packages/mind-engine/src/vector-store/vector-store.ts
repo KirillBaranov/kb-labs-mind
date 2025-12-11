@@ -88,5 +88,18 @@ export interface VectorStore {
    * Returns empty array if scope doesn't exist
    */
   getAllChunks?(scopeId: string, filters?: VectorSearchFilters): Promise<StoredMindChunk[]>;
+
+  /**
+   * Create a scoped adapter for StorageStage.
+   * StorageStage expects batch methods without scopeId parameter.
+   * This method returns an adapter object with scopeId pre-bound.
+   */
+  createScopedAdapter?(scopeId: string): {
+    insertBatch(chunks: any[]): Promise<number>;
+    updateBatch(chunks: any[]): Promise<number>;
+    checkExistence(chunkIds: string[]): Promise<Set<string>>;
+    getChunksByHash(hashes: string[]): Promise<Map<string, string[]>>;
+    deleteBatch(chunkIds: string[]): Promise<number>;
+  };
 }
 
