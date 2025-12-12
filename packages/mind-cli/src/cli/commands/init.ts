@@ -7,7 +7,7 @@ import { initMindStructure } from '@kb-labs/mind-indexer';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
 import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 import { join } from 'node:path';
-import { promises as fsp } from 'node:fs';
+import { promises as fsp, writeFileSync } from 'node:fs';
 
 type MindInitFlags = {
   cwd: { type: 'string'; description?: string };
@@ -56,6 +56,61 @@ export const run = defineCommand<MindInitFlags, MindInitResult>({
     includeFlags: true,
   },
   async handler(ctx, argv, flags) {
+    // ===== DEBUG: Dump PLUGIN context structure =====
+    const ctxDump = {
+      source: 'PLUGIN_COMMAND',
+      command: 'mind:init',
+      keys: Object.keys(ctx).sort(),
+      coreMetadata: {
+        host: ctx.host,
+        requestId: ctx.requestId,
+        pluginId: ctx.pluginId,
+        pluginVersion: ctx.pluginVersion,
+        tenantId: ctx.tenantId,
+      },
+      executionEnv: {
+        cwd: ctx.cwd,
+        outdir: ctx.outdir,
+      },
+      config: ctx.config,
+      ui: { type: typeof ctx.ui, keys: Object.keys(ctx.ui || {}).sort() },
+      presenter: { type: typeof ctx.presenter, keys: Object.keys(ctx.presenter || {}).sort() },
+      output: typeof ctx.output,
+      logger: typeof ctx.logger,
+      platform: {
+        type: typeof ctx.platform,
+        keys: Object.keys(ctx.platform || {}).sort(),
+        llm: !!ctx.platform?.llm,
+        vectorStore: !!ctx.platform?.vectorStore,
+        embeddings: !!ctx.platform?.embeddings,
+      },
+      runtime: {
+        available: !!ctx.runtime,
+        fs: typeof ctx.runtime?.fs,
+        config: typeof ctx.runtime?.config,
+        state: typeof ctx.runtime?.state,
+      },
+      metadata: ctx.metadata,
+      enhanced: {
+        tracker: typeof ctx.tracker,
+        success: typeof ctx.success,
+        error: typeof ctx.error,
+        env: typeof ctx.env,
+      },
+    };
+
+    const dumpPath = '/tmp/kb-plugin-context-dump.json';
+    writeFileSync(dumpPath, JSON.stringify(ctxDump, null, 2));
+
+    if (ctx.output) {
+      ctx.output.write(`\n📝 PLUGIN Context dump written to: ${dumpPath}\n`);
+      ctx.output.write(`Context keys (${ctxDump.keys.length}): ${ctxDump.keys.join(', ')}\n`);
+      ctx.output.write(`host: ${ctx.host}\n`);
+      ctx.output.write(`cwd: ${ctx.cwd}\n`);
+      ctx.output.write(`runtime: ${ctx.runtime ? 'AVAILABLE' : 'undefined'}\n`);
+      ctx.output.write(`runtime.fs: ${ctx.runtime?.fs ? 'AVAILABLE' : 'undefined'}\n\n`);
+    }
+
     // TEST: useConfig() auto-detection (no parameter)
     const mindConfig = await useConfig();
     console.log('[init] await useConfig() AUTO-DETECT:', mindConfig ? 'EXISTS' : 'UNDEFINED');
