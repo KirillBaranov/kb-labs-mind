@@ -263,8 +263,7 @@ export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
       timeUpdateInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         const elapsedStr = formatElapsedTime(elapsed);
-        const { ui } = ctx.output!;
-        spinner?.update({ text: `${currentStage}... ${ui.colors.muted(`[${elapsedStr}]`)}` });
+        spinner?.update({ text: `${currentStage}... ${ctx.ui.colors.muted(`[${elapsedStr}]`)}` });
       }, 1000);
     }
 
