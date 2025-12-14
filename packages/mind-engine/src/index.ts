@@ -100,6 +100,7 @@ import { AdaptiveChunkerFactory } from './chunking/adaptive-factory';
 import { MemoryMonitor } from './indexing/memory-monitor';
 import { IndexingPipeline } from './indexing/pipeline';
 import { FileDiscoveryStage } from './indexing/stages/discovery';
+import { FileFilteringStage } from './indexing/stages/filtering';
 import { ParallelChunkingStage } from './indexing/stages/parallel-chunking';
 import { EmbeddingStage } from './indexing/stages/embedding';
 import { StorageStage } from './indexing/stages/storage';
@@ -1106,11 +1107,41 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       return;
     }
 
-    // Create memory-aware parallel chunking stage with discovered files
+    // Add filtering stage to skip unchanged files (incremental indexing optimization)
+    // Check if vectorStore supports getFilesMetadata (platform adapter does)
+    const vectorStoreWithMetadata = this.vectorStore.getFilesMetadata ? this.vectorStore : null;
+    const filteringStage = new FileFilteringStage(
+      discoveredFiles,
+      vectorStoreWithMetadata as any,
+      options.scope.id,
+      {
+        quickFilter: true,  // Enable mtime+size quick check
+        hashFilter: true,   // Enable hash-based verification
+        batchSize: 100,     // Process 100 files per batch
+      }
+    );
+    pipeline.addStage(filteringStage);
+
+    // Execute filtering
+    await filteringStage.execute(context);
+    const filteredFiles = filteringStage.getFilteredFiles();
+
+    if (filteredFiles.length === 0) {
+      this.runtime.log?.('info', `All files unchanged, skipping indexing for scope ${options.scope.id}`);
+      return;
+    }
+
+    this.runtime.log?.('info', `Filtered files for indexing`, {
+      totalFiles: discoveredFiles.length,
+      filesToIndex: filteredFiles.length,
+      skipped: discoveredFiles.length - filteredFiles.length,
+    });
+
+    // Create memory-aware parallel chunking stage with filtered files
     const chunkingStage = new ParallelChunkingStage(
       chunkerFactory,
       this.runtime,
-      new Map(discoveredFiles.map(f => [f.relativePath, f])),
+      new Map(filteredFiles.map(f => [f.relativePath, f])),
       {
         safeThreshold: 0.75, // 75% of heap limit (was 70%)
         minConcurrency: 2,   // minimum 2 parallel (was 1)

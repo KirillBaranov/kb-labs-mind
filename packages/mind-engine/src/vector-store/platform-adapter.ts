@@ -336,6 +336,54 @@ export class PlatformVectorStoreAdapter implements VectorStore {
     }
   }
 
+  /**
+   * Get file metadata for incremental indexing (filtering stage).
+   * Returns metadata for files that exist in the vector store.
+   * Uses batch query to get all chunks for matching paths efficiently.
+   */
+  async getFilesMetadata(
+    scopeId: string,
+    paths: string[]
+  ): Promise<Map<string, { mtime: number; size: number; hash: string }>> {
+    if (paths.length === 0) return new Map();
+    if (!this.vectorStore.query) return new Map();
+
+    try {
+      // Batch query by path field (single IPC call!)
+      const results = await this.vectorStore.query({
+        field: 'path',
+        operator: 'in',
+        value: paths,
+      });
+
+      // Group by path and extract most recent metadata
+      // (each file may have multiple chunks, we just need one)
+      const fileMetadata = new Map<string, { mtime: number; size: number; hash: string }>();
+
+      for (const result of results) {
+        const path = result.metadata?.path as string;
+        const fileHash = result.metadata?.fileHash as string;
+        const fileMtime = result.metadata?.fileMtime as number;
+
+        if (path && fileHash !== undefined && fileMtime !== undefined) {
+          // Only store if not already stored (first chunk wins)
+          if (!fileMetadata.has(path)) {
+            fileMetadata.set(path, {
+              hash: fileHash,
+              mtime: fileMtime,
+              size: 0, // Size not stored in chunks currently (only hash/mtime matter)
+            });
+          }
+        }
+      }
+
+      return fileMetadata;
+    } catch (error) {
+      // Return empty map on failure
+      return new Map();
+    }
+  }
+
   // ===== Private helpers (type conversion only, no business logic) =====
 
   private makeRecordId(scopeId: string, chunkId: string): string {

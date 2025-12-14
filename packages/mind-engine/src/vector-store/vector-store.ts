@@ -101,5 +101,17 @@ export interface VectorStore {
     getChunksByHash(hashes: string[]): Promise<Map<string, string[]>>;
     deleteBatch(chunkIds: string[]): Promise<number>;
   };
+
+  /**
+   * Get file metadata for incremental indexing (filtering stage)
+   * Returns metadata for files that exist in the vector store
+   * @param scopeId Scope ID
+   * @param paths File paths to check
+   * @returns Map of path -> metadata (mtime, size, hash)
+   */
+  getFilesMetadata?(
+    scopeId: string,
+    paths: string[]
+  ): Promise<Map<string, { mtime: number; size: number; hash: string }>>;
 }
 
