@@ -77,4 +77,4 @@ packages/*/coverage/
 *.timestamp-*.mjs
 yalc.lock
 yalc.sig
-.yalc/
+.yalc/.npmrc
