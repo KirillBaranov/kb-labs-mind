@@ -67,7 +67,8 @@ export class ParallelChunkingStage implements PipelineStage {
   ) {}
 
   async execute(context: PipelineContext): Promise<StageResult> {
-    const filePaths = context.filePaths ?? [];
+    // Use files from fileMetadata (filtered files) instead of context.filePaths (all discovered files)
+    const filePaths = this.fileMetadata ? Array.from(this.fileMetadata.keys()) : (context.filePaths ?? []);
 
     if (filePaths.length === 0) {
       context.logger.warn('No files to chunk');

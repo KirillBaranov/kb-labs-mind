@@ -4,6 +4,7 @@
 **Date:** 2025-11-29
 **Author:** AI Agent (Claude)
 **Context:** KB Labs Mind Query Caching
+**Tags:** `cache`, `state-broker`, `daemon`, `performance`, `persistence`, `http-api`
 
 ## Context and Problem Statement
 
