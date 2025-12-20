@@ -3,14 +3,13 @@
  * LLM-based summarization for chunks
  */
 
-import type { KnowledgeChunk } from '@kb-labs/sdk';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM, KnowledgeChunk } from '@kb-labs/sdk';
 
 export interface SummarizerOptions {
   /**
-   * LLM engine to use for summarization
+   * LLM to use for summarization
    */
-  llmEngine: MindLLMEngine;
+  llm: ILLM;
 
   /**
    * Maximum tokens for summary
@@ -29,12 +28,12 @@ export interface SummarizerOptions {
  * Summarize a chunk using LLM
  */
 export class ChunkSummarizer {
-  private llmEngine: MindLLMEngine;
+  private llm: ILLM;
   private maxTokens: number;
   private temperature: number;
 
   constructor(options: SummarizerOptions) {
-    this.llmEngine = options.llmEngine;
+    this.llm = options.llm;
     this.maxTokens = options.maxTokens ?? 150;
     this.temperature = options.temperature ?? 0.3;
   }
@@ -46,16 +45,12 @@ export class ChunkSummarizer {
     const prompt = this.buildSummarizationPrompt(chunk, query);
 
     try {
-      const result = await this.llmEngine.generate(prompt, {
+      const result = await this.llm.complete(prompt, {
         maxTokens: this.maxTokens,
         temperature: this.temperature,
-        metadata: {
-          chunkId: chunk.id,
-          type: 'summarization',
-        },
       });
 
-      return result.text.trim();
+      return result.content.trim();
     } catch (error) {
       // Fallback: extract first meaningful line or comment
       return this.extractFallbackSummary(chunk);

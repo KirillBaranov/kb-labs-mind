@@ -6,6 +6,7 @@ import {
   MemoryHistoryStore,
   MemoryFeedbackStore,
   createKnowledgeError,
+  type ILLM,
   type KnowledgeChunk,
   type KnowledgeEngineConfig,
   type KnowledgeQuery,
@@ -47,10 +48,6 @@ import {
   type EmbeddingProviderConfig,
   type EmbeddingRuntimeAdapter,
 } from '@kb-labs/mind-embeddings';
-import {
-  createLocalStubLLMEngine,
-  type MindLLMEngine,
-} from '@kb-labs/mind-llm';
 import type { VectorSearchFilters, VectorSearchMatch } from '@kb-labs/mind-vector-store';
 import type { RuntimeAdapter } from './adapters/runtime-adapter';
 import { createRuntimeAdapter } from './adapters/runtime-adapter';
@@ -93,7 +90,6 @@ import {
 } from './learning/adaptive-weights';
 import {
   PlatformEmbeddingProvider,
-  PlatformLLMEngine,
   type MindPlatformBindings,
 } from './platform/platform-adapters';
 import { AdaptiveChunkerFactory } from './chunking/adaptive-factory';
@@ -724,7 +720,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   private readonly options: NormalizedOptions;
   private readonly vectorStore: VectorStore;
   private embeddingProvider: EmbeddingProvider;
-  private readonly llmEngine: MindLLMEngine;
+  private readonly llm: ILLM | null;
   private readonly runtime: RuntimeAdapter;
   private readonly reranker: Reranker | null;
   private readonly contextOptimizer: ContextOptimizer;
@@ -836,27 +832,19 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
     }
     
-    // Create LLM engine: prefer platform LLM, otherwise use stub
-    if (platform?.llm) {
-      this.llmEngine = new PlatformLLMEngine(platform.llm);
-    } else {
-      this.llmEngine = createLocalStubLLMEngine({
-        id: rawOptions.llmEngineId,
-      });
-    }
-    
-    const llmAvailable = !!platform?.llm;
-    
+    // Use platform LLM (platform provides noop fallback if unavailable)
+    this.llm = platform?.llm ?? null;
+
     // Create LLM compressor if enabled and LLM available
-    if (this.options.search.optimization.compression.llm.enabled && llmAvailable) {
+    if (this.options.search.optimization.compression.llm.enabled && this.llm) {
       this.llmCompressor = new OpenAILLMCompressor({
-        llmEngine: this.llmEngine,
+        llm: this.llm,
         maxTokens: this.options.search.optimization.compression.llm.maxTokens,
         compressionRatio: 0.5,
         temperature: 0.2,
       });
       this.summarizer = new ChunkSummarizer({
-        llmEngine: this.llmEngine,
+        llm: this.llm,
         maxTokens: 150,
         temperature: 0.3,
       });
@@ -963,7 +951,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           llmBased: this.options.search.reasoning.complexityDetection.llmBased,
           llmModel: this.options.search.reasoning.complexityDetection.llmModel,
         },
-        llmAvailable ? this.llmEngine : null,
+        this.llm,
       );
 
       const queryPlanner = new QueryPlanner(
@@ -973,7 +961,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           temperature: this.options.search.reasoning.planning.temperature,
           minSimilarity: this.options.search.reasoning.planning.minSimilarity,
         },
-        llmAvailable ? this.llmEngine : null,
+        this.llm,
       );
 
       const parallelExecutor = new ParallelExecutor({
@@ -992,7 +980,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           temperature: this.options.search.reasoning.synthesis.temperature,
           progressiveRefinement: this.options.search.reasoning.synthesis.progressiveRefinement,
         },
-        llmAvailable ? this.llmEngine : null,
+        this.llm,
       );
 
       this.reasoningEngine = new ReasoningEngine(
