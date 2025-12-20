@@ -30,8 +30,7 @@
   },
   "dependencies": {
     "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
-    "@kb-labs/mind-engine": "link:../mind-engine",
-    "@kb-labs/mind-llm": "link:../mind-llm"
+    "@kb-labs/mind-engine": "link:../mind-engine"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",

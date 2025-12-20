@@ -1,5 +1,6 @@
 import {
   usePlatform,
+  useLLM,
   type KnowledgeIntent,
   type KnowledgeResult,
   type AgentQueryMode,
@@ -17,7 +18,6 @@ import {
   isAgentError,
   AgentQueryOrchestrator,
 } from '@kb-labs/mind-orchestrator';
-import { createOpenAILLMEngine } from '@kb-labs/mind-llm';
 
 /**
  * Global orchestrator instance for cache persistence across queries
@@ -367,8 +367,8 @@ export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
 export async function runAgentRagQuery(
   options: AgentRagQueryOptions,
 ): Promise<AgentRagQueryResult> {
-  // Get OpenAI API key from environment
-  const apiKey = process.env.OPENAI_API_KEY;
+  // Get LLM from platform
+  const llm = useLLM();
   const platformBroker = options.platform?.cache
     ? {
         get: <T>(key: string) => options.platform!.cache!.get<T>(key),
@@ -377,19 +377,11 @@ export async function runAgentRagQuery(
       }
     : undefined;
 
-  // Create LLM engine if API key available
-  const llmEngine = apiKey
-    ? createOpenAILLMEngine({
-        apiKey,
-        model: 'gpt-4o-mini',
-      })
-    : undefined;
-
   // Reuse or create global orchestrator for cache persistence
   // NOTE: Broker must be passed on first creation - cannot be changed later
   if (!globalOrchestrator) {
     globalOrchestrator = createAgentQueryOrchestrator({
-      llmEngine,
+      llm,
       broker: options.broker ?? platformBroker, // Pass broker for persistent caching
       analyticsAdapter: options.platform?.analytics ?? null,
       config: {

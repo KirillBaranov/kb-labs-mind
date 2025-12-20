@@ -6,8 +6,8 @@
  */
 
 import { randomUUID as uuid } from 'crypto';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
 import type {
+  ILLM,
   KnowledgeChunk,
   KnowledgeIntent,
   AgentResponse,
@@ -43,7 +43,7 @@ function generateRequestId(): string {
 
 export interface AgentQueryOrchestratorOptions {
   config?: Partial<OrchestratorConfig>;
-  llmEngine?: MindLLMEngine;
+  llm?: ILLM;
   broker?: any; // StateBroker-like interface (duck typing)
   analytics?: {
     enabled?: boolean;
@@ -100,9 +100,9 @@ export class AgentQueryOrchestrator {
       },
     };
 
-    // Create LLM provider if engine provided
-    this.llmProvider = options.llmEngine
-      ? createLLMProvider(options.llmEngine)
+    // Create LLM provider if LLM provided
+    this.llmProvider = options.llm
+      ? createLLMProvider(options.llm)
       : null;
 
     // Create components that require LLM

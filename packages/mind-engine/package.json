@@ -40,7 +40,6 @@
     "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-embeddings": "link:../mind-embeddings",
-    "@kb-labs/mind-llm": "link:../mind-llm",
     "@kb-labs/mind-types": "link:../mind-types",
     "@kb-labs/mind-vector-store": "link:../mind-vector-store",
     "fast-glob": "^3.3.2",
