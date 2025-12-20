@@ -20,12 +20,6 @@ vi.mock('node:fs/promises', () => ({
   mkdir: vi.fn(),
 }));
 
-vi.mock('@kb-labs/analytics-sdk-node', () => ({
-  runScope: async (_config: any, fn: any) => {
-    return fn(async () => {});
-  }
-}));
-
 vi.mock('@kb-labs/shared-cli-ui', () => ({
   TimingTracker: vi.fn(() => ({
     checkpoint: vi.fn(),

@@ -1,4 +1,8 @@
-import { defineCommand, usePlatform } from '@kb-labs/sdk';
+/**
+ * Mind rag-query command - semantic RAG search (V3)
+ */
+
+import { defineCommand, usePlatform, type PluginContextV3 } from '@kb-labs/sdk';
 import { runRagQuery, runAgentRagQuery } from '../../application/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
 import { MIND_ERROR_CODES } from '../../errors/error-codes';
@@ -26,364 +30,309 @@ function truncateText(text: string, limit: number): string {
   return `${text.slice(0, limit - 3)}...`;
 }
 
-type MindRagQueryFlags = {
-  cwd: { type: 'string'; description?: string };
-  scope: { type: 'string'; description?: string };
-  text: { type: 'string'; description?: string; required: true };
-  intent: { type: 'string'; description?: string; choices?: readonly string[] };
-  limit: { type: 'number'; description?: string; default?: number };
-  profile: { type: 'string'; description?: string };
-  mode: { type: 'string'; description?: string; choices?: readonly string[]; default?: string };
-  format: { type: 'string'; description?: string; choices?: readonly string[]; default?: string };
-  json: { type: 'boolean'; description?: string; default?: boolean };
-  quiet: { type: 'boolean'; description?: string; default?: boolean };
-  agent: { type: 'boolean'; description?: string; default?: boolean };
-  debug: { type: 'boolean'; description?: string; default?: boolean };
-};
-
-type MindRagQueryResult = {
-  ok: boolean;
-  chunks?: Array<{ text: string; score: number }>;
-  query?: string;
-  exitCode?: number;
-};
-
-export const run = defineCommand<MindRagQueryFlags, MindRagQueryResult>({
-  name: 'mind:rag-query',
+interface RagQueryInput {
+  argv: string[];
   flags: {
-    cwd: {
-      type: 'string',
-      description: 'Working directory',
-    },
-    scope: {
-      type: 'string',
-      description: 'Scope ID (default: first configured scope)',
-    },
-    text: {
-      type: 'string',
-      description: 'Query text',
-      required: true,
-    },
-    intent: {
-      type: 'string',
-      description: 'Intent hint for ranking/policy',
-      choices: ['summary', 'search', 'similar', 'nav'] as const,
-    },
-    limit: {
-      type: 'number',
-      description: 'Maximum chunks to return',
-      default: 16,
-    },
-    profile: {
-      type: 'string',
-      description: 'Profile ID override (knowledge profiles v2)',
-    },
-    mode: {
-      type: 'string',
-      description: 'Query execution mode (instant: ~200ms, auto: ~1s, thinking: ~5s)',
-      choices: ['instant', 'auto', 'thinking'] as const,
-      default: 'auto',
-    },
-    format: {
-      type: 'string',
-      description: 'Output format (text: human-readable, json: structured, json-pretty: formatted JSON)',
-      choices: ['text', 'json', 'json-pretty'] as const,
-      default: 'text',
-    },
-    json: {
-      type: 'boolean',
-      description: 'Output in JSON format (deprecated: use --format json)',
-      default: false,
-    },
-    quiet: {
-      type: 'boolean',
-      description: 'Quiet output',
-      default: false,
-    },
-    agent: {
-      type: 'boolean',
-      description: 'Agent-optimized output (clean JSON only, no logs)',
-      default: false,
-    },
-    debug: {
-      type: 'boolean',
-      description: 'Include debug info in agent response',
-      default: false,
-    },
-  },
-  async handler(ctx, argv, flags) {
-    const cwd = flags.cwd || ctx.cwd;
-    const scopeId = flags.scope;
-    const intent = flags.intent && isValidIntent(flags.intent) ? flags.intent : undefined;
-    const text = flags.text?.trim() || '';
-    const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
-    const profileId = flags.profile;
+    cwd?: string;
+    scope?: string;
+    text?: string;
+    intent?: string;
+    limit?: number;
+    profile?: string;
+    mode?: string;
+    format?: string;
+    json?: boolean;
+    quiet?: boolean;
+    agent?: boolean;
+    debug?: boolean;
+  };
+}
 
-    // IMPORTANT: Do NOT get platform here - it runs in parent process with real adapters.
-    // Mind runs in child process and must use usePlatform() there to get IPC proxies.
-    // If we pass parent platform to child, child will try to use real adapters which breaks!
-    const platform = usePlatform(); // Only for analytics tracking, not passed to Mind
+interface RagQueryResult {
+  exitCode: number;
+  ok: boolean;
+  result?: any;
+}
 
-    // ✨ NEW: Access typed environment variables
-    // ctx.env.OPENAI_API_KEY is typed as string | undefined
-    // ctx.env.KB_LOG_LEVEL is typed as string | undefined
-    // ctx.env.DEBUG is typed as string | undefined
-    const hasOpenAI = !!ctx.env.OPENAI_API_KEY;
-    const logLevel = ctx.env.KB_LOG_LEVEL || 'info';
-    const debugMode = ctx.env.DEBUG === 'true' || ctx.env.DEBUG === '1';
+export default defineCommand({
+  id: 'mind:rag-query',
+  description: 'Run semantic RAG query on Mind knowledge base',
 
-    // Show env status in debug mode
-    if (flags.debug && !flags.quiet && !flags.agent) {
-      ctx.output?.info(`🔧 Environment: OpenAI=${hasOpenAI ? 'configured' : 'not configured (using deterministic embeddings)'}, LogLevel=${logLevel}, Debug=${debugMode}`);
-      ctx.output?.info(`🔧 Config: ${ctx.config ? JSON.stringify(ctx.config) : 'not set'}`);
-      ctx.output?.info(`🔧 ProfileId: ${ctx.profileId ?? 'not set'}`);
-    }
+  handler: {
+    async execute(ctx: PluginContextV3, input: RagQueryInput): Promise<RagQueryResult> {
+      const startTime = Date.now();
+      const { flags } = input;
 
-    // Handle mode flag
-    const mode = flags.mode && isValidMode(flags.mode) ? flags.mode : 'auto';
+      const cwd = flags.cwd || ctx.cwd;
+      const scopeId = flags.scope;
+      const intent = flags.intent && isValidIntent(flags.intent) ? flags.intent : undefined;
+      const text = flags.text?.trim() || '';
+      const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
+      const profileId = flags.profile;
 
-    // Handle format flag (with backward compatibility for --json)
-    let format = flags.format && isValidFormat(flags.format) ? flags.format : 'text';
-    if (flags.json && format === 'text') {
-      format = 'json'; // Backward compatibility
-    }
+      ctx.trace?.addEvent?.('mind.rag-query.start', {
+        command: 'mind:rag-query',
+        mode: flags.mode,
+        agent: flags.agent,
+        scopeId,
+        intent,
+      });
 
-    if (!text) {
-      if (flags.agent) {
-        // Agent mode: output JSON error
-        console.log(JSON.stringify({
-          error: {
-            code: 'INVALID_QUERY',
-            message: 'Provide --text "<query>" to run rag:query.',
-            recoverable: false,
-          },
-          meta: {
-            schemaVersion: 'agent-response-v1',
-            requestId: `rq-${Date.now()}`,
-            mode: mode,
-            timingMs: 0,
-            cached: false,
-          },
-        }));
-        return { ok: false, exitCode: 1 };
+      // Get platform for analytics (not passed to Mind - child process uses usePlatform())
+      const platform = usePlatform();
+
+      // Handle mode flag
+      const mode = flags.mode && isValidMode(flags.mode) ? flags.mode : 'auto';
+
+      // Handle format flag (with backward compatibility for --json)
+      let format = flags.format && isValidFormat(flags.format) ? flags.format : 'text';
+      if (flags.json && format === 'text') {
+        format = 'json'; // Backward compatibility
       }
 
-      ctx.output?.error(new Error('Provide --text "<query>" to run rag:query.'), {
-        code: MIND_ERROR_CODES.RAG_QUERY_MISSING_TEXT,
-        suggestions: [
-          'Use: kb mind rag-query --text "your query"',
-          'Add --scope to search in specific scope',
-          'Add --intent to specify intent (summary, search, similar, nav)',
-        ],
-      });
-      return { ok: false, exitCode: 1 };
-    }
+      if (!text) {
+        if (flags.agent) {
+          // Agent mode: output JSON error
+          console.log(JSON.stringify({
+            error: {
+              code: 'INVALID_QUERY',
+              message: 'Provide --text "<query>" to run rag:query.',
+              recoverable: false,
+            },
+            meta: {
+              schemaVersion: 'agent-response-v1',
+              requestId: `rq-${Date.now()}`,
+              mode: mode,
+              timingMs: 0,
+              cached: false,
+            },
+          }));
 
-    // === AGENT MODE ===
-    if (flags.agent) {
+          ctx.trace?.addEvent?.('mind.rag-query.invalid', { reason: 'missing-text' });
+          return { exitCode: 1, ok: false };
+        }
+
+        ctx.ui.error('Provide --text "<query>" to run rag:query.');
+        ctx.ui.info('Use: kb mind rag-query --text "your query"');
+        ctx.ui.info('Add --scope to search in specific scope');
+        ctx.ui.info('Add --intent to specify intent (summary, search, similar, nav)');
+
+        ctx.trace?.addEvent?.('mind.rag-query.invalid', { reason: 'missing-text' });
+        return { exitCode: 1, ok: false };
+      }
+
+      // === AGENT MODE ===
+      if (flags.agent) {
+        try {
+          const result = await runAgentRagQuery({
+            cwd,
+            scopeId,
+            text,
+            mode,
+            debug: flags.debug,
+            broker: undefined, // Gracefully falls back to in-memory
+            platform: undefined, // Let child process use usePlatform() for IPC proxies
+          });
+
+          // Track analytics if available
+          platform?.analytics?.track?.('mind.rag-query', {
+            mode,
+            agent: true,
+            scopeId,
+            intent,
+          }).catch(() => {});
+
+          ctx.trace?.addEvent?.('mind.rag-query.agent.complete', { mode, scopeId });
+
+          // Output clean JSON to stdout
+          console.log(JSON.stringify(result));
+
+          // Return appropriate exit code
+          if (isAgentError(result)) {
+            return { exitCode: 1, ok: false, result };
+          }
+          return { exitCode: 0, ok: true, result };
+        } catch (error) {
+          // Output error as AgentErrorResponse
+          const message = error instanceof Error ? error.message : String(error);
+          console.log(JSON.stringify({
+            error: {
+              code: 'ENGINE_ERROR',
+              message,
+              recoverable: true,
+            },
+            meta: {
+              schemaVersion: 'agent-response-v1',
+              requestId: `rq-${Date.now()}`,
+              mode: mode,
+              timingMs: Date.now() - startTime,
+              cached: false,
+            },
+          }));
+
+          ctx.trace?.addEvent?.('mind.rag-query.agent.error', { error: message });
+          return { exitCode: 1, ok: false };
+        }
+      }
+
+      // === STANDARD MODE ===
+      if (!flags.quiet && format === 'text') {
+        ctx.ui.info('Initializing Mind RAG query...');
+      }
+
+      // Helper to format elapsed time
+      const formatElapsedTime = (ms: number): string => {
+        const seconds = Math.floor(ms / 1000);
+        if (seconds < 60) {
+          return `${seconds}s`;
+        }
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}m ${remainingSeconds}s`;
+      };
+
+      // Track current stage
+      let currentStage = 'Initializing';
+      let lastProgressTime = Date.now();
+
       try {
-        // Get state broker from runtime context (provided by platform)
-        // Gracefully falls back to in-memory if not available
-        // Note: ctx.runtime is not available in current command context
-        const broker = undefined;
-
-        const result = await runAgentRagQuery({
+        const result = await runRagQuery({
           cwd,
           scopeId,
           text,
-          mode,
-          debug: flags.debug,
-          broker, // Pass broker from platform (undefined = in-memory fallback)
-          // DON'T pass platform - let child process use usePlatform() to get IPC proxies
-          platform: undefined,
-          // Config will be loaded automatically if not provided
+          intent,
+          limit,
+          profileId,
+          platform: undefined, // Let child process use usePlatform()
+          runtime: undefined, // Runtime context not available in CLI
+          onProgress: (stage: string, details?: string) => {
+            if (flags.quiet || format === 'json' || format === 'json-pretty') return;
+
+            // Update current stage
+            currentStage = details ? `${stage}: ${details}` : stage;
+
+            // Throttle progress updates to once per second
+            const now = Date.now();
+            if (now - lastProgressTime >= 1000) {
+              const elapsed = now - startTime;
+              const elapsedStr = formatElapsedTime(elapsed);
+              ctx.ui.info(`${currentStage} [${elapsedStr}]`);
+              lastProgressTime = now;
+            }
+          },
         });
+
+        const timing = Date.now() - startTime;
+
+        ctx.trace?.addEvent?.('mind.rag-query.complete', {
+          mode,
+          scopeId,
+          chunks: result.knowledge.chunks.length,
+          timingMs: timing,
+        });
+
+        // Output result
+        if (format === 'json' || format === 'json-pretty') {
+          // Check if we have the new JSON response format in metadata
+          if (result.knowledge.metadata?.jsonResponse) {
+            const jsonResponse = result.knowledge.metadata.jsonResponse;
+            if (format === 'json-pretty') {
+              ctx.ui.info(JSON.stringify(jsonResponse, null, 2));
+            } else {
+              ctx.ui.info(JSON.stringify(jsonResponse));
+            }
+          } else {
+            // Fallback to old format for backward compatibility
+            ctx.ui.info(JSON.stringify({
+              ok: true,
+              scopeId: result.scopeId,
+              intent: result.knowledge.query.intent,
+              chunks: result.knowledge.chunks,
+              contextText: result.knowledge.contextText,
+            }));
+          }
+        } else if (!flags.quiet) {
+          const topChunk = result.knowledge.chunks[0];
+
+          const sections: Array<{ header?: string; items: string[] }> = [
+            {
+              header: 'Summary',
+              items: [
+                `Scope: ${result.scopeId}`,
+                `Intent: ${result.knowledge.query.intent}`,
+                `Chunks returned: ${result.knowledge.chunks.length}`,
+              ],
+            },
+          ];
+
+          if (topChunk) {
+            sections.push({
+              header: 'Top chunk',
+              items: [
+                `${topChunk.path} #${topChunk.span.startLine}-${topChunk.span.endLine}`,
+                truncateText(topChunk.text, 400),
+              ],
+            });
+          } else {
+            sections.push({
+              items: ['No matching chunks found.'],
+            });
+          }
+
+          // Show synthesized context if available (from reasoning chain)
+          if (result.knowledge.contextText && result.knowledge.contextText.length > 0) {
+            const contextPreview = result.knowledge.contextText.length > 2000
+              ? result.knowledge.contextText.substring(0, 2000) + '...'
+              : result.knowledge.contextText;
+            sections.push({
+              header: `Synthesized context (${result.knowledge.contextText.length} chars)`,
+              items: [contextPreview],
+            });
+          }
+
+          ctx.ui.success('Query completed', {
+            title: 'Mind RAG Query',
+            sections,
+            timing,
+          });
+        }
 
         // Track analytics if available
         platform?.analytics?.track?.('mind.rag-query', {
           mode,
-          agent: true,
+          agent: false,
           scopeId,
           intent,
         }).catch(() => {});
 
-        // Output clean JSON to stdout
-        console.log(JSON.stringify(result));
-
-        // Return appropriate exit code
-        if (isAgentError(result)) {
-          return { ok: false, exitCode: 1 };
-        }
-        return { ok: true };
+        return { exitCode: 0, ok: true, result };
       } catch (error) {
-        // Output error as AgentErrorResponse
+        const timing = Date.now() - startTime;
         const message = error instanceof Error ? error.message : String(error);
-        console.log(JSON.stringify({
-          error: {
-            code: 'ENGINE_ERROR',
-            message,
-            recoverable: true,
-          },
-          meta: {
-            schemaVersion: 'agent-response-v1',
-            requestId: `rq-${Date.now()}`,
-            mode: mode,
-            timingMs: 0,
-            cached: false,
-          },
-        }));
-        return { ok: false, exitCode: 1 };
-      }
-    }
 
-    // === STANDARD MODE ===
-    const spinner = ctx.output?.spinner('Initializing Mind RAG query...');
-    const startTime = Date.now();
+        ctx.trace?.addEvent?.('mind.rag-query.error', { error: message, timingMs: timing });
 
-    // Helper to format elapsed time
-    const formatElapsedTime = (ms: number): string => {
-      const seconds = Math.floor(ms / 1000);
-      if (seconds < 60) {
-        return `${seconds}s`;
-      }
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = seconds % 60;
-      return `${minutes}m ${remainingSeconds}s`;
-    };
-
-    // Track current stage for spinner updates
-    let currentStage = 'Initializing';
-    let timeUpdateInterval: NodeJS.Timeout | null = null;
-
-    ctx.tracker.checkpoint('query');
-
-    if (!flags.quiet && !flags.json) {
-      spinner?.start();
-      // Update spinner with elapsed time and stage every second
-      timeUpdateInterval = setInterval(() => {
-        const elapsed = Date.now() - startTime;
-        const elapsedStr = formatElapsedTime(elapsed);
-        spinner?.update({ text: `${currentStage}... ${ctx.ui.colors.muted(`[${elapsedStr}]`)}` });
-      }, 1000);
-    }
-
-    try {
-      const result = await runRagQuery({
-        cwd,
-        scopeId,
-        text,
-        intent,
-        limit,
-        profileId,
-        // DON'T pass platform - let child process use usePlatform() to get IPC proxies
-        platform: undefined,
-        runtime: undefined, // Runtime context not available in CLI context
-        // Config will be loaded automatically if not provided
-        onProgress: (stage: string, details?: string) => {
-          if (flags.quiet || format === 'json' || format === 'json-pretty') return;
-
-          // Update current stage for spinner
-          currentStage = details ? `${stage}: ${details}` : stage;
-
-          // Optionally write progress messages (can be disabled for cleaner output)
-          // ctx.output?.progress('RAG Query', { message: currentStage });
-        },
-      });
-
-      if (timeUpdateInterval) {
-        clearInterval(timeUpdateInterval);
-      }
-
-      ctx.tracker.checkpoint('complete');
-
-      if (!flags.quiet && format === 'text') {
-        spinner?.succeed('Query completed');
-      }
-
-      // Output result
-      if (format === 'json' || format === 'json-pretty') {
-        // Check if we have the new JSON response format in metadata
-        if (result.knowledge.metadata?.jsonResponse) {
-          const jsonResponse = result.knowledge.metadata.jsonResponse;
-          if (format === 'json-pretty') {
-            ctx.output?.write(JSON.stringify(jsonResponse, null, 2));
-          } else {
-            ctx.output?.json(jsonResponse);
-          }
-        } else {
-          // Fallback to old format for backward compatibility
-          ctx.output?.json({
-            ok: true,
-            scopeId: result.scopeId,
-            intent: result.knowledge.query.intent,
-            chunks: result.knowledge.chunks,
-            contextText: result.knowledge.contextText,
-          });
-        }
-      } else if (!flags.quiet) {
-        const { ui } = ctx.output!;
-        const topChunk = result.knowledge.chunks[0];
-
-        const sections: Array<{ header?: string; items: string[] }> = [
-          {
-            header: 'Summary',
-            items: [
-              `Scope: ${result.scopeId}`,
-              `Intent: ${result.knowledge.query.intent}`,
-              `Chunks returned: ${result.knowledge.chunks.length}`,
-            ],
-          },
-        ];
-
-        if (topChunk) {
-          sections.push({
-            header: 'Top chunk',
-            items: [
-              `${topChunk.path} #${topChunk.span.startLine}-${topChunk.span.endLine}`,
-              truncateText(topChunk.text, 400),
-            ],
-          });
-        } else {
-          sections.push({
-            items: ['No matching chunks found.'],
-          });
+        if (format === 'json' || format === 'json-pretty') {
+          ctx.ui.info(JSON.stringify({
+            ok: false,
+            error: message,
+            timingMs: timing,
+          }));
+        } else if (!flags.quiet) {
+          ctx.ui.error(`Query failed: ${message}`);
         }
 
-        // Show synthesized context if available (from reasoning chain)
-        if (result.knowledge.contextText && result.knowledge.contextText.length > 0) {
-          const contextPreview = result.knowledge.contextText.length > 2000
-            ? result.knowledge.contextText.substring(0, 2000) + '...'
-            : result.knowledge.contextText;
-          sections.push({
-            header: `Synthesized context (${result.knowledge.contextText.length} chars)`,
-            items: [contextPreview],
-          });
-        }
+        // Track analytics
+        platform?.analytics?.track?.('mind.rag-query', {
+          mode,
+          agent: false,
+          scopeId,
+          intent,
+          error: true,
+        }).catch(() => {});
 
-        const outputText = ui.sideBox({
-          title: 'Mind RAG Query',
-          sections,
-          status: 'info',
-          timing: ctx.tracker.total(),
-        });
-        ctx.output?.write(outputText);
+        return { exitCode: 1, ok: false };
       }
-
-      return { ok: true, result };
-    } finally {
-      if (timeUpdateInterval) {
-        clearInterval(timeUpdateInterval);
-      }
-
-      // Track analytics if available
-      platform?.analytics?.track?.('mind.rag-query', {
-        mode,
-        agent: false,
-        scopeId,
-        intent,
-      }).catch(() => {});
-    }
+    },
   },
-  // TODO: onError handler removed - no longer supported in CommandConfig
-  // Error handling is done by the command framework automatically
 });

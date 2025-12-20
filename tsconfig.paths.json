@@ -3,12 +3,6 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@kb-labs/analytics-sdk-node": [
-        "../kb-labs-analytics/packages/analytics-sdk-node/src/index.ts"
-      ],
-      "@kb-labs/analytics-sdk-node/*": [
-        "../kb-labs-analytics/packages/analytics-sdk-node/src/*"
-      ],
       "@kb-labs/core-runtime": [
         "../kb-labs-core/packages/core-runtime/src/index.ts"
       ],
@@ -80,6 +74,12 @@
       ],
       "@kb-labs/mind-vector-store/*": [
         "packages/mind-vector-store/src/*"
+      ],
+      "@kb-labs/plugin-contracts": [
+        "../kb-labs-plugin/packages/plugin-contracts/src/index.ts"
+      ],
+      "@kb-labs/plugin-contracts/*": [
+        "../kb-labs-plugin/packages/plugin-contracts/src/*"
       ],
       "@kb-labs/sdk": [
         "../kb-labs-sdk/packages/sdk/src/index.ts"

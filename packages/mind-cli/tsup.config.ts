@@ -17,6 +17,7 @@ export default defineConfig({
   entry: [
     'src/index.ts',
     'src/manifest.v2.ts',
+    'src/manifest.v3.ts',
     'src/application/index.ts',
     'src/application/sync.ts',
     'src/rest/index.ts',

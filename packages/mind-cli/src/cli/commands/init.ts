@@ -1,246 +1,170 @@
 /**
- * Mind init command
+ * Mind init command (V3)
+ *
+ * V3 Migration:
+ * - Default export with defineCommand
+ * - handler: { execute(ctx, input) }
+ * - NO permissions (inherited from manifest)
+ * - ctx.ui, ctx.logger, ctx.state (flat structure)
  */
 
-import { defineCommand, type CommandResult, useConfig } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { initMindStructure } from '@kb-labs/mind-indexer';
-import { MIND_ERROR_CODES } from '../../errors/error-codes';
-import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events';
 import { join } from 'node:path';
-import { promises as fsp, writeFileSync } from 'node:fs';
+import { promises as fsp } from 'node:fs';
 
-type MindInitFlags = {
-  cwd: { type: 'string'; description?: string };
-  force: { type: 'boolean'; description?: string; default?: boolean };
-  json: { type: 'boolean'; description?: string; default?: boolean };
-  verbose: { type: 'boolean'; description?: string; default?: boolean };
-  quiet: { type: 'boolean'; description?: string; default?: boolean };
-};
-
-type MindInitResult = CommandResult & {
-  mindDir?: string;
-};
-
-export const run = defineCommand<MindInitFlags, MindInitResult>({
-  name: 'mind:init',
+interface InitInput {
+  argv: string[];
   flags: {
-    cwd: {
-      type: 'string',
-      description: 'Working directory',
-    },
-    force: {
-      type: 'boolean',
-      description: 'Force initialization even if already exists',
-      default: false,
-    },
-    json: {
-      type: 'boolean',
-      description: 'Output in JSON format',
-      default: false,
-    },
-    verbose: {
-      type: 'boolean',
-      description: 'Verbose output',
-      default: false,
-    },
-    quiet: {
-      type: 'boolean',
-      description: 'Quiet output',
-      default: false,
-    },
-  },
-  analytics: {
-    startEvent: ANALYTICS_EVENTS.INIT_STARTED,
-    finishEvent: ANALYTICS_EVENTS.INIT_FINISHED,
-    actor: ANALYTICS_ACTOR.id,
-    includeFlags: true,
-  },
-  async handler(ctx, argv, flags) {
-    // ===== DEBUG: Dump PLUGIN context structure =====
-    const ctxDump = {
-      source: 'PLUGIN_COMMAND',
-      command: 'mind:init',
-      keys: Object.keys(ctx).sort(),
-      coreMetadata: {
-        host: ctx.host,
-        requestId: ctx.requestId,
-        pluginId: ctx.pluginId,
-        pluginVersion: ctx.pluginVersion,
-        tenantId: ctx.tenantId,
-      },
-      executionEnv: {
-        cwd: ctx.cwd,
-        outdir: ctx.outdir,
-      },
-      config: ctx.config,
-      ui: { type: typeof ctx.ui, keys: Object.keys(ctx.ui || {}).sort() },
-      presenter: { type: typeof ctx.presenter, keys: Object.keys(ctx.presenter || {}).sort() },
-      output: typeof ctx.output,
-      logger: typeof ctx.logger,
-      platform: {
-        type: typeof ctx.platform,
-        keys: Object.keys(ctx.platform || {}).sort(),
-        llm: !!ctx.platform?.llm,
-        vectorStore: !!ctx.platform?.vectorStore,
-        embeddings: !!ctx.platform?.embeddings,
-      },
-      runtime: {
-        available: !!ctx.runtime,
-        fs: typeof ctx.runtime?.fs,
-        config: typeof ctx.runtime?.config,
-        state: typeof ctx.runtime?.state,
-      },
-      metadata: ctx.metadata,
-      enhanced: {
-        tracker: typeof ctx.tracker,
-        success: typeof ctx.success,
-        error: typeof ctx.error,
-        env: typeof ctx.env,
-      },
-    };
+    cwd?: string;
+    force?: boolean;
+    json?: boolean;
+    verbose?: boolean;
+    quiet?: boolean;
+  };
+}
 
-    const dumpPath = '/tmp/kb-plugin-context-dump.json';
-    writeFileSync(dumpPath, JSON.stringify(ctxDump, null, 2));
+interface InitResult {
+  exitCode: number;
+  mindDir?: string;
+  artifacts?: Array<{
+    name: string;
+    path: string;
+    size: number;
+    modified: Date;
+    description: string;
+  }>;
+}
 
-    if (ctx.output) {
-      ctx.output.write(`\n📝 PLUGIN Context dump written to: ${dumpPath}\n`);
-      ctx.output.write(`Context keys (${ctxDump.keys.length}): ${ctxDump.keys.join(', ')}\n`);
-      ctx.output.write(`host: ${ctx.host}\n`);
-      ctx.output.write(`cwd: ${ctx.cwd}\n`);
-      ctx.output.write(`runtime: ${ctx.runtime ? 'AVAILABLE' : 'undefined'}\n`);
-      ctx.output.write(`runtime.fs: ${ctx.runtime?.fs ? 'AVAILABLE' : 'undefined'}\n\n`);
-    }
+// V3: Default export - REQUIRED
+export default defineCommand({
+  id: 'mind:init',
+  description: 'Initialize mind workspace',
 
-    // TEST: useConfig() auto-detection (no parameter)
-    const mindConfig = await useConfig();
-    console.log('[init] await useConfig() AUTO-DETECT:', mindConfig ? 'EXISTS' : 'UNDEFINED');
-    if (mindConfig) {
-      console.log('[init] mindConfig.scopes:', (mindConfig as any)?.scopes ? 'EXISTS' : 'NO SCOPES');
-      console.log('[init] mindConfig keys:', Object.keys(mindConfig));
-      console.log('[init] mindConfig FULL:', JSON.stringify(mindConfig, null, 2));
-    }
+  // ❌ NO permissions here - they are in manifest.v3.ts!
+  // Permissions are manifest-wide in V3
 
-    const cwd = flags.cwd || ctx.cwd;
+  handler: {
+    async execute(ctx: PluginContextV3, input: InitInput): Promise<InitResult> {
+      const startTime = Date.now();
+      const { flags } = input;
 
-    ctx.tracker.checkpoint('start');
+      const cwd = flags.cwd || ctx.cwd;
 
-    ctx.logger?.info('Mind init started', {
-      cwd,
-      command: 'mind:init',
-      force: flags.force,
-    });
+      // V3 API: Use trace for logging (logger not yet in runtime)
+      ctx.trace?.addEvent?.('mind.init.start', {
+        cwd,
+        command: 'mind:init',
+        force: flags.force,
+      });
 
-    ctx.logger?.debug('Initializing mind structure', { cwd, force: flags.force });
+      ctx.trace?.addEvent?.('mind.init.initializing', { cwd, force: flags.force });
 
-    // Initialize Mind structure
-    const mindDir = await initMindStructure({
-      cwd,
-      force: flags.force,
-      log: (entry: any) => {
-        if (!flags.quiet && !flags.json) {
-          ctx.output?.info(`Init: ${entry.msg || entry}`);
-        }
-        // Also log via logger
-        ctx.logger?.debug(`Init: ${entry.msg || entry}`, { step: 'init-structure' });
-      },
-    });
-
-    ctx.tracker.checkpoint('init-complete');
-
-    ctx.logger?.info('Mind structure initialized', {
-      mindDir,
-      cwd,
-    });
-
-    // Discover created artifacts
-    const artifacts: Array<{
-      name: string;
-      path: string;
-      size: number;
-      modified: Date;
-      description: string;
-    }> = [];
-
-    const artifactPatterns = [
-      { name: 'Index', pattern: 'index.json', description: 'Main Mind index' },
-      { name: 'API Index', pattern: 'api-index.json', description: 'API index' },
-      { name: 'Dependencies', pattern: 'deps.json', description: 'Dependencies graph' },
-      { name: 'Recent Diff', pattern: 'recent-diff.json', description: 'Recent changes diff' },
-    ];
-
-    for (const { name, pattern, description } of artifactPatterns) {
-      const artifactPath = join(mindDir, pattern);
-      try {
-        const stats = await fsp.stat(artifactPath);
-        artifacts.push({
-          name,
-          path: artifactPath,
-          size: stats.size,
-          modified: stats.mtime,
-          description,
-        });
-      } catch {
-        // Artifact doesn't exist, skip
-      }
-    }
-
-    ctx.tracker.checkpoint('complete');
-
-    ctx.logger?.info('Mind init completed', {
-      mindDir,
-      artifactsCount: artifacts.length,
-    });
-
-    // Output result
-    if (flags.json) {
-      ctx.output?.json({
-        ok: true,
-        summary: {
-          Workspace: mindDir,
-          Status: 'Initialized',
-        },
-        artifacts,
-        timingMs: ctx.tracker.total(),
-        data: {
-          mindDir,
-          cwd,
+      // Initialize Mind structure
+      const mindDir = await initMindStructure({
+        cwd,
+        force: flags.force,
+        log: (entry: any) => {
+          if (!flags.quiet && !flags.json) {
+            // V3 API: ctx.ui (not ctx.output.ui)
+            ctx.ui.info(`Init: ${entry.msg || entry}`);
+          }
+          ctx.trace?.addEvent?.('mind.init.step', { msg: entry.msg || entry });
         },
       });
-    } else if (!flags.quiet) {
-      const { ui } = ctx.output!;
 
-      const sections: Array<{ header?: string; items: string[] }> = [
-        {
-          header: 'Summary',
-          items: [
-            `Workspace: ${mindDir}`,
-            `Status: Initialized`,
-          ],
-        },
+      ctx.trace?.addEvent?.('mind.init.complete', {
+        mindDir,
+        cwd,
+      });
+
+      // Discover created artifacts
+      const artifacts: InitResult['artifacts'] = [];
+
+      const artifactPatterns = [
+        { name: 'Index', pattern: 'index.json', description: 'Main Mind index' },
+        { name: 'API Index', pattern: 'api-index.json', description: 'API index' },
+        { name: 'Dependencies', pattern: 'deps.json', description: 'Dependencies graph' },
+        { name: 'Recent Diff', pattern: 'recent-diff.json', description: 'Recent changes diff' },
       ];
 
-      if (artifacts.length > 0) {
+      for (const { name, pattern, description } of artifactPatterns) {
+        const artifactPath = join(mindDir, pattern);
+        try {
+          const stats = await fsp.stat(artifactPath);
+          artifacts.push({
+            name,
+            path: artifactPath,
+            size: stats.size,
+            modified: stats.mtime,
+            description,
+          });
+        } catch {
+          // Artifact doesn't exist, skip
+        }
+      }
+
+      ctx.trace?.addEvent?.('mind.init.artifacts', {
+        mindDir,
+        artifactsCount: artifacts.length,
+      });
+
+      const timing = Date.now() - startTime;
+
+      // Output result
+      if (flags.json) {
+        // V3 API: Write JSON to stdout directly
+        ctx.ui.info(JSON.stringify({
+          ok: true,
+          summary: {
+            Workspace: mindDir,
+            Status: 'Initialized',
+          },
+          artifacts,
+          timingMs: timing,
+          data: {
+            mindDir,
+            cwd,
+          },
+        }));
+      } else if (!flags.quiet) {
+        // V3 API: Enhanced UI with MessageOptions
         const artifactItems: string[] = [];
         for (const artifact of artifacts) {
-          artifactItems.push(`${ui.symbols.success} ${artifact.name}: ${artifact.description}`);
+          artifactItems.push(`✓ ${artifact.name}: ${artifact.description}`);
         }
-        sections.push({
-          header: 'Created Artifacts',
-          items: artifactItems,
+
+        const sections: Array<{ header?: string; items: string[] }> = [
+          {
+            header: 'Summary',
+            items: [
+              `Workspace: ${mindDir}`,
+              `Status: Initialized`,
+            ],
+          },
+        ];
+
+        if (artifacts.length > 0) {
+          sections.push({
+            header: 'Created Artifacts',
+            items: artifactItems,
+          });
+        }
+
+        // V3 API: ctx.ui.success with MessageOptions (enhanced UI)
+        ctx.ui.success('Mind workspace initialized', {
+          title: 'Mind Init',
+          sections,
+          timing,
         });
       }
 
-      const outputText = ui.sideBox({
-        title: 'Mind Init',
-        sections,
-        status: 'success',
-        timing: ctx.tracker.total(),
-      });
-      ctx.output?.write(outputText);
-    }
-
-    return { ok: true, mindDir, artifacts };
+      // V3: Return structured result with exitCode
+      return {
+        exitCode: 0,
+        mindDir,
+        artifacts,
+      };
+    },
   },
-  // TODO: onError handler was removed as it's no longer supported in CommandConfig
-  // Error handling is done by the command framework automatically
 });

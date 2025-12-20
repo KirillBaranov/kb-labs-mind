@@ -1,6 +1,4 @@
 import {
-  findNearestConfig,
-  readJsonWithDiagnostics,
   createKnowledgeService,
   createKnowledgeEngineRegistry,
   type KnowledgeServiceOptions,
@@ -11,6 +9,7 @@ import {
   type KnowledgeService,
   type PlatformServices,
 } from '@kb-labs/sdk';
+import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/sdk';
 import {
   registerMindKnowledgeEngine,
   type RuntimeAdapter,

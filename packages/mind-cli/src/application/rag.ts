@@ -92,24 +92,10 @@ export async function runRagIndex(
     console.log('[runRagIndex] Overriding sources with include/exclude', { include: options.include, exclude: options.exclude });
 
     // If config already provided (from useConfig), clone and modify it
-    // Otherwise load from file
+    // Config must be provided in V3 (via useConfig())
     let knowledgeConfig = effectiveConfig;
     if (!knowledgeConfig) {
-      // Load config from file (fallback)
-      const { findNearestConfig, readJsonWithDiagnostics } = await import('@kb-labs/sdk');
-      const { path: configPath } = await findNearestConfig({
-        startDir: options.cwd,
-        filenames: ['.kb/kb.config.json', 'kb.config.json', '.kb/knowledge.json', 'knowledge.json'],
-      });
-      console.log('[runRagIndex] Found config at:', configPath);
-      if (configPath) {
-        const result = await readJsonWithDiagnostics(configPath);
-        if (result.ok) {
-          const rawConfig = result.data as any;
-          // Extract knowledge config (support Profiles v2 and legacy)
-          knowledgeConfig = rawConfig.profiles?.[0]?.products?.mind ?? rawConfig.knowledge ?? rawConfig;
-        }
-      }
+      throw new Error('[runRagIndex] Config is required. Commands must call useConfig() and pass it to runRagIndex.');
     }
 
     // Override paths/exclude in ALL sources (ESLint-style override)

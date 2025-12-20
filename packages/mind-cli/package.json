@@ -26,7 +26,7 @@
     "./dist/*": "./dist/*"
   },
   "kb": {
-    "manifest": "./dist/manifest.v2.js"
+    "manifest": "./dist/manifest.v3.js"
   },
   "files": [
     "dist",
@@ -47,8 +47,8 @@
   },
   "dependencies": {
     "@byjohann/toon": "0.4.0",
-    "@kb-labs/analytics-sdk-node": "link:../../../kb-labs-analytics/packages/analytics-sdk-node",
     "@kb-labs/core-runtime": "link:../../../kb-labs-core/packages/core-runtime",
+    "@kb-labs/plugin-contracts": "link:../../../kb-labs-plugin/packages/plugin-contracts",
     "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-contracts": "link:../mind-contracts",
     "@kb-labs/mind-core": "link:../mind-core",
