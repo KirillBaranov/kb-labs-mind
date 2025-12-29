@@ -67,8 +67,6 @@ export async function createMindKnowledgeRuntime(
   // Use provided config (from ctx.config) or fallback to file reading for backward compatibility
   const config = options.config ?? await findAndReadConfig(options.cwd);
 
-  console.log('[createMindKnowledgeRuntime] Config scopes:', JSON.stringify(config.scopes, null, 2));
-
   // Create engine registry
   // Note: createKnowledgeEngineRegistry expects KnowledgeLogger directly, not an options object
   const engineRegistry = createKnowledgeEngineRegistry(
@@ -97,22 +95,17 @@ export async function createMindKnowledgeRuntime(
   // Create knowledge service
   // Note: KnowledgeServiceOptions expects 'registry', not 'engineRegistry'
   // Note: onProgress is not part of KnowledgeServiceOptions, it's passed to engine via options
-  try {
-    const service = createKnowledgeService({
-      config,
-      registry: engineRegistry,
-      capabilities,
-      logger: options.logger,
-    });
+  const service = createKnowledgeService({
+    config,
+    registry: engineRegistry,
+    capabilities,
+    logger: options.logger,
+  });
 
-    return {
-      service,
-      config,
-    };
-  } catch (error) {
-    console.error('[createMindKnowledgeRuntime] Failed to create knowledge service:', error);
-    throw error;
-  }
+  return {
+    service,
+    config,
+  };
 }
 
 /**

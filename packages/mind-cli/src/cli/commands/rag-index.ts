@@ -2,7 +2,7 @@
  * Mind rag-index command - build Mind knowledge indexes (V3)
  */
 
-import { defineCommand, useConfig, usePlatform, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useConfig, usePlatform, useLoader, type PluginContextV3 } from '@kb-labs/sdk';
 import { runRagIndex } from '../../application/rag';
 
 interface RagIndexInput {
@@ -40,20 +40,8 @@ export default defineCommand({
       const startTime = Date.now();
       const { flags } = input;
 
-      ctx.trace?.addEvent?.('mind.rag-index.start', {
-        command: 'mind:rag-index',
-        scope: flags.scope,
-        include: flags.include,
-        exclude: flags.exclude,
-        skipDeduplication: flags.skipDeduplication,
-      });
-
       // Get Mind config using useConfig() helper
       const mindConfig = await useConfig();
-      ctx.trace?.addEvent?.('mind.rag-index.config', {
-        hasConfig: !!mindConfig,
-        hasScopes: !!(mindConfig as any)?.scopes,
-      });
 
       const cwd = flags.cwd || ctx.cwd;
       const scopeId = flags.scope;
@@ -64,9 +52,9 @@ export default defineCommand({
       // Get platform for analytics (not passed to Mind - child process uses usePlatform())
       const platform = usePlatform();
 
-      if (!flags.quiet && !flags.json) {
-        ctx.ui.info('Building Mind RAG index...');
-      }
+      // Use loader for visual feedback (unless quiet/json mode)
+      const loader = !flags.quiet && !flags.json ? useLoader('Building Mind RAG index...') : null;
+      loader?.start();
 
       try {
         // Pass mindConfig from useConfig() - avoids reloading config in child process
@@ -82,60 +70,54 @@ export default defineCommand({
         });
 
         const timing = Date.now() - startTime;
+        loader?.succeed(`Index built in ${(timing / 1000).toFixed(1)}s`);
 
         // Track analytics if available (runs in parent process)
         platform?.analytics?.track?.('mind.rag-index', {
           scopeIds: result.scopeIds,
         }).catch(() => {});
 
-        ctx.trace?.addEvent?.('mind.rag-index.complete', {
-          scopes: result.scopeIds,
-          timingMs: timing,
-        });
-
-        const scopesLabel =
-          result.scopeIds.length === 1
-            ? `scope "${result.scopeIds[0]}"`
-            : `${result.scopeIds.length} scopes`;
-
         if (flags.json) {
-          ctx.ui.info(JSON.stringify({
+          ctx.ui.json({
             ok: true,
             scopes: result.scopeIds,
+            stats: result.stats,
             adapters: result.adapters,
             timingMs: timing,
-          }));
-        } else if (!flags.quiet) {
-          // Check if any adapter is a fallback
-          const formatAdapter = (name: string): string => {
-            const isFallback = name.includes('(fallback)');
-            return isFallback ? `⚠️  ${name}` : `✓ ${name}`;
-          };
-
-          const sections: Array<{ header?: string; items: string[] }> = [
-            {
-              items: [
-                `Updated ${scopesLabel}`,
-                `Scopes: ${result.scopeIds.join(', ')}`,
-              ],
-            },
-            {
-              header: 'Adapters',
-              items: [
-                `Vector Store: ${formatAdapter(result.adapters.vectorStore)}`,
-                `Embeddings:   ${formatAdapter(result.adapters.embeddings)}`,
-                `Storage:      ${formatAdapter(result.adapters.storage)}`,
-                `LLM:          ${formatAdapter(result.adapters.llm)}`,
-                `Cache:        ${formatAdapter(result.adapters.cache)}`,
-              ],
-            },
-          ];
-
-          ctx.ui.success('Mind RAG index updated', {
-            title: 'Mind RAG Index',
-            sections,
-            timing,
           });
+        } else if (!flags.quiet) {
+          const { stats } = result;
+          const percentage = stats.filesDiscovered > 0
+            ? ((stats.filesProcessed / stats.filesDiscovered) * 100).toFixed(1)
+            : '0.0';
+          const chunksPerFile = stats.filesProcessed > 0
+            ? (stats.chunksStored / stats.filesProcessed).toFixed(2)
+            : '0.00';
+
+          ctx.ui.success(
+            `Indexed ${stats.filesProcessed} files, ${stats.filesSkipped} skipped, ${stats.chunksStored} chunks`,
+            {
+              title: 'Mind RAG Index',
+              sections: [
+                {
+                  header: 'Files',
+                  items: [
+                    `Discovered: ${stats.filesDiscovered}`,
+                    `Processed:  ${stats.filesProcessed} (${percentage}%)`,
+                    `Skipped:    ${stats.filesSkipped}`,
+                  ],
+                },
+                {
+                  header: 'Chunks',
+                  items: [
+                    `Stored: ${stats.chunksStored}`,
+                    `Rate:   ${chunksPerFile}/file`,
+                  ],
+                },
+              ],
+              timing,
+            }
+          );
         }
 
         return {
@@ -147,8 +129,7 @@ export default defineCommand({
       } catch (error) {
         const timing = Date.now() - startTime;
         const message = error instanceof Error ? error.message : String(error);
-
-        ctx.trace?.addEvent?.('mind.rag-index.error', { error: message, timingMs: timing });
+        loader?.fail(`Index build failed: ${message}`);
 
         if (flags.json) {
           ctx.ui.info(JSON.stringify({

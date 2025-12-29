@@ -52,6 +52,12 @@ export interface AdapterInfo {
 export interface RagIndexResult {
   scopeIds: string[];
   adapters: AdapterInfo;
+  stats: {
+    filesDiscovered: number;
+    filesProcessed: number;
+    filesSkipped: number;
+    chunksStored: number;
+  };
 }
 
 export interface RagIndexOptionsWithRuntime extends RagIndexOptions {
@@ -89,8 +95,6 @@ export async function runRagIndex(
   // If include/exclude provided, override paths in all sources (ESLint-style)
   let effectiveConfig = options.config;
   if (options.include || options.exclude) {
-    console.log('[runRagIndex] Overriding sources with include/exclude', { include: options.include, exclude: options.exclude });
-
     // If config already provided (from useConfig), clone and modify it
     // Config must be provided in V3 (via useConfig())
     let knowledgeConfig = effectiveConfig;
@@ -100,7 +104,6 @@ export async function runRagIndex(
 
     // Override paths/exclude in ALL sources (ESLint-style override)
     if (knowledgeConfig?.sources && Array.isArray(knowledgeConfig.sources)) {
-      console.log('[runRagIndex] Original sources count:', knowledgeConfig.sources.length);
       knowledgeConfig = { ...knowledgeConfig };
       knowledgeConfig.sources = knowledgeConfig.sources.map((source: any) => {
         const overriddenSource = { ...source };
@@ -117,12 +120,9 @@ export async function runRagIndex(
 
         return overriddenSource;
       });
-      console.log('[runRagIndex] Overridden sources:', JSON.stringify(knowledgeConfig.sources, null, 2));
       effectiveConfig = knowledgeConfig;
     }
   }
-
-  console.log('[runRagIndex] Passing config to createMindKnowledgeRuntime:', effectiveConfig ? 'CUSTOM CONFIG' : 'undefined (will load from file)');
 
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
@@ -151,9 +151,23 @@ export async function runRagIndex(
     process.env.KB_SKIP_DEDUPLICATION = 'true';
   }
 
+  // Aggregate stats across all scopes
+  const aggregatedStats = {
+    filesDiscovered: 0,
+    filesProcessed: 0,
+    filesSkipped: 0,
+    chunksStored: 0,
+  };
+
   try {
     for (const scopeId of scopeIds) {
-      await runtime.service.index(scopeId);
+      const scopeStats = await runtime.service.index(scopeId);
+      if (scopeStats) {
+        aggregatedStats.filesDiscovered += scopeStats.filesDiscovered;
+        aggregatedStats.filesProcessed += scopeStats.filesProcessed;
+        aggregatedStats.filesSkipped += scopeStats.filesSkipped;
+        aggregatedStats.chunksStored += scopeStats.chunksStored;
+      }
     }
   } finally {
     // Restore original env var value
@@ -170,7 +184,7 @@ export async function runRagIndex(
     globalOrchestrator.invalidateCache(scopeIds);
   }
 
-  return { scopeIds, adapters };
+  return { scopeIds, adapters, stats: aggregatedStats };
 }
 
 export interface RagQueryOptions {
