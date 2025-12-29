@@ -1,6 +1,6 @@
 {
   "name": "sample-project",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sample project fixture for testing Mind indexing functionality",
   "type": "module",
   "main": "src/index.ts",

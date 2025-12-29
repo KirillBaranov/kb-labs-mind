@@ -8,16 +8,19 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./contract": {
+      "types": "./dist/contract.d.ts",
       "import": "./dist/contract.js",
-      "types": "./dist/contract.d.ts"
+      "require": "./dist/contract.js"
     },
     "./schema": {
+      "types": "./dist/schema.d.ts",
       "import": "./dist/schema.js",
-      "types": "./dist/schema.d.ts"
+      "require": "./dist/schema.js"
     },
     "./dist/*": "./dist/*"
   },

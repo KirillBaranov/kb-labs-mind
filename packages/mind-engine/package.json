@@ -8,16 +8,19 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./sync": {
+      "types": "./dist/sync/index.d.ts",
       "import": "./dist/sync/index.js",
-      "types": "./dist/sync/index.d.ts"
+      "require": "./dist/sync/index.js"
     },
     "./adapters/runtime-adapter": {
+      "types": "./dist/adapters/runtime-adapter.d.ts",
       "import": "./dist/adapters/runtime-adapter.js",
-      "types": "./dist/adapters/runtime-adapter.d.ts"
+      "require": "./dist/adapters/runtime-adapter.js"
     }
   },
   "files": [

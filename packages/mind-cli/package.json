@@ -8,20 +8,24 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./application/sync": {
+      "types": "./dist/application/sync.d.ts",
       "import": "./dist/application/sync.js",
-      "types": "./dist/application/sync.d.ts"
+      "require": "./dist/application/sync.js"
     },
     "./studio/widgets/query-widget": {
+      "types": "./dist/studio/widgets/query-widget.d.ts",
       "import": "./dist/studio/widgets/query-widget.js",
-      "types": "./dist/studio/widgets/query-widget.d.ts"
+      "require": "./dist/studio/widgets/query-widget.js"
     },
     "./studio/widgets/verify-widget": {
+      "types": "./dist/studio/widgets/verify-widget.d.ts",
       "import": "./dist/studio/widgets/verify-widget.js",
-      "types": "./dist/studio/widgets/verify-widget.d.ts"
+      "require": "./dist/studio/widgets/verify-widget.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -46,7 +50,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@byjohann/toon": "0.4.0",
     "@kb-labs/plugin-contracts": "link:../../../kb-labs-plugin/packages/plugin-contracts",
     "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-contracts": "link:../mind-contracts",
@@ -54,8 +57,6 @@
     "@kb-labs/mind-engine": "link:../mind-engine",
     "@kb-labs/mind-indexer": "link:../mind-indexer",
     "@kb-labs/mind-orchestrator": "link:../mind-orchestrator",
-    "@kb-labs/mind-types": "link:../mind-types",
-    "fast-glob": "^3.3.2",
     "react": "^18.3.1",
     "zod": "^3.23.8"
   },

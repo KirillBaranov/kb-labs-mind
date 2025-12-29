@@ -70,14 +70,6 @@ export default defineCommand({
       const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
       const profileId = flags.profile;
 
-      ctx.trace?.addEvent?.('mind.rag-query.start', {
-        command: 'mind:rag-query',
-        mode: flags.mode,
-        agent: flags.agent,
-        scopeId,
-        intent,
-      });
-
       // Get platform for analytics (not passed to Mind - child process uses usePlatform())
       const platform = usePlatform();
 
@@ -141,8 +133,6 @@ export default defineCommand({
             scopeId,
             intent,
           }).catch(() => {});
-
-          ctx.trace?.addEvent?.('mind.rag-query.agent.complete', { mode, scopeId });
 
           // Output clean JSON to stdout
           console.log(JSON.stringify(result));

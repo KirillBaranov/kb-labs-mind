@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "@kb-labs/mind-cli": "workspace:*",
-    "@kb-labs/mind-core": "link:../mind-core",
-    "@kb-labs/mind-indexer": "link:../mind-indexer"
+    "@kb-labs/mind-core": "link:../mind-core"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",
