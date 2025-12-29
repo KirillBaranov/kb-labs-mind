@@ -58,7 +58,7 @@ export class ChunkingStage implements PipelineStage {
       };
     }
 
-    context.logger.info('Chunking files', {
+    context.logger.debug('Chunking files', {
       filesCount: filePaths.length,
     });
 
@@ -129,7 +129,7 @@ export class ChunkingStage implements PipelineStage {
     context.stats.filesSkipped = skippedCount;
     context.chunksProcessed = this.chunks.length;
 
-    context.logger.info('Chunking complete', {
+    context.logger.debug('Chunking complete', {
       filesProcessed: processedCount,
       filesSkipped: skippedCount,
       totalChunks: this.chunks.length,

@@ -32,7 +32,7 @@ export class FileDiscoveryStage implements PipelineStage {
   private discoveredFiles: FileMetadata[] = [];
 
   async execute(context: PipelineContext): Promise<StageResult> {
-    context.logger.info('Discovering files', {
+    context.logger.debug('Discovering files', {
       sources: context.sources.length,
     });
 
@@ -48,7 +48,7 @@ export class FileDiscoveryStage implements PipelineStage {
     context.filePaths = this.discoveredFiles.map(f => f.relativePath);
     context.stats.filesDiscovered = this.discoveredFiles.length;
 
-    context.logger.info('File discovery complete', {
+    context.logger.debug('File discovery complete', {
       filesFound: this.discoveredFiles.length,
       totalSize: `${(this.discoveredFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)} MB`,
     });
@@ -153,7 +153,7 @@ export class FileDiscoveryStage implements PipelineStage {
     if (data.discoveredFiles) {
       context.filePaths = data.discoveredFiles;
       context.stats.filesDiscovered = data.discoveredFiles.length;
-      context.logger.info('Restored discovered files from checkpoint', {
+      context.logger.debug('Restored discovered files from checkpoint', {
         count: data.discoveredFiles.length,
       });
     }

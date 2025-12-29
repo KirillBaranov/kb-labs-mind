@@ -78,7 +78,7 @@ export class ParallelChunkingStage implements PipelineStage {
       };
     }
 
-    context.logger.info('Starting memory-aware parallel chunking', {
+    context.logger.debug('Starting memory-aware parallel chunking', {
       filesCount: filePaths.length,
       safeThreshold: this.options.safeThreshold ?? 0.7,
       minConcurrency: this.options.minConcurrency ?? 1,
@@ -164,7 +164,7 @@ export class ParallelChunkingStage implements PipelineStage {
     context.chunksProcessed = this.chunks.length;
 
     const queueStats = memoryQueue.getStats();
-    context.logger.info('Memory-aware parallel chunking complete', {
+    context.logger.debug('Memory-aware parallel chunking complete', {
       filesProcessed: processedCount,
       totalChunks: this.chunks.length,
       peakActiveTasks: queueStats.activeTasks,

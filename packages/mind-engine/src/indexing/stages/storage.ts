@@ -81,7 +81,7 @@ export class StorageStage implements PipelineStage {
       };
     }
 
-    context.logger.info('Storing chunks', {
+    context.logger.debug('Storing chunks', {
       chunksCount: this.chunks.length,
       deduplication: this.options.deduplication ?? true,
       updateExisting: this.options.updateExisting ?? true,
@@ -205,7 +205,7 @@ export class StorageStage implements PipelineStage {
     context.chunksStored = this.storedCount + this.updatedCount;
     context.stats.totalChunks = context.chunksStored;
 
-    context.logger.info('Storage complete', {
+    context.logger.debug('Storage complete', {
       chunksStored: this.storedCount,
       chunksUpdated: this.updatedCount,
       chunksSkipped: this.skippedCount,
@@ -274,7 +274,7 @@ export class StorageStage implements PipelineStage {
     }
 
     if (skippedByHash > 0) {
-      context.logger.info('Skipped chunks from unchanged files', {
+      context.logger.debug('Skipped chunks from unchanged files', {
         skipped: skippedByHash,
         uniqueFiles: existingHashChunks.size,
       });

@@ -115,7 +115,7 @@ export class EmbeddingStage implements PipelineStage {
     const maxConcurrency = this.options.maxConcurrency ?? 5;
     const batchSize = this.calculateBatchSize();
 
-    context.logger.info('Generating embeddings with rate limiting', {
+    context.logger.debug('Generating embeddings with rate limiting', {
       chunksCount: this.chunks.length,
       provider: this.embeddingProvider.constructor.name,
       dimension: this.embeddingProvider.dimension,
@@ -283,7 +283,7 @@ export class EmbeddingStage implements PipelineStage {
 
     // Log final rate limiter stats
     const rlStats = this.rateLimiter.getStats();
-    context.logger.info('Embedding complete', {
+    context.logger.debug('Embedding complete', {
       chunksProcessed: processedCount,
       chunksFailed: errorCount,
       totalEmbeddings: this.chunksWithEmbeddings.length,

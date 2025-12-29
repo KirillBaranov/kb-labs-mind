@@ -54,7 +54,7 @@ export class IndexingPipeline {
   async execute(context: PipelineContext): Promise<PipelineResult> {
     const startTime = Date.now();
 
-    context.logger.info('Pipeline started', {
+    context.logger.debug('Pipeline started', {
       stages: this.stages.map(s => s.name),
       sources: context.sources.length,
     });
@@ -76,7 +76,7 @@ export class IndexingPipeline {
 
       const duration = Date.now() - startTime;
 
-      context.logger.info('Pipeline completed', {
+      context.logger.debug('Pipeline completed', {
         duration: `${(duration / 1000).toFixed(2)}s`,
         filesProcessed: context.stats.filesProcessed,
         filesSkipped: context.stats.filesSkipped,
@@ -122,7 +122,7 @@ export class IndexingPipeline {
   ): Promise<void> {
     const stageStartTime = Date.now();
 
-    context.logger.info(`Stage: ${stage.name}`, {
+    context.logger.debug(`Stage: ${stage.name}`, {
       status: 'starting',
       description: stage.description,
     });
@@ -138,7 +138,7 @@ export class IndexingPipeline {
 
       // Log result
       const duration = Date.now() - stageStartTime;
-      context.logger.info(`Stage: ${stage.name}`, {
+      context.logger.debug(`Stage: ${stage.name}`, {
         status: result.success ? 'completed' : 'failed',
         duration: `${(duration / 1000).toFixed(2)}s`,
         message: result.message,
@@ -201,7 +201,7 @@ export class IndexingPipeline {
     checkpoint: CheckpointData,
     context: PipelineContext
   ): Promise<void> {
-    context.logger.info('Restoring from checkpoint', {
+    context.logger.debug('Restoring from checkpoint', {
       stage: checkpoint.stage,
       processedFiles: checkpoint.processedFiles.length,
       timestamp: new Date(checkpoint.timestamp).toISOString(),

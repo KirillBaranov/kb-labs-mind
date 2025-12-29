@@ -20,6 +20,7 @@ import {
   type KnowledgeEngineRegistry,
   type KnowledgeExecutionContext,
   type KnowledgeIndexOptions,
+  type IndexingStats,
 } from '@kb-labs/sdk';
 import * as path from 'node:path';
 import fs from 'fs-extra';
@@ -868,7 +869,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       const storageType = this.options.learning.storage;
       const resolvedStorage = platform?.storage;
 
-      this.runtime.log?.('info', 'Initializing self-learning system', {
+      this.runtime.log?.('debug', 'Initializing self-learning system', {
         enabled: this.options.learning.enabled,
         storageType,
         platformStorage: !!platform?.storage,
@@ -1001,7 +1002,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         this.runtime,
       );
 
-      this.runtime.log?.('info', 'Reasoning engine initialized', {
+      this.runtime.log?.('debug', 'Reasoning engine initialized', {
         maxDepth: this.options.search.reasoning.maxDepth,
         complexityThreshold: this.options.search.reasoning.complexityThreshold,
         maxSubqueries: this.options.search.reasoning.planning.maxSubqueries,
@@ -1034,7 +1035,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   async index(
     sources: KnowledgeSource[],
     options: KnowledgeIndexOptions,
-  ): Promise<void> {
+  ): Promise<IndexingStats> {
     // Pipeline-based Indexing Architecture
     // Breaks down monolithic index() into independent, testable stages
 
@@ -1092,7 +1093,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     if (discoveredFiles.length === 0) {
       this.runtime.log?.('warn', `No files found for scope ${options.scope.id}`);
-      return;
+      return {
+        filesDiscovered: 0,
+        filesProcessed: 0,
+        filesSkipped: 0,
+        chunksStored: 0,
+        chunksUpdated: 0,
+        chunksSkipped: 0,
+        errorCount: 0,
+        durationMs: Date.now() - context.stats.startTime,
+      };
     }
 
     // Add filtering stage to skip unchanged files (incremental indexing optimization)
@@ -1115,11 +1125,20 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const filteredFiles = filteringStage.getFilteredFiles();
 
     if (filteredFiles.length === 0) {
-      this.runtime.log?.('info', `All files unchanged, skipping indexing for scope ${options.scope.id}`);
-      return;
+      this.runtime.log?.('debug', `All files unchanged, skipping indexing for scope ${options.scope.id}`);
+      return {
+        filesDiscovered: context.stats.filesDiscovered,
+        filesProcessed: 0,
+        filesSkipped: context.stats.filesDiscovered,
+        chunksStored: 0,
+        chunksUpdated: 0,
+        chunksSkipped: 0,
+        errorCount: 0,
+        durationMs: Date.now() - context.stats.startTime,
+      };
     }
 
-    this.runtime.log?.('info', `Filtered files for indexing`, {
+    this.runtime.log?.('debug', `Filtered files for indexing`, {
       totalFiles: discoveredFiles.length,
       filesToIndex: filteredFiles.length,
       skipped: discoveredFiles.length - filteredFiles.length,
@@ -1144,7 +1163,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     if (chunks.length === 0) {
       this.runtime.log?.('warn', `No chunks generated for scope ${options.scope.id}`);
-      return;
+      return {
+        filesDiscovered: context.stats.filesDiscovered,
+        filesProcessed: context.stats.filesProcessed,
+        filesSkipped: context.stats.filesSkipped,
+        chunksStored: 0,
+        chunksUpdated: 0,
+        chunksSkipped: 0,
+        errorCount: 0,
+        durationMs: Date.now() - context.stats.startTime,
+      };
     }
 
     // Create embedding provider adapter
@@ -1226,8 +1254,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // Execute storage
     await storageStage.execute(context);
 
-    // Log final stats
-    this.runtime.log?.('info', `Indexing complete`, {
+    // Log final stats (debug level - UI will show summary)
+    this.runtime.log?.('debug', `Indexing complete`, {
       scopeId: options.scope.id,
       filesDiscovered: context.stats.filesDiscovered,
       filesProcessed: context.stats.filesProcessed,
@@ -1236,6 +1264,18 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       errors: context.stats.errors.length,
       duration: `${((Date.now() - context.stats.startTime) / 1000).toFixed(2)}s`,
     });
+
+    // Return indexing statistics
+    return {
+      filesDiscovered: context.stats.filesDiscovered,
+      filesProcessed: context.stats.filesProcessed,
+      filesSkipped: context.stats.filesSkipped,
+      chunksStored: context.chunksStored ?? 0,
+      chunksUpdated: 0, // TODO: track separately in StorageStage
+      chunksSkipped: 0, // TODO: track separately in StorageStage
+      errorCount: context.stats.errors.length,
+      durationMs: Date.now() - context.stats.startTime,
+    };
   }
 
   async query(
@@ -1550,19 +1590,19 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         queryVector: queryVector.values,
       };
 
-      this.runtime.log?.('info', 'Saving query history', {
+      this.runtime.log?.('debug', 'Saving query history', {
         queryId,
         queryText: query.text.substring(0, 50),
         chunksCount: chunks.length,
         hasQueryHistory: !!this.queryHistory,
         queryVectorLength: queryVector.values.length,
       });
-      
+
       // Save query history
       // For testing: await to see errors immediately (remove await in production)
       try {
         await this.queryHistory.save(historyEntry);
-        this.runtime.log?.('info', 'Query history saved successfully', { 
+        this.runtime.log?.('debug', 'Query history saved successfully', {
           queryId,
           queryText: query.text.substring(0, 30),
         });
@@ -1799,7 +1839,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         absolute: false,
       });
 
-      this.runtime.log?.('info', `Found ${files.length} files for source ${source.id}`, {
+      this.runtime.log?.('debug', `Found ${files.length} files for source ${source.id}`, {
         sourceId: source.id,
         paths: source.paths,
         filesCount: files.length,
@@ -1840,7 +1880,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       }
     }
     
-    this.runtime.log?.('info', `Total chunks collected: ${chunkList.length}`, {
+    this.runtime.log?.('debug', `Total chunks collected: ${chunkList.length}`, {
       sourcesCount: sources.length,
       totalChunks: chunkList.length,
       filesCount: fileMetadata.size,
