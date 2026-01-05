@@ -123,7 +123,7 @@ export default defineCommand({
             mode,
             debug: flags.debug,
             broker: undefined, // Gracefully falls back to in-memory
-            platform: undefined, // Let child process use usePlatform() for IPC proxies
+            platform, // Pass platform for analytics adapter
           });
 
           // Track analytics if available
@@ -193,7 +193,7 @@ export default defineCommand({
           intent,
           limit,
           profileId,
-          platform: undefined, // Let child process use usePlatform()
+          platform, // Pass platform for analytics adapter
           runtime: undefined, // Runtime context not available in CLI
           onProgress: (stage: string, details?: string) => {
             if (flags.quiet || format === 'json' || format === 'json-pretty') return;

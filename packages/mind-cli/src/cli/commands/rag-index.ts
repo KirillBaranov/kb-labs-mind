@@ -58,7 +58,7 @@ export default defineCommand({
 
       try {
         // Pass mindConfig from useConfig() - avoids reloading config in child process
-        // DON'T pass platform - let child process use usePlatform() to get IPC proxies
+        // IMPORTANT: Pass platform so Mind engine uses wrapped adapters with analytics tracking
         const result = await runRagIndex({
           cwd,
           scopeId,
@@ -66,7 +66,7 @@ export default defineCommand({
           exclude,
           skipDeduplication,
           config: mindConfig,
-          platform: undefined,
+          platform,
         });
 
         const timing = Date.now() - startTime;

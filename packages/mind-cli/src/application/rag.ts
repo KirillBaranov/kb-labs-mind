@@ -96,11 +96,8 @@ export async function runRagIndex(
   let effectiveConfig = options.config;
   if (options.include || options.exclude) {
     // If config already provided (from useConfig), clone and modify it
-    // Config must be provided in V3 (via useConfig())
+    // If not provided, will be loaded by createMindKnowledgeRuntime
     let knowledgeConfig = effectiveConfig;
-    if (!knowledgeConfig) {
-      throw new Error('[runRagIndex] Config is required. Commands must call useConfig() and pass it to runRagIndex.');
-    }
 
     // Override paths/exclude in ALL sources (ESLint-style override)
     if (knowledgeConfig?.sources && Array.isArray(knowledgeConfig.sources)) {
@@ -381,8 +378,6 @@ export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
 export async function runAgentRagQuery(
   options: AgentRagQueryOptions,
 ): Promise<AgentRagQueryResult> {
-  // Get LLM from platform
-  const llm = useLLM();
   const platformBroker = options.platform?.cache
     ? {
         get: <T>(key: string) => options.platform!.cache!.get<T>(key),
@@ -391,19 +386,17 @@ export async function runAgentRagQuery(
       }
     : undefined;
 
-  // Reuse or create global orchestrator for cache persistence
-  // NOTE: Broker must be passed on first creation - cannot be changed later
-  if (!globalOrchestrator) {
-    globalOrchestrator = createAgentQueryOrchestrator({
-      llm,
-      broker: options.broker ?? platformBroker, // Pass broker for persistent caching
-      analyticsAdapter: options.platform?.analytics ?? null,
-      config: {
-        mode: options.mode ?? 'auto',
-        autoDetectComplexity: true,
-      },
-    });
-  }
+  // Always recreate orchestrator to use fresh LLM from useLLM()
+  // This ensures analytics wrappers are always applied
+  globalOrchestrator = createAgentQueryOrchestrator({
+    llm: useLLM(), // Always use fresh LLM with analytics wrapper
+    broker: options.broker ?? platformBroker, // Pass broker for persistent caching
+    analyticsAdapter: options.platform?.analytics ?? null,
+    config: {
+      mode: options.mode ?? 'auto',
+      autoDetectComplexity: true,
+    },
+  });
 
   const orchestrator = globalOrchestrator;
 
