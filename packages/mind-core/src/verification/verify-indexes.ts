@@ -5,7 +5,7 @@
  * Moved from mind-gateway to break circular dependency (TASK-004)
  */
 
-import { readJson, computeJsonHash } from '@kb-labs/mind-indexer';
+import { readJson, computeJsonHash } from '../utils/json';
 import { sha256 } from '../utils/hash';
 import { promises as fsp } from 'node:fs';
 
