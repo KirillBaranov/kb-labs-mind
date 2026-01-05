@@ -3,6 +3,8 @@
 import {
   usePlatform,
   useLogger,
+  useLLM,
+  useEmbeddings,
   MemoryHistoryStore,
   MemoryFeedbackStore,
   createKnowledgeError,
@@ -820,21 +822,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     };
     
     this.vectorStore = createVectorStore(vectorStoreConfig, this.runtime, platform);
-    
-    // Create embedding provider
-    if (platform?.embeddings) {
-      this.embeddingProvider = new PlatformEmbeddingProvider(platform.embeddings);
-    } else {
-      const embeddingRuntime: EmbeddingRuntimeAdapter = {
-        fetch: this.runtime.fetch as any,
-        env: this.runtime.env,
-        analytics: this.runtime.analytics,
-      };
-      this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
+
+    // Create embedding provider - ALWAYS use platform.embeddings (with analytics wrapper)
+    const embeddings = platform?.embeddings ?? useEmbeddings();
+    if (!embeddings) {
+      throw new Error('Embeddings adapter not available. Ensure platform is initialized with embeddings adapter.');
     }
+    this.embeddingProvider = new PlatformEmbeddingProvider(embeddings);
     
-    // Use platform LLM (platform provides noop fallback if unavailable)
-    this.llm = platform?.llm ?? null;
+    // Use LLM from SDK hook
+    this.llm = useLLM() ?? null;
 
     // Create LLM compressor if enabled and LLM available
     if (this.options.search.optimization.compression.llm.enabled && this.llm) {
@@ -1014,18 +1011,9 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   }
 
   async init(options?: MindEngineOptions): Promise<void> {
-    if (options?.embedding) {
-      const embeddingConfig: EmbeddingProviderConfig = {
-        type: options.embedding.type,
-        provider: options.embedding.provider,
-      };
-      const embeddingRuntime: EmbeddingRuntimeAdapter = {
-        fetch: this.runtime.fetch as any, // Type compatibility
-        env: this.runtime.env,
-        analytics: this.runtime.analytics,
-      };
-      this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
-    }
+    // REMOVED: Fallback embedding provider creation
+    // Mind MUST use only platform.embeddings (PlatformEmbeddingProvider)
+    // No alternatives allowed - ensures analytics tracking works
   }
 
   async dispose(): Promise<void> {
@@ -1993,7 +1981,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
   private async embedChunks(chunks: MindChunk[]) {
     const texts = chunks.map(chunk => chunk.text);
-    
+
     // Track analytics
     const startTime = Date.now();
     this.runtime.analytics?.track('rag.embed_chunks.start', {
