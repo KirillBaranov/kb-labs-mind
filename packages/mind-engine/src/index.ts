@@ -1044,10 +1044,18 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // await this.vectorStore.replaceScope(options.scope.id, []);
 
     // Create pipeline context
+    const effectiveWorkspaceRoot = options.workspaceRoot ?? this.workspaceRoot;
+    console.log('[Mind Engine DEBUG] index() called with:');
+    console.log('[Mind Engine DEBUG]   options.workspaceRoot:', options.workspaceRoot);
+    console.log('[Mind Engine DEBUG]   this.workspaceRoot:', this.workspaceRoot);
+    console.log('[Mind Engine DEBUG]   effectiveWorkspaceRoot:', effectiveWorkspaceRoot);
+    console.log('[Mind Engine DEBUG]   sources count:', sources.length);
+    console.log('[Mind Engine DEBUG]   sources[0].paths:', sources[0]?.paths);
+
     const context: any = {
       sources,
       scopeId: options.scope.id,
-      workspaceRoot: this.workspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
+      workspaceRoot: effectiveWorkspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
       logger,
       memoryMonitor,
       onProgress: undefined, // TODO: wire up progress reporting

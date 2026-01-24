@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import cfg from '@kb-labs/devkit/vitest/node.js';
+import cfg from '@kb-labs/devkit/vitest/node';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 

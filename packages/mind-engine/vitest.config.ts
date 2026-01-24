@@ -1,4 +1,4 @@
-import config from "@kb-labs/devkit/vitest/node.js";
+import config from "@kb-labs/devkit/vitest/node";
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({

@@ -158,7 +158,9 @@ export async function runRagIndex(
 
   try {
     for (const scopeId of scopeIds) {
+      console.log('[runRagIndex DEBUG] Calling service.index for scopeId:', scopeId);
       const scopeStats = await runtime.service.index(scopeId);
+      console.log('[runRagIndex DEBUG] service.index returned:', scopeStats);
       if (scopeStats) {
         aggregatedStats.filesDiscovered += scopeStats.filesDiscovered;
         aggregatedStats.filesProcessed += scopeStats.filesProcessed;

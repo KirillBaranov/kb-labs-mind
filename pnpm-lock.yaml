@@ -11,6 +11,9 @@ importers:
       '@kb-labs/devkit':
         specifier: link:../kb-labs-devkit
         version: link:../kb-labs-devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.9.1
       '@typescript-eslint/eslint-plugin':
         specifier: ^8
         version: 8.44.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0)(typescript@5.9.2))(eslint@9.35.0)(typescript@5.9.2)
@@ -72,15 +75,6 @@ importers:
 
   packages/mind-cli:
     dependencies:
-      '@byjohann/toon':
-        specifier: 0.4.0
-        version: 0.4.0
-      '@kb-labs/analytics-sdk-node':
-        specifier: link:../../../kb-labs-analytics/packages/analytics-sdk-node
-        version: link:../../../kb-labs-analytics/packages/analytics-sdk-node
-      '@kb-labs/core-runtime':
-        specifier: link:../../../kb-labs-core/packages/core-runtime
-        version: link:../../../kb-labs-core/packages/core-runtime
       '@kb-labs/mind-contracts':
         specifier: link:../mind-contracts
         version: link:../mind-contracts
@@ -93,21 +87,15 @@ importers:
       '@kb-labs/mind-indexer':
         specifier: link:../mind-indexer
         version: link:../mind-indexer
-      '@kb-labs/mind-llm':
-        specifier: link:../mind-llm
-        version: link:../mind-llm
       '@kb-labs/mind-orchestrator':
         specifier: link:../mind-orchestrator
         version: link:../mind-orchestrator
-      '@kb-labs/mind-types':
-        specifier: link:../mind-types
-        version: link:../mind-types
+      '@kb-labs/plugin-contracts':
+        specifier: link:../../../kb-labs-plugin/packages/plugin-contracts
+        version: link:../../../kb-labs-plugin/packages/plugin-contracts
       '@kb-labs/sdk':
         specifier: link:../../../kb-labs-sdk/packages/sdk
         version: link:../../../kb-labs-sdk/packages/sdk
-      fast-glob:
-        specifier: ^3.3.2
-        version: 3.3.3
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -139,9 +127,9 @@ importers:
 
   packages/mind-contracts:
     dependencies:
-      '@kb-labs/knowledge-contracts':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -171,8 +159,11 @@ importers:
   packages/mind-core:
     dependencies:
       '@kb-labs/mind-types':
-        specifier: workspace:*
+        specifier: link:../mind-types
         version: link:../mind-types
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
     devDependencies:
       '@kb-labs/devkit':
         specifier: link:../../../kb-labs-devkit
@@ -195,9 +186,9 @@ importers:
 
   packages/mind-embeddings:
     dependencies:
-      '@kb-labs/knowledge-contracts':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
     devDependencies:
       '@kb-labs/devkit':
         specifier: link:../../../kb-labs-devkit
@@ -220,12 +211,12 @@ importers:
 
   packages/mind-engine:
     dependencies:
+      '@kb-labs/mind-core':
+        specifier: link:../mind-core
+        version: link:../mind-core
       '@kb-labs/mind-embeddings':
         specifier: link:../mind-embeddings
         version: link:../mind-embeddings
-      '@kb-labs/mind-llm':
-        specifier: link:../mind-llm
-        version: link:../mind-llm
       '@kb-labs/mind-types':
         specifier: link:../mind-types
         version: link:../mind-types
@@ -275,6 +266,9 @@ importers:
       '@types/node':
         specifier: ^24.3.3
         version: 24.9.1
+      '@types/picomatch':
+        specifier: ^4.0.2
+        version: 4.0.2
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -293,9 +287,6 @@ importers:
       '@kb-labs/mind-core':
         specifier: link:../mind-core
         version: link:../mind-core
-      '@kb-labs/mind-indexer':
-        specifier: link:../mind-indexer
-        version: link:../mind-indexer
     devDependencies:
       '@kb-labs/devkit':
         specifier: link:../../../kb-labs-devkit
@@ -318,9 +309,6 @@ importers:
 
   packages/mind-indexer:
     dependencies:
-      '@kb-labs/core-sys':
-        specifier: link:../../../kb-labs-core/packages/core-sys
-        version: link:../../../kb-labs-core/packages/core-sys
       '@kb-labs/mind-adapters':
         specifier: link:../mind-adapters
         version: link:../mind-adapters
@@ -330,6 +318,9 @@ importers:
       '@kb-labs/mind-types':
         specifier: link:../mind-types
         version: link:../mind-types
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
       typescript:
         specifier: ^5.6.3
         version: 5.9.2
@@ -380,9 +371,6 @@ importers:
       '@kb-labs/mind-engine':
         specifier: link:../mind-engine
         version: link:../mind-engine
-      '@kb-labs/mind-llm':
-        specifier: link:../mind-llm
-        version: link:../mind-llm
       '@kb-labs/sdk':
         specifier: link:../../../kb-labs-sdk/packages/sdk
         version: link:../../../kb-labs-sdk/packages/sdk
@@ -411,6 +399,9 @@ importers:
       '@kb-labs/devkit':
         specifier: link:../../../kb-labs-devkit
         version: link:../../../kb-labs-devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.9.1
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -426,9 +417,12 @@ importers:
 
   packages/mind-vector-store:
     dependencies:
-      '@kb-labs/knowledge-contracts':
-        specifier: link:../../../kb-labs-knowledge/packages/knowledge-contracts
-        version: link:../../../kb-labs-knowledge/packages/knowledge-contracts
+      '@kb-labs/mind-core':
+        specifier: link:../mind-core
+        version: link:../mind-core
+      '@kb-labs/sdk':
+        specifier: link:../../../kb-labs-sdk/packages/sdk
+        version: link:../../../kb-labs-sdk/packages/sdk
       fs-extra:
         specifier: ^11.0.0
         version: 11.3.2
@@ -481,10 +475,6 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
-
-  '@byjohann/toon@0.4.0':
-    resolution: {integrity: sha512-3RcynuFRrGCINeKpDA3uGlKcwubSgKRmvRd4ZMgYLfnA/U/6nhf27wFqTBGGT4k6w4JVhyiGWY7iAlGl2lG6VQ==}
-    deprecated: Moved to @toon-format organization. Use @toon-format/toon (library) and @toon-format/cli (CLI) instead.
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -1120,6 +1110,9 @@ packages:
 
   '@types/node@24.9.1':
     resolution: {integrity: sha512-QoiaXANRkSXK6p0Duvt56W208du4P9Uye9hWLWgGMDTEoKPhuenzNcC4vGUmrNkiOKTlIrBoyNQYNpSwfEZXSg==}
+
+  '@types/picomatch@4.0.2':
+    resolution: {integrity: sha512-qHHxQ+P9PysNEGbALT8f8YOSHW0KJu6l2xU8DYY0fu/EmGxXdVnuTLvFUvBgPJMSqXq29SYHveejeAha+4AYgA==}
 
   '@types/prop-types@15.7.15':
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
@@ -2397,8 +2390,6 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@byjohann/toon@0.4.0': {}
-
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
 
@@ -2807,6 +2798,8 @@ snapshots:
   '@types/node@24.9.1':
     dependencies:
       undici-types: 7.16.0
+
+  '@types/picomatch@4.0.2': {}
 
   '@types/prop-types@15.7.15': {}
 

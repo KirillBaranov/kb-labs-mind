@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import cfg from '@kb-labs/devkit/vitest/node.js';
+import cfg from '@kb-labs/devkit/vitest/node';
 
 export default defineConfig({
   ...cfg,

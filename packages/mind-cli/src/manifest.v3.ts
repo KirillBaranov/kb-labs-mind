@@ -1,111 +1,103 @@
 /**
- * @module @kb-labs/mind-cli/manifest
- * Manifest V3 for Mind CLI
+ * KB Labs Mind Plugin - Manifest V3
  *
- * V3 Migration:
- * - Manifest-first permissions (set once for entire plugin)
- * - Commands inherit permissions from manifest
- * - No per-command permissions
- * - Sync subcommands → separate commands
+ * AI-powered code search and RAG system for semantic codebase understanding.
+ *
+ * Key features:
+ * - Hybrid search (BM25 + vector embeddings)
+ * - Agent-powered query orchestration
+ * - Real-time incremental indexing
+ * - Anti-hallucination verification
  */
 
-import type { ManifestV3 } from '@kb-labs/plugin-contracts';
+import {
+  combinePermissions,
+  kbPlatformPreset,
+} from '@kb-labs/sdk';
 
 /**
- * Mind CLI Manifest V3
+ * Build permissions using presets:
+ * - kbPlatform: KB_* env vars and .kb/ directory
+ * - Custom: Source file access for indexing, network for OpenAI/Qdrant
  *
- * Key changes from V2:
- * 1. Permissions defined at manifest level (manifest-first)
- * 2. Commands/routes/actions inherit permissions
- * 3. Sync subcommands split into 5 separate commands
- * 4. Simplified structure (no nested cli/rest objects)
+ * Note: Uses platform services for LLM, embeddings, and vector storage.
  */
-export const manifest: ManifestV3 = {
+const pluginPermissions = combinePermissions()
+  .with(kbPlatformPreset)
+  .withEnv([
+    'NODE_ENV',
+    'OPENAI_API_KEY',
+    'QDRANT_URL',
+    'QDRANT_API_KEY',
+    'EMBEDDING_PROVIDER',
+    'VECTOR_STORE_TYPE',
+  ])
+  .withFs({
+    mode: 'readWrite',
+    allow: [
+      '.kb/mind/**',    // Mind index data
+      '.kb/cache/**',   // Cache directory
+    ],
+  })
+  .withFs({
+    mode: 'read',
+    allow: [
+      'package.json',
+      '**/package.json',
+      'config/**',
+      '**/*.ts',
+      '**/*.tsx',
+      '**/*.js',
+      '**/*.jsx',
+      '**/*.md',
+    ],
+  })
+  .withNetwork({
+    fetch: [
+      'https://api.openai.com/*',      // OpenAI embeddings/LLM
+      'http://localhost:6333/*',       // Qdrant vector store (local)
+      'http://127.0.0.1:6333/*',
+      'https://*.qdrant.io/*',         // Qdrant cloud
+    ],
+  })
+  .withPlatform({
+    llm: true,                                     // LLM for query orchestration
+    embeddings: true,                              // Embedding generation
+    vectorStore: { collections: ['mind:'] },       // Vector DB with mind: namespace
+    cache: true,                                   // State caching
+    analytics: true,                               // Analytics tracking
+    storage: true,                                 // Artifact storage
+  })
+  .withQuotas({
+    timeoutMs: 1200000,    // 20 minutes for indexing
+    memoryMb: 4096,        // 4GB for large codebases
+    cpuMs: 600000,         // 10 minutes CPU time
+  })
+  .build();
+
+export const manifest = {
   schema: 'kb.plugin/3',
   id: '@kb-labs/mind',
   version: '0.1.0',
-  name: 'Mind',
-  description: 'AI-powered code search and RAG system for KB Labs',
+
+  display: {
+    name: 'Mind',
+    description: 'AI-powered code search and RAG system for semantic codebase understanding.',
+    tags: ['search', 'rag', 'ai', 'semantic', 'knowledge'],
+  },
+
+  // Configuration section in kb.config.json
+  configSection: 'mind',
+
+  // Platform requirements
+  platform: {
+    requires: ['llm', 'embeddings', 'vectorStore', 'cache', 'storage'],
+    optional: ['analytics', 'logger'],
+  },
 
   // ✅ PERMISSIONS DEFINED ONCE FOR ENTIRE PLUGIN (Manifest-First)
   // All commands, routes, and actions inherit these permissions
-  permissions: {
-    // File system access
-    fs: {
-      read: [
-        '.kb/mind/**',           // Mind index data
-        '.kb/cache/**',          // Cache directory
-        'package.json',          // Package metadata
-        '**/package.json',       // Monorepo packages
-        'config/**',             // Config files
-        '**/*.ts',               // Source files for indexing
-        '**/*.tsx',
-        '**/*.js',
-        '**/*.jsx',
-        '**/*.md',
-      ],
-      write: [
-        '.kb/mind/**',           // Mind can write index data
-        '.kb/cache/**',          // Cache directory
-      ],
-    },
-
-    // Network access
-    network: {
-      fetch: [
-        'https://api.openai.com/*',      // OpenAI embeddings/LLM
-        'http://localhost:6333/*',       // Qdrant vector store (local)
-        'http://127.0.0.1:6333/*',       // Qdrant vector store (local)
-        'https://*.qdrant.io/*',         // Qdrant cloud
-      ],
-    },
-
-    // Environment variables
-    env: {
-      read: [
-        'NODE_ENV',
-        'KB_LABS_*',
-        'OPENAI_API_KEY',
-        'QDRANT_URL',
-        'QDRANT_API_KEY',
-        'EMBEDDING_PROVIDER',
-        'VECTOR_STORE_TYPE',
-      ],
-    },
-
-    // Platform services
-    platform: {
-      llm: true,              // LLM access for query orchestration
-      cache: true,            // State caching
-      vectorStore: true,      // Vector database
-      embeddings: true,       // Embedding generation
-      analytics: true,        // Analytics tracking
-      storage: true,          // Artifact storage
-      events: true,           // Event publishing
-    },
-
-    // State broker namespaces
-    state: {
-      namespaces: ['mind:*'], // All mind-related state keys
-      quotas: {
-        maxEntries: 10000,                 // Maximum cache entries
-        maxSizeBytes: 100 * 1024 * 1024,   // 100 MB total cache size
-        operationsPerMinute: 1000,         // Allow frequent cache operations
-      },
-    },
-
-    // Plugin invocation (disabled)
-    invoke: {
-      allow: [],              // Don't invoke other plugins
-    },
-
-    // Global quotas
-    quotas: {
-      timeoutMs: 1200000,      // 20 minutes for RAG indexing
-      memoryMb: 4096,          // 4GB for large codebases
-      cpuMs: 600000,           // 10 minutes CPU time
-    },
-  },
+  permissions: pluginPermissions,
 
   // CLI commands (V3 structure with cli wrapper)
   cli: {
@@ -178,10 +170,12 @@ export const manifest: ManifestV3 = {
   },
 
   // REST API routes (inherit permissions from manifest)
-  routes: [
+  rest: {
+    basePath: '/v1/plugins/mind',
+    routes: [
     {
       method: 'GET',
-      path: '/v1/plugins/mind/verify',
+      path: '/verify',
       handler: './rest/handlers/verify-handler.js#handleVerify',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindVerifyCommandInputSchema',
@@ -192,7 +186,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'POST',
-      path: '/v1/plugins/mind/sync/add',
+      path: '/sync/add',
       handler: './rest/handlers/sync-handler.js#handleSyncAdd',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncAddRequestSchema',
@@ -203,7 +197,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'POST',
-      path: '/v1/plugins/mind/sync/update',
+      path: '/sync/update',
       handler: './rest/handlers/sync-handler.js#handleSyncUpdate',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncUpdateRequestSchema',
@@ -214,7 +208,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'DELETE',
-      path: '/v1/plugins/mind/sync/delete',
+      path: '/sync/delete',
       handler: './rest/handlers/sync-handler.js#handleSyncDelete',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncDeleteRequestSchema',
@@ -225,7 +219,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'GET',
-      path: '/v1/plugins/mind/sync/list',
+      path: '/sync/list',
       handler: './rest/handlers/sync-handler.js#handleSyncList',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncListRequestSchema',
@@ -236,7 +230,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'POST',
-      path: '/v1/plugins/mind/sync/batch',
+      path: '/sync/batch',
       handler: './rest/handlers/sync-handler.js#handleSyncBatch',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncBatchRequestSchema',
@@ -247,7 +241,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'GET',
-      path: '/v1/plugins/mind/sync/status',
+      path: '/sync/status',
       handler: './rest/handlers/sync-handler.js#handleSyncStatus',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncStatusRequestSchema',
@@ -258,7 +252,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'POST',
-      path: '/v1/plugins/mind/sync/restore',
+      path: '/sync/restore',
       handler: './rest/handlers/sync-handler.js#handleSyncRestore',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncRestoreRequestSchema',
@@ -269,7 +263,7 @@ export const manifest: ManifestV3 = {
     },
     {
       method: 'POST',
-      path: '/v1/plugins/mind/sync/cleanup',
+      path: '/sync/cleanup',
       handler: './rest/handlers/sync-handler.js#handleSyncCleanup',
       input: {
         zod: '@kb-labs/mind-contracts/schema#MindSyncCleanupRequestSchema',
@@ -278,7 +272,8 @@ export const manifest: ManifestV3 = {
         zod: '@kb-labs/mind-contracts/schema#MindSyncCleanupResponseSchema',
       },
     },
-  ],
+    ],
+  },
 
   // Scheduled jobs (inherit permissions from manifest)
   actions: [
@@ -288,6 +283,20 @@ export const manifest: ManifestV3 = {
       schedule: '0 * * * *', // Every hour
       description: 'Automatically index Mind RAG database',
       enabled: false,        // Disabled by default
+    },
+  ],
+
+  // Artifacts
+  artifacts: [
+    {
+      id: 'mind.index.json',
+      pathTemplate: '.kb/mind/index/index.json',
+      description: 'Mind RAG index metadata.',
+    },
+    {
+      id: 'mind.cache.json',
+      pathTemplate: '.kb/cache/mind-*.json',
+      description: 'Mind query cache files.',
     },
   ],
 };

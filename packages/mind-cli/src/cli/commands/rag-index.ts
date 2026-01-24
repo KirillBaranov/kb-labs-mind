@@ -40,8 +40,14 @@ export default defineCommand({
       const startTime = Date.now();
       const { flags } = input;
 
+      // DEBUG: Log input and context
+      console.log('[RAG-INDEX DEBUG] Input:', JSON.stringify(input, null, 2));
+      console.log('[RAG-INDEX DEBUG] Context cwd:', ctx.cwd);
+      console.log('[RAG-INDEX DEBUG] Flags:', JSON.stringify(flags, null, 2));
+
       // Get Mind config using useConfig() helper
       const mindConfig = await useConfig();
+      console.log('[RAG-INDEX DEBUG] Config loaded:', mindConfig ? 'yes' : 'no');
 
       const cwd = flags.cwd || ctx.cwd;
       const scopeId = flags.scope;
@@ -59,6 +65,11 @@ export default defineCommand({
       try {
         // Pass mindConfig from useConfig() - avoids reloading config in child process
         // IMPORTANT: Pass platform so Mind engine uses wrapped adapters with analytics tracking
+        console.log('[RAG-INDEX DEBUG] Calling runRagIndex with scopeId:', scopeId);
+        console.log('[RAG-INDEX DEBUG] CWD:', cwd);
+        console.log('[RAG-INDEX DEBUG] mindConfig keys:', mindConfig ? Object.keys(mindConfig) : 'null');
+        console.log('[RAG-INDEX DEBUG] mindConfig.sources count:', mindConfig?.sources?.length ?? 0);
+        console.log('[RAG-INDEX DEBUG] mindConfig.scopes count:', mindConfig?.scopes?.length ?? 0);
         const result = await runRagIndex({
           cwd,
           scopeId,
@@ -68,6 +79,7 @@ export default defineCommand({
           config: mindConfig,
           platform,
         });
+        console.log('[RAG-INDEX DEBUG] runRagIndex completed. Stats:', JSON.stringify(result.stats, null, 2));
 
         const timing = Date.now() - startTime;
         loader?.succeed(`Index built in ${(timing / 1000).toFixed(1)}s`);

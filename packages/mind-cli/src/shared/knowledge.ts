@@ -2,12 +2,12 @@ import {
   createKnowledgeService,
   createKnowledgeEngineRegistry,
   type KnowledgeServiceOptions,
-  type KnowledgeCapability,
-  type KnowledgeCapabilityRegistry,
   type KnowledgeConfigInput,
   type KnowledgeLogger,
   type KnowledgeService,
   type PlatformServices,
+  type KnowledgeCapability,
+  type KnowledgeCapabilityRegistry,
 } from '@kb-labs/sdk';
 import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/sdk';
 import {
@@ -100,6 +100,7 @@ export async function createMindKnowledgeRuntime(
     registry: engineRegistry,
     capabilities,
     logger: options.logger,
+    workspaceRoot: options.cwd, // CRITICAL: Pass cwd as workspaceRoot for file discovery
   });
 
   return {
