@@ -27,8 +27,8 @@ function createMockRuntime(): RuntimeAdapter {
     fetch: vi.fn(),
     env: {
       get: vi.fn((key: string) => {
-        if (key === 'QDRANT_URL') return 'http://localhost:6333';
-        if (key === 'QDRANT_API_KEY') return 'test-key';
+        if (key === 'QDRANT_URL') {return 'http://localhost:6333';}
+        if (key === 'QDRANT_API_KEY') {return 'test-key';}
         return undefined;
       }),
     },

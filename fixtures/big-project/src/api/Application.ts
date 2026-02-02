@@ -2,9 +2,9 @@
  * Application class - main application logic
  */
 
-import { DatabaseService } from '../services/DatabaseService';
-import { AuthService } from '../services/AuthService';
-import { Logger } from '../utils/Logger';
+import type { DatabaseService } from '../services/DatabaseService';
+import type { AuthService } from '../services/AuthService';
+import type { Logger } from '../utils/Logger';
 import { UserController } from '../controllers/UserController';
 import { ProductController } from '../controllers/ProductController';
 import { AuthMiddleware } from '../middleware/AuthMiddleware';

@@ -188,7 +188,7 @@ export class ResponseCompressor {
    * Summarize a code snippet using LLM
    */
   private async summarizeSnippet(snippet: string): Promise<string> {
-    if (!this.llm) return this.truncateSnippet(snippet, 10);
+    if (!this.llm) {return this.truncateSnippet(snippet, 10);}
 
     const prompt = `Summarize this code snippet in 3-5 lines, preserving the most important parts:
 

@@ -14,7 +14,7 @@
  */
 
 import type { MemoryMonitor } from './memory-monitor';
-import type { WorkerPool, WorkerPoolStats } from './worker-pool';
+import type { WorkerPool } from './worker-pool';
 
 export interface AutoScalerOptions {
   /**

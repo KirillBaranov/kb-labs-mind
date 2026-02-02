@@ -12,12 +12,13 @@
 
 import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
 import type { MindChunk } from './chunking';
+import type {
+  RateLimiter} from '../../rate-limiting/index';
 import {
   type RateLimitConfig,
   type RateLimitPreset,
   getRateLimitConfig,
   estimateBatchTokens,
-  RateLimiter,
   createRateLimiter,
 } from '../../rate-limiting/index';
 

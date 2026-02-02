@@ -33,7 +33,7 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
   const { enabled = true, detailed = false, llmModel = 'gpt-4o-mini', analyticsAdapter = null } = options;
 
   const safeEmit = async (type: string, payload: Record<string, unknown>) => {
-    if (!enabled || !analyticsAdapter?.track) return;
+    if (!enabled || !analyticsAdapter?.track) {return;}
     try {
       await analyticsAdapter.track(type, {
         source: MIND_SOURCE,
@@ -125,7 +125,7 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
       ctx: MindAnalyticsContext,
       data: Record<string, unknown> = {},
     ): Promise<void> {
-      if (!detailed) return;
+      if (!detailed) {return;}
 
       await safeEmit(`mind.${stage}.completed`, {
         queryId: ctx.queryId,
@@ -158,12 +158,12 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
       ctx: MindAnalyticsContext,
       updates: Partial<Omit<MindAnalyticsContext, 'queryId' | 'scopeId' | 'mode' | 'startTime'>>,
     ): void {
-      if (updates.llmCalls !== undefined) ctx.llmCalls += updates.llmCalls;
-      if (updates.tokensIn !== undefined) ctx.tokensIn += updates.tokensIn;
-      if (updates.tokensOut !== undefined) ctx.tokensOut += updates.tokensOut;
-      if (updates.subqueries) ctx.subqueries.push(...updates.subqueries);
-      if (updates.iterations !== undefined) ctx.iterations = updates.iterations;
-      if (updates.compressionApplied !== undefined) ctx.compressionApplied = updates.compressionApplied;
+      if (updates.llmCalls !== undefined) {ctx.llmCalls += updates.llmCalls;}
+      if (updates.tokensIn !== undefined) {ctx.tokensIn += updates.tokensIn;}
+      if (updates.tokensOut !== undefined) {ctx.tokensOut += updates.tokensOut;}
+      if (updates.subqueries) {ctx.subqueries.push(...updates.subqueries);}
+      if (updates.iterations !== undefined) {ctx.iterations = updates.iterations;}
+      if (updates.compressionApplied !== undefined) {ctx.compressionApplied = updates.compressionApplied;}
     },
   };
 }

@@ -153,7 +153,7 @@ export function classifyQuery(query: string): QueryClassification {
 
   // Check each type in priority order
   for (const type of CLASSIFICATION_PRIORITY) {
-    if (type === 'general') continue; // Skip general, it's fallback
+    if (type === 'general') {continue;} // Skip general, it's fallback
 
     const pattern = QUERY_PATTERNS[type];
     const matchCount = pattern.patterns.filter(p => p.test(normalizedQuery)).length;

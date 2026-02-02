@@ -159,7 +159,7 @@ export class MindVectorStore {
       return [];
     }
 
-    const matches = records
+    return records
       .filter(chunk => applyFilters(chunk, filters))
       .map(chunk => ({
         chunk,
@@ -168,8 +168,6 @@ export class MindVectorStore {
       .filter(match => Number.isFinite(match.score))
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
-
-    return matches;
   }
 
   private async loadScope(scopeId: string): Promise<StoredMindChunk[]> {

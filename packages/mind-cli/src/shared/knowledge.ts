@@ -1,12 +1,10 @@
 import {
   createKnowledgeService,
   createKnowledgeEngineRegistry,
-  type KnowledgeServiceOptions,
   type KnowledgeConfigInput,
   type KnowledgeLogger,
   type KnowledgeService,
   type PlatformServices,
-  type KnowledgeCapability,
   type KnowledgeCapabilityRegistry,
 } from '@kb-labs/sdk';
 import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/sdk';
@@ -130,7 +128,7 @@ async function findAndReadConfig(cwd: string): Promise<KnowledgeConfigInput> {
   // Read raw JSON first to check format
   const result = await readJsonWithDiagnostics<Record<string, unknown>>(configPath);
   if (!result.ok) {
-    throw new Error(`Failed to read config: ${result.diagnostics.map(d => d.message).join(', ')}`);
+    throw new Error(`Failed to read config: ${result.diagnostics.map((d: { message: string }) => d.message).join(', ')}`);
   }
 
   const rawData = result.data;

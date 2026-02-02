@@ -3,7 +3,7 @@
  */
 
 import { Logger } from '../utils/Logger';
-import { DatabaseConfig } from '../config/DatabaseConfig';
+import type { DatabaseConfig } from '../config/DatabaseConfig';
 
 export class DatabaseService {
   private config: DatabaseConfig;

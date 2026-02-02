@@ -129,8 +129,8 @@ export class GenericParser implements LanguageParser {
 
       // Track brace depth
       for (const char of line) {
-        if (char === '{') braceDepth++;
-        if (char === '}') braceDepth--;
+        if (char === '{') {braceDepth++;}
+        if (char === '}') {braceDepth--;}
       }
 
       // Detect function/class start
@@ -264,11 +264,11 @@ export class GenericParser implements LanguageParser {
   }
 
   private inferExportType(line: string): CodeStructure['exports'][number]['type'] {
-    if (line.includes('function')) return 'function';
-    if (line.includes('class')) return 'class';
-    if (line.includes('const') || line.includes('let') || line.includes('var')) return 'const';
-    if (line.includes('type') || line.includes('interface')) return 'type';
-    if (line.includes('default')) return 'default';
+    if (line.includes('function')) {return 'function';}
+    if (line.includes('class')) {return 'class';}
+    if (line.includes('const') || line.includes('let') || line.includes('var')) {return 'const';}
+    if (line.includes('type') || line.includes('interface')) {return 'type';}
+    if (line.includes('default')) {return 'default';}
     return 'const';
   }
 
@@ -277,8 +277,8 @@ export class GenericParser implements LanguageParser {
     for (let i = start; i < lines.length; i++) {
       const line = lines[i] ?? '';
       for (const char of line) {
-        if (char === '{') depth++;
-        if (char === '}') depth--;
+        if (char === '{') {depth++;}
+        if (char === '}') {depth--;}
         if (depth === 0 && char === '}') {
           return i;
         }

@@ -40,7 +40,7 @@ export class Logger {
   }
 
   private log(level: LogLevel, message: string, ...args: any[]): void {
-    if (level < this.level) return;
+    if (level < this.level) {return;}
 
     const timestamp = new Date().toISOString();
     const levelName = LogLevel[level];

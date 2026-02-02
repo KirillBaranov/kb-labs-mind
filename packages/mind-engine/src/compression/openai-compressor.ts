@@ -82,10 +82,9 @@ export class OpenAILLMCompressor implements LLMCompressor {
     query: string,
   ): Promise<string[]> {
     // Process in parallel for speed
-    const results = await Promise.all(
+    return await Promise.all(
       chunks.map((chunk) => this.compress(chunk, query)),
     );
-    return results;
   }
 
   /**

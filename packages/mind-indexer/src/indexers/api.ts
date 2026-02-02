@@ -8,7 +8,7 @@ import { useLogger } from '@kb-labs/sdk';
 import { TSExtractor } from '../adapters/ts-extractor';
 import { sha256 } from '@kb-labs/mind-core';
 import { ensureMindStructure } from '../fs/ensure';
-import type { ApiIndex as _ApiIndex, ApiFile, ApiExport as _ApiExport } from '@kb-labs/mind-types';
+import type { ApiFile } from '@kb-labs/mind-types';
 import type { IndexerContext } from '../types/index';
 
 const getLogger = () => useLogger().child({ category: 'mind:indexer:api' });

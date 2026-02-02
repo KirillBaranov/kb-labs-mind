@@ -5,7 +5,6 @@
 import { defineCommand, usePlatform, type PluginContextV3 } from '@kb-labs/sdk';
 import { runRagQuery, runAgentRagQuery } from '../../application/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
-import { MIND_ERROR_CODES } from '../../errors/error-codes';
 
 const VALID_INTENTS = ['summary', 'search', 'similar', 'nav'] as const;
 const VALID_MODES = ['instant', 'auto', 'thinking'] as const;
@@ -196,7 +195,7 @@ export default defineCommand({
           platform, // Pass platform for analytics adapter
           runtime: undefined, // Runtime context not available in CLI
           onProgress: (stage: string, details?: string) => {
-            if (flags.quiet || format === 'json' || format === 'json-pretty') return;
+            if (flags.quiet || format === 'json' || format === 'json-pretty') {return;}
 
             // Update current stage
             currentStage = details ? `${stage}: ${details}` : stage;

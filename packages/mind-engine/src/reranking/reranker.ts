@@ -174,8 +174,7 @@ export class CrossEncoderReranker implements Reranker {
     const prompt = this.buildScoringPrompt(query, match.chunk.text);
 
     try {
-      const score = await this.callLLMForScoring(prompt);
-      return score;
+      return await this.callLLMForScoring(prompt);
     } catch (error) {
       // Fallback to original score if LLM call fails
       getRerankLogger().warn('Re-ranking LLM call failed, using original score', { error });

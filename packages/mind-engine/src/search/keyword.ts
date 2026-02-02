@@ -164,11 +164,9 @@ export function keywordSearch(
   }));
 
   // Filter by minimum score and sort
-  const matches = scores
+  return scores
     .filter(match => match.score >= opts.minScore)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
-
-  return matches;
 }
 

@@ -8,8 +8,7 @@ import { verifyIndexes as verifyIndexesUtil } from '@kb-labs/mind-core';
 export async function handleVerify(req: VerifyRequest): Promise<VerifyResponse | GatewayError> {
   try {
     const cwd = req.cwd || '.';
-    const result = await verifyIndexesUtil(cwd);
-    return result;
+    return await verifyIndexesUtil(cwd);
   } catch (error: any) {
     return {
       ok: false,

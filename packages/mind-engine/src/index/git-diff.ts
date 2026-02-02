@@ -221,12 +221,12 @@ export class GitDiffDetector {
       const parts = line.split('\t');
       const statusCode = parts[0]?.[0];
 
-      if (!statusCode) continue;
+      if (!statusCode) {continue;}
 
       const status = this.parseStatusCode(statusCode);
       const path = parts[1] ?? '';
 
-      if (!path) continue;
+      if (!path) {continue;}
 
       const file: ChangedFile = { path, status };
 

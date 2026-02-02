@@ -5,7 +5,7 @@
  * Extends ILLM with JSON structured output support.
  */
 
-import type { ILLM, LLMResponse } from '@kb-labs/sdk';
+import type { ILLM } from '@kb-labs/sdk';
 
 export interface LLMCompleteOptions {
   prompt: string;

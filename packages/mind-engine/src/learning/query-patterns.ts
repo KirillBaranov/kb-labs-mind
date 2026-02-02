@@ -3,7 +3,7 @@
  * Query pattern learning and matching
  */
 
-import type { QueryHistoryStore, QueryHistoryEntry } from './query-history';
+import type { QueryHistoryStore } from './query-history';
 import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface QueryPatternMatcher {

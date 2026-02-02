@@ -37,11 +37,11 @@ export class FileHistoryStore extends FileRotationStore<HistoryRecord> implement
   async find(options: HistoryFindOptions): Promise<HistoryRecord[]> {
     // Use base class readRecords with custom filter
     const filter = (rec: HistoryRecord): boolean => {
-      if (rec.scopeId !== options.scopeId) return false;
-      if (options.queryHash && rec.queryHash !== options.queryHash) return false;
+      if (rec.scopeId !== options.scopeId) {return false;}
+      if (options.queryHash && rec.queryHash !== options.queryHash) {return false;}
       if (options.queryVector && options.queryVector.length > 0 && rec.queryVector) {
         const similarity = cosineSimilarity(options.queryVector, rec.queryVector);
-        if (similarity <= 0.7) return false;
+        if (similarity <= 0.7) {return false;}
       }
       return true;
     };

@@ -7,6 +7,7 @@ export default defineConfig({
   entry: [
     'src/index.ts',
     'src/manifest.v3.ts',
+    'src/cli/commands/**/*.ts',  // Auto-include all commands
   ],
   dts: true,
   // React support for studio widgets

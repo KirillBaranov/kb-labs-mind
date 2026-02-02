@@ -13,7 +13,6 @@ import {
   type KnowledgeEngineConfig,
   type KnowledgeQuery,
   type KnowledgeResult,
-  type KnowledgeScope,
   type KnowledgeSource,
   type SpanRange,
   type KnowledgeEngine,
@@ -46,22 +45,19 @@ const logger = {
   },
 };
 import {
-  createEmbeddingProvider,
   type EmbeddingProvider,
   type EmbeddingProviderConfig,
-  type EmbeddingRuntimeAdapter,
 } from '@kb-labs/mind-embeddings';
 import type { VectorSearchFilters, VectorSearchMatch } from '@kb-labs/mind-vector-store';
 import type { RuntimeAdapter } from './adapters/runtime-adapter';
 import { createRuntimeAdapter } from './adapters/runtime-adapter';
 import { createVectorStore, type VectorStoreConfig } from './vector-store/index';
 import type { VectorStore } from './vector-store/vector-store';
-import type { StoredMindChunk } from './vector-store/vector-store';
 import { hybridSearch } from './search/hybrid';
 import { keywordSearch } from './search/keyword';
 import { createReranker, type RerankerConfig } from './reranking/index';
 import type { Reranker } from './reranking/reranker';
-import { ContextOptimizer, type ContextOptimizationOptions } from './optimization/index';
+import { ContextOptimizer } from './optimization/index';
 import type { LLMCompressor } from './compression/llm-compressor';
 import { OpenAILLMCompressor } from './compression/openai-compressor';
 import { ChunkSummarizer } from './compression/summarizer';
@@ -70,7 +66,6 @@ import { QueryPlanner } from './reasoning/query-planner';
 import { ParallelExecutor } from './reasoning/parallel-executor';
 import { ResultSynthesizer } from './reasoning/synthesizer';
 import { ReasoningEngine } from './reasoning/reasoning-engine';
-import type { ReasoningResult } from './reasoning/types';
 import type { QueryHistoryStore, QueryHistoryEntry } from './learning/query-history';
 import type { FeedbackStore, FeedbackEntry } from './learning/feedback';
 import { SelfFeedbackGenerator } from './learning/feedback';
@@ -748,7 +743,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
    * Safely call onProgress callback with error handling
    */
   private reportProgress(stage: string, details?: string, metadata?: Record<string, unknown>): void {
-    if (!this.onProgress) return;
+    if (!this.onProgress) {return;}
     try {
       this.onProgress({
         stage,
@@ -1679,7 +1674,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
             feedbackStore: this.feedbackStore ? {
               // Method for agent to provide implicit feedback
               recordUsage: async (chunkIds: string[], usedInResponse: boolean = true) => {
-            if (!this.feedbackStore) return;
+            if (!this.feedbackStore) {return;}
             
             const queryId = createHash('sha256')
               .update(`${context.scope.id}:${query.text}:${Date.now()}`)
@@ -1689,7 +1684,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
             await Promise.all(
               chunkIds.map(async (chunkId) => {
                 const chunk = chunks.find(c => c.id === chunkId);
-                if (!chunk) return;
+                if (!chunk) {return;}
 
                 const feedbackEntry: FeedbackEntry = {
                   feedbackId: createHash('sha256')
@@ -2256,9 +2251,9 @@ function formatMetadataOnly(chunk: KnowledgeChunk): string {
     const typeName = chunk.metadata.typeName as string | undefined;
     
     const nameParts: string[] = [];
-    if (className) nameParts.push(`class:${className}`);
-    if (functionName) nameParts.push(`function:${functionName}`);
-    if (typeName) nameParts.push(`type:${typeName}`);
+    if (className) {nameParts.push(`class:${className}`);}
+    if (functionName) {nameParts.push(`function:${functionName}`);}
+    if (typeName) {nameParts.push(`type:${typeName}`);}
     
     if (nameParts.length > 0) {
       parts.push(`  ${nameParts.join(', ')}`);

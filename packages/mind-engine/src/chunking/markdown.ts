@@ -349,7 +349,7 @@ async function chunkByHeadings(
     // Count lines without split
     let lineCount = 1;
     for (let i = 0; i < chunk.text.length; i++) {
-      if (chunk.text[i] === '\n') lineCount++;
+      if (chunk.text[i] === '\n') {lineCount++;}
     }
 
     if (lineCount > options.maxLines) {
@@ -500,7 +500,7 @@ async function splitChunkByLinesNoSplit(
   // Count lines in chunk text without split
   let lineCount = 1;
   for (let i = 0; i < chunk.text.length; i++) {
-    if (chunk.text[i] === '\n') lineCount++;
+    if (chunk.text[i] === '\n') {lineCount++;}
   }
 
   if (lineCount <= maxLines) {

@@ -376,7 +376,7 @@ export abstract class TreeSitterChunker implements Chunker {
     // Count total lines
     let totalLines = 1;
     for (let i = 0; i < sourceCode.length; i++) {
-      if (sourceCode[i] === '\n') totalLines++;
+      if (sourceCode[i] === '\n') {totalLines++;}
     }
 
     // Create chunks without split

@@ -247,7 +247,7 @@ export class NegativeFilter {
     const lines = text.split('\n');
     const nonEmptyLines = lines.filter(l => l.trim().length > 0);
 
-    if (nonEmptyLines.length === 0) return 0;
+    if (nonEmptyLines.length === 0) {return 0;}
 
     let qualityScore = 1.0;
 

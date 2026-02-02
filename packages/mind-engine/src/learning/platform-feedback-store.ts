@@ -29,7 +29,7 @@ export class PlatformFeedbackStoreAdapter implements FeedbackStore {
 
   async getAverageScore(chunkId: string, scopeId: string): Promise<number> {
     const feedbacks = await this.getChunkFeedback(chunkId, scopeId);
-    if (feedbacks.length === 0) return 0.5;
+    if (feedbacks.length === 0) {return 0.5;}
     const sum = feedbacks.reduce((acc, f) => acc + f.score, 0);
     return sum / feedbacks.length;
   }

@@ -10,7 +10,7 @@
     "build": "tsup",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint . --ignore-pattern 'dist/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
     "dev": "tsup --config tsup.config.ts --watch",

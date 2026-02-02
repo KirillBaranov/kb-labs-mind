@@ -68,6 +68,12 @@
       ],
       "@kb-labs/plugin-contracts/*": [
         "../kb-labs-plugin/packages/plugin-contracts/src/*"
+      ],
+      "@kb-labs/sdk": [
+        "../kb-labs-sdk/packages/sdk/src/index.ts"
+      ],
+      "@kb-labs/sdk/*": [
+        "../kb-labs-sdk/packages/sdk/src/*"
       ]
     }
   }

@@ -186,7 +186,7 @@ export class TokenBudgetPlanner {
       ' ',         // Space
     ];
 
-    let truncated = text.slice(0, maxChars);
+    const truncated = text.slice(0, maxChars);
 
     for (const boundary of boundaries) {
       const lastIndex = truncated.lastIndexOf(boundary);

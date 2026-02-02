@@ -2,7 +2,7 @@
  * Mind verify command - checks platform services readiness (V3)
  */
 
-import { defineCommand, usePlatform, type PluginContextV3, TimingTracker } from '@kb-labs/sdk';
+import { defineCommand, usePlatform, type PluginContextV3 } from '@kb-labs/sdk';
 
 interface VerifyInput {
   argv: string[];

@@ -231,10 +231,8 @@ export class IndexingPipeline {
 export function createDefaultPipeline(
   config: PipelineConfig = {}
 ): IndexingPipeline {
-  const pipeline = new IndexingPipeline(config);
-
   // Note: Stages are added by the caller
   // This factory just creates the pipeline infrastructure
 
-  return pipeline;
+  return new IndexingPipeline(config);
 }

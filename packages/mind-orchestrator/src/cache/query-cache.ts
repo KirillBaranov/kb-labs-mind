@@ -73,11 +73,10 @@ export class QueryCache {
     mode: AgentQueryMode,
   ): string {
     const normalized = query.toLowerCase().trim();
-    const hash = createHash('sha256')
+    return createHash('sha256')
       .update(`${scopeId}:${mode}:${normalized}`)
       .digest('hex')
       .substring(0, 16);
-    return hash;
   }
 
   /**

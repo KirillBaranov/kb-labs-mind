@@ -2,7 +2,7 @@
  * Authentication middleware
  */
 
-import { AuthService } from '../services/AuthService';
+import type { AuthService } from '../services/AuthService';
 
 export class AuthMiddleware {
   private auth: AuthService;

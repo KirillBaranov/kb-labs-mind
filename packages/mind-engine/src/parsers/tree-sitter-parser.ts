@@ -252,10 +252,10 @@ export class TreeSitterParser implements LanguageParser {
    * Map Tree-sitter node type to our boundary type
    */
   private mapNodeType(nodeType: string): StatementBoundary['type'] | null {
-    if (this.isFunctionNode(nodeType)) return 'function';
-    if (this.isClassNode(nodeType)) return 'class';
-    if (nodeType.includes('method')) return 'method';
-    if (nodeType.includes('block')) return 'block';
+    if (this.isFunctionNode(nodeType)) {return 'function';}
+    if (this.isClassNode(nodeType)) {return 'class';}
+    if (nodeType.includes('method')) {return 'method';}
+    if (nodeType.includes('block')) {return 'block';}
     return null;
   }
 
@@ -330,10 +330,10 @@ export class TreeSitterParser implements LanguageParser {
    * Infer export type from node type
    */
   private inferExportType(nodeType: string): CodeStructure['exports'][number]['type'] {
-    if (nodeType.includes('function')) return 'function';
-    if (nodeType.includes('class')) return 'class';
-    if (nodeType.includes('type') || nodeType.includes('interface')) return 'type';
-    if (nodeType.includes('default')) return 'default';
+    if (nodeType.includes('function')) {return 'function';}
+    if (nodeType.includes('class')) {return 'class';}
+    if (nodeType.includes('type') || nodeType.includes('interface')) {return 'type';}
+    if (nodeType.includes('default')) {return 'default';}
     return 'const';
   }
 }

@@ -15,7 +15,7 @@ import {
   SYNTHESIS_PROMPT_TEMPLATE,
   INSTANT_SYNTHESIS_TEMPLATE,
 } from './prompts';
-import { createSourceVerifier, extractCodeMentions, verifyMentionsInChunks } from '../verification/index';
+import { createSourceVerifier } from '../verification/index';
 import { createFieldChecker } from '../verification/index';
 import { arrayToToon } from '../utils/toon';
 

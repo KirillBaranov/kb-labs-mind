@@ -5,18 +5,16 @@
  * agent-optimized responses for RAG queries.
  */
 
-import { randomUUID as uuid } from 'crypto';
 import type {
   ILLM,
   KnowledgeChunk,
-  KnowledgeIntent,
   AgentResponse,
   AgentErrorResponse,
   AgentQueryMode,
   AgentMeta,
   AgentSourcesSummary,
 } from '@kb-labs/sdk';
-import { AGENT_RESPONSE_SCHEMA_VERSION, isAgentError } from '@kb-labs/sdk';
+import { AGENT_RESPONSE_SCHEMA_VERSION } from '@kb-labs/sdk';
 
 import { createLLMProvider, type LLMProvider } from './llm/llm-provider';
 import { QueryDecomposer } from './decomposer/query-decomposer';
@@ -32,7 +30,7 @@ import {
   type OrchestratorResult,
   DEFAULT_ORCHESTRATOR_CONFIG,
 } from './types';
-import { classifyQuery, type QueryClassification } from '@kb-labs/mind-engine';
+import { classifyQuery } from '@kb-labs/mind-engine';
 
 /**
  * Generate UUID using crypto
@@ -361,7 +359,7 @@ export class AgentQueryOrchestrator {
     });
 
     // Gather chunks
-    let gathered = await this.gatherer.gather(decomposed, 'thinking', queryFn);
+    const gathered = await this.gatherer.gather(decomposed, 'thinking', queryFn);
 
     // Early deduplication - reduce tokens for completeness check
     gathered.chunks = this.deduplicateChunks(gathered.chunks);

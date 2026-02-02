@@ -181,7 +181,7 @@ export class WorkerPool<TInput, TOutput> {
       !this.isShuttingDown
     ) {
       const task = this.queue.shift();
-      if (!task) break;
+      if (!task) {break;}
 
       this.activeWorkers++;
       this.processTask(task);

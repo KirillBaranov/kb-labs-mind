@@ -2,7 +2,7 @@
  * Types for KB Labs Mind Indexer
  */
 
-import type { MindIndex as _MindIndex, ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
+import type { ApiIndex, DepsGraph, RecentDiff } from "@kb-labs/mind-types";
 
 export interface UpdateOptions {
   cwd: string;

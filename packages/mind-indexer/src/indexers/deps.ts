@@ -6,7 +6,7 @@ import { promises as fsp } from 'node:fs';
 import { join, resolve, dirname, sep, isAbsolute } from 'node:path';
 import { realpath } from 'node:fs/promises';
 import * as ts from 'typescript';
-import type { DepsGraph as _DepsGraph, PackageNode } from '@kb-labs/mind-types';
+import type { PackageNode } from '@kb-labs/mind-types';
 import type { IndexerContext } from '../types';
 import { toPosix } from '@kb-labs/mind-core';
 import { writeJson } from '../fs/json';

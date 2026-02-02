@@ -2,7 +2,7 @@
  * Core service implementation
  */
 
-import { ConfigManager } from '@/utils/config';
+import type { ConfigManager } from '@/utils/config';
 
 export interface ServiceConfig {
   timeout: number;

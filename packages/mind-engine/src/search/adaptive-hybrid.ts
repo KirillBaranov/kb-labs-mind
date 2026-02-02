@@ -15,7 +15,6 @@ import { classifyQuery, extractIdentifiers, type QueryClassification } from './q
 import {
   categorizeMatches,
   applyQueryBoost,
-  type CategorizedMatch,
 } from './source-categorizer';
 
 export interface AdaptiveHybridSearchOptions extends HybridSearchOptions {

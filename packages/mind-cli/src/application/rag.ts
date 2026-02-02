@@ -13,10 +13,10 @@ import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
 } from '../shared/knowledge';
+import type {
+  AgentQueryOrchestrator} from '@kb-labs/mind-orchestrator';
 import {
-  createAgentQueryOrchestrator,
-  isAgentError,
-  AgentQueryOrchestrator,
+  createAgentQueryOrchestrator
 } from '@kb-labs/mind-orchestrator';
 
 /**
@@ -68,7 +68,7 @@ export interface RagIndexOptionsWithRuntime extends RagIndexOptions {
  * Get adapter name from platform service or fallback
  */
 function getAdapterName(service: any, fallback: string): string {
-  if (!service) return fallback;
+  if (!service) {return fallback;}
   // Try to get constructor name or class name
   const name = service.constructor?.name || service.name || service.id;
   if (name && name !== 'Object' && name !== 'Function') {
@@ -469,7 +469,7 @@ export async function runAgentRagQuery(
   };
 
   // Execute orchestrated query
-  const result = await orchestrator.query(
+  return await orchestrator.query(
     {
       cwd: options.cwd,
       scopeId,
@@ -479,6 +479,4 @@ export async function runAgentRagQuery(
     },
     queryFn,
   );
-
-  return result;
 }

@@ -2,7 +2,7 @@
  * Tests for mind-adapters
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { gitDiffSince, listStagedFiles } from '../index';

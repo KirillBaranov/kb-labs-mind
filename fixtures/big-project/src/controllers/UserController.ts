@@ -2,8 +2,8 @@
  * User controller for handling user-related operations
  */
 
-import { DatabaseService } from '../services/DatabaseService';
-import { Logger } from '../utils/Logger';
+import type { DatabaseService } from '../services/DatabaseService';
+import type { Logger } from '../utils/Logger';
 import { User } from '../models/User';
 
 export class UserController {

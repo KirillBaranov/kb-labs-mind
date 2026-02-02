@@ -99,7 +99,7 @@ export class ResultSynthesizer {
     const originalChunkCount = allChunks.length;
 
     // Deduplicate chunks
-    let deduplicatedChunks = this.deduplication
+    const deduplicatedChunks = this.deduplication
       ? this.deduplicateChunks(allChunks)
       : allChunks;
 
