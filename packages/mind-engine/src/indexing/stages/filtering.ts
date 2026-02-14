@@ -62,7 +62,7 @@ export class FileFilteringStage implements PipelineStage {
   ) {}
 
   async execute(context: PipelineContext): Promise<StageResult> {
-    context.logger.info('Filtering files', {
+    context.logger.debug('Filtering files', {
       totalFiles: this.discoveredFiles.length,
       quickFilter: this.options.quickFilter ?? true,
       hashFilter: this.options.hashFilter ?? true,
@@ -111,7 +111,7 @@ export class FileFilteringStage implements PipelineStage {
     // Update context stats
     context.stats.filesSkipped = this.skippedByMtime + this.skippedByHash;
 
-    context.logger.info('File filtering complete', {
+    context.logger.debug('File filtering complete', {
       totalFiles: this.discoveredFiles.length,
       filteredFiles: this.filteredFiles.length,
       skippedByMtime: this.skippedByMtime,

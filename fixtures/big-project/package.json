@@ -1,6 +1,6 @@
 {
   "name": "big-project",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Large TypeScript project for testing mind indexing",
   "type": "module",
   "main": "src/index.ts",
@@ -24,4 +24,3 @@
     "vitest": "^1.0.0"
   }
 }
-

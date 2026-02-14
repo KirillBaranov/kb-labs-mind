@@ -70,14 +70,6 @@ export default defineCommand({
       const limit = flags.limit ? Math.max(1, flags.limit) : undefined;
       const profileId = flags.profile;
 
-      ctx.trace?.addEvent?.('mind.rag-query.start', {
-        command: 'mind:rag-query',
-        mode: flags.mode,
-        agent: flags.agent,
-        scopeId,
-        intent,
-      });
-
       // Get platform for analytics (not passed to Mind - child process uses usePlatform())
       const platform = usePlatform();
 
@@ -131,7 +123,7 @@ export default defineCommand({
             mode,
             debug: flags.debug,
             broker: undefined, // Gracefully falls back to in-memory
-            platform: undefined, // Let child process use usePlatform() for IPC proxies
+            platform, // Pass platform for analytics adapter
           });
 
           // Track analytics if available
@@ -141,8 +133,6 @@ export default defineCommand({
             scopeId,
             intent,
           }).catch(() => {});
-
-          ctx.trace?.addEvent?.('mind.rag-query.agent.complete', { mode, scopeId });
 
           // Output clean JSON to stdout
           console.log(JSON.stringify(result));
@@ -203,7 +193,7 @@ export default defineCommand({
           intent,
           limit,
           profileId,
-          platform: undefined, // Let child process use usePlatform()
+          platform, // Pass platform for analytics adapter
           runtime: undefined, // Runtime context not available in CLI
           onProgress: (stage: string, details?: string) => {
             if (flags.quiet || format === 'json' || format === 'json-pretty') return;

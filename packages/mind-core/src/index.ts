@@ -15,6 +15,7 @@ export * from './utils/hash';
 export * from './utils/paths';
 export * from './utils/math';
 export * from './utils/file-rotation';
+export * from './utils/json';
 
 // Verification
 export * from './verification/verify-indexes';

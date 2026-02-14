@@ -2,10 +2,10 @@
  * LLM Provider Interface
  *
  * Pluggable LLM abstraction for orchestrator operations.
- * Extends MindLLMEngine with JSON structured output support.
+ * Extends ILLM with JSON structured output support.
  */
 
-import type { MindLLMEngine, MindLLMGenerateResult } from '@kb-labs/mind-llm';
+import type { ILLM, LLMResponse } from '@kb-labs/sdk';
 
 export interface LLMCompleteOptions {
   prompt: string;
@@ -62,13 +62,13 @@ export interface LLMProvider {
 }
 
 /**
- * Create LLM provider from MindLLMEngine
+ * Create LLM provider from ILLM
  */
-export function createLLMProvider(engine: MindLLMEngine): LLMProvider {
+export function createLLMProvider(llm: ILLM): LLMProvider {
   let stats: LLMStats = { calls: 0, tokensIn: 0, tokensOut: 0 };
 
   return {
-    name: engine.id,
+    name: 'llm-provider',
 
     async complete(options: LLMCompleteOptions): Promise<string> {
       // Pass system prompt separately (NOT concatenated) for OpenAI prompt caching
@@ -78,15 +78,15 @@ export function createLLMProvider(engine: MindLLMEngine): LLMProvider {
       stats.tokensIn += inputTokens;
       stats.calls++;
 
-      const result = await engine.generate(options.prompt, {
+      const result = await llm.complete(options.prompt, {
         systemPrompt: options.systemPrompt,
         maxTokens: options.maxTokens ?? 1024,
         temperature: options.temperature ?? 0.2,
         stop: options.stop,
       });
 
-      stats.tokensOut += result.tokens;
-      return result.text;
+      stats.tokensOut += result.usage.completionTokens;
+      return result.content;
     },
 
     async completeJSON<T>(options: LLMJSONOptions<T>): Promise<T> {
@@ -107,16 +107,16 @@ Do not include any text before or after the JSON object.
       stats.tokensIn += inputTokens;
       stats.calls++;
 
-      const result = await engine.generate(options.prompt, {
+      const result = await llm.complete(options.prompt, {
         systemPrompt,
         maxTokens: options.maxTokens ?? 2048,
         temperature: options.temperature ?? 0.1, // Lower for JSON
       });
 
-      stats.tokensOut += result.tokens;
+      stats.tokensOut += result.usage.completionTokens;
 
       // Parse JSON from response
-      const text = result.text.trim();
+      const text = result.content.trim();
       try {
         // Try direct parse first
         return JSON.parse(text) as T;

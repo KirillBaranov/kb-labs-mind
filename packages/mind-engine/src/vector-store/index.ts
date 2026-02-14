@@ -21,6 +21,7 @@ import { LocalVectorStore } from './local';
 import type { VectorStore } from './vector-store';
 import type { MindPlatformBindings } from '../platform/platform-adapters';
 import { PlatformVectorStoreAdapter } from './platform-adapter';
+import { usePlatform } from '@kb-labs/sdk';
 
 export type VectorStoreType = 'local';
 
@@ -39,10 +40,14 @@ export function createVectorStore(
   runtime: RuntimeAdapter,
   platform?: MindPlatformBindings,
 ): VectorStore {
-  if (platform?.vectorStore) {
+  // Use SDK hook to get wrapped vectorStore with analytics
+  const sdkPlatform = usePlatform();
+  const vectorStore = sdkPlatform.vectorStore;
+
+  if (vectorStore) {
     return new PlatformVectorStoreAdapter({
-      vectorStore: platform.vectorStore,
-      storage: platform.storage,
+      vectorStore,
+      storage: sdkPlatform.storage,
     });
   }
 

@@ -8,11 +8,6 @@ import type {
   IVectorStore,
 } from '@kb-labs/sdk';
 import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
-import type {
-  MindLLMEngine,
-  MindLLMGenerateOptions,
-  MindLLMGenerateResult,
-} from '@kb-labs/mind-llm';
 
 export interface MindPlatformBindings {
   vectorStore?: IVectorStore;
@@ -36,37 +31,6 @@ export class PlatformEmbeddingProvider implements EmbeddingProvider {
       dim: dim || values.length,
       values,
     }));
-  }
-}
-
-export class PlatformLLMEngine implements MindLLMEngine {
-  readonly id: string;
-  readonly description?: string;
-
-  constructor(private readonly llm: ILLM) {
-    this.id = 'platform-llm';
-  }
-
-  async generate(
-    prompt: string,
-    options?: MindLLMGenerateOptions,
-  ): Promise<MindLLMGenerateResult> {
-    const response = await this.llm.complete(prompt, {
-      model: options?.model ?? (options?.metadata?.model as string | undefined),
-      temperature: options?.temperature,
-      maxTokens: options?.maxTokens,
-      stop: options?.stop,
-      systemPrompt: options?.systemPrompt,
-    });
-
-    return {
-      text: response.content,
-      tokens: response.usage?.completionTokens ?? response.content.length,
-      finishReason: 'stop',
-      metadata: {
-        model: response.model,
-      },
-    };
   }
 }
 

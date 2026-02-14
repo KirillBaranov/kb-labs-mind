@@ -1,7 +1,6 @@
 {
   "name": "@kb-labs/mind",
   "version": "0.1.0",
-  "private": true,
   "description": "Knowledge management and code indexing for KB Labs Mind",
   "type": "module",
   "author": {
@@ -81,7 +80,8 @@
     "rimraf": "^6",
     "tsup": "^8",
     "typescript": "^5",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/node": "^24.3.3"
   },
   "engines": {
     "node": ">=18.18.0",

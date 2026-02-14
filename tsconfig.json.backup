@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/mind-types" },
+    { "path": "./packages/mind-core" },
+    { "path": "./packages/mind-indexer" },
+    { "path": "./packages/mind-pack" },
+    { "path": "./packages/mind-cli" },
+    { "path": "./packages/mind-adapters" },
+    { "path": "./apps/demo" }
+  ],
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "composite": true, "noEmit": true }
+}

@@ -8,8 +8,9 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -24,7 +25,7 @@
     "build": "tsup --config tsup.config.ts",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -38,9 +39,8 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
-    "@kb-labs/mind-types": "workspace:*",
-    "@kb-labs/mind-indexer": "link:../mind-indexer"
+    "@kb-labs/mind-types": "link:../mind-types",
+    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk"
   },
   "engines": {
     "node": ">=20.0.0",

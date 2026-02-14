@@ -1,1 +1,1 @@
-export * from './widgets/index';
+// Studio widgets removed - no longer needed

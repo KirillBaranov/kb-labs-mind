@@ -1,5 +1,6 @@
 import {
   usePlatform,
+  useLLM,
   type KnowledgeIntent,
   type KnowledgeResult,
   type AgentQueryMode,
@@ -17,7 +18,6 @@ import {
   isAgentError,
   AgentQueryOrchestrator,
 } from '@kb-labs/mind-orchestrator';
-import { createOpenAILLMEngine } from '@kb-labs/mind-llm';
 
 /**
  * Global orchestrator instance for cache persistence across queries
@@ -52,6 +52,12 @@ export interface AdapterInfo {
 export interface RagIndexResult {
   scopeIds: string[];
   adapters: AdapterInfo;
+  stats: {
+    filesDiscovered: number;
+    filesProcessed: number;
+    filesSkipped: number;
+    chunksStored: number;
+  };
 }
 
 export interface RagIndexOptionsWithRuntime extends RagIndexOptions {
@@ -89,18 +95,12 @@ export async function runRagIndex(
   // If include/exclude provided, override paths in all sources (ESLint-style)
   let effectiveConfig = options.config;
   if (options.include || options.exclude) {
-    console.log('[runRagIndex] Overriding sources with include/exclude', { include: options.include, exclude: options.exclude });
-
     // If config already provided (from useConfig), clone and modify it
-    // Config must be provided in V3 (via useConfig())
+    // If not provided, will be loaded by createMindKnowledgeRuntime
     let knowledgeConfig = effectiveConfig;
-    if (!knowledgeConfig) {
-      throw new Error('[runRagIndex] Config is required. Commands must call useConfig() and pass it to runRagIndex.');
-    }
 
     // Override paths/exclude in ALL sources (ESLint-style override)
     if (knowledgeConfig?.sources && Array.isArray(knowledgeConfig.sources)) {
-      console.log('[runRagIndex] Original sources count:', knowledgeConfig.sources.length);
       knowledgeConfig = { ...knowledgeConfig };
       knowledgeConfig.sources = knowledgeConfig.sources.map((source: any) => {
         const overriddenSource = { ...source };
@@ -117,12 +117,9 @@ export async function runRagIndex(
 
         return overriddenSource;
       });
-      console.log('[runRagIndex] Overridden sources:', JSON.stringify(knowledgeConfig.sources, null, 2));
       effectiveConfig = knowledgeConfig;
     }
   }
-
-  console.log('[runRagIndex] Passing config to createMindKnowledgeRuntime:', effectiveConfig ? 'CUSTOM CONFIG' : 'undefined (will load from file)');
 
   const runtime = await createMindKnowledgeRuntime({
     cwd: options.cwd,
@@ -151,9 +148,25 @@ export async function runRagIndex(
     process.env.KB_SKIP_DEDUPLICATION = 'true';
   }
 
+  // Aggregate stats across all scopes
+  const aggregatedStats = {
+    filesDiscovered: 0,
+    filesProcessed: 0,
+    filesSkipped: 0,
+    chunksStored: 0,
+  };
+
   try {
     for (const scopeId of scopeIds) {
-      await runtime.service.index(scopeId);
+      console.log('[runRagIndex DEBUG] Calling service.index for scopeId:', scopeId);
+      const scopeStats = await runtime.service.index(scopeId);
+      console.log('[runRagIndex DEBUG] service.index returned:', scopeStats);
+      if (scopeStats) {
+        aggregatedStats.filesDiscovered += scopeStats.filesDiscovered;
+        aggregatedStats.filesProcessed += scopeStats.filesProcessed;
+        aggregatedStats.filesSkipped += scopeStats.filesSkipped;
+        aggregatedStats.chunksStored += scopeStats.chunksStored;
+      }
     }
   } finally {
     // Restore original env var value
@@ -170,7 +183,7 @@ export async function runRagIndex(
     globalOrchestrator.invalidateCache(scopeIds);
   }
 
-  return { scopeIds, adapters };
+  return { scopeIds, adapters, stats: aggregatedStats };
 }
 
 export interface RagQueryOptions {
@@ -367,8 +380,6 @@ export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
 export async function runAgentRagQuery(
   options: AgentRagQueryOptions,
 ): Promise<AgentRagQueryResult> {
-  // Get OpenAI API key from environment
-  const apiKey = process.env.OPENAI_API_KEY;
   const platformBroker = options.platform?.cache
     ? {
         get: <T>(key: string) => options.platform!.cache!.get<T>(key),
@@ -377,27 +388,17 @@ export async function runAgentRagQuery(
       }
     : undefined;
 
-  // Create LLM engine if API key available
-  const llmEngine = apiKey
-    ? createOpenAILLMEngine({
-        apiKey,
-        model: 'gpt-4o-mini',
-      })
-    : undefined;
-
-  // Reuse or create global orchestrator for cache persistence
-  // NOTE: Broker must be passed on first creation - cannot be changed later
-  if (!globalOrchestrator) {
-    globalOrchestrator = createAgentQueryOrchestrator({
-      llmEngine,
-      broker: options.broker ?? platformBroker, // Pass broker for persistent caching
-      analyticsAdapter: options.platform?.analytics ?? null,
-      config: {
-        mode: options.mode ?? 'auto',
-        autoDetectComplexity: true,
-      },
-    });
-  }
+  // Always recreate orchestrator to use fresh LLM from useLLM()
+  // This ensures analytics wrappers are always applied
+  globalOrchestrator = createAgentQueryOrchestrator({
+    llm: useLLM(), // Always use fresh LLM with analytics wrapper
+    broker: options.broker ?? platformBroker, // Pass broker for persistent caching
+    analyticsAdapter: options.platform?.analytics ?? null,
+    config: {
+      mode: options.mode ?? 'auto',
+      autoDetectComplexity: true,
+    },
+  });
 
   const orchestrator = globalOrchestrator;
 

@@ -1,18 +1,9 @@
 {
-  "extends": ["@kb-labs/devkit/tsconfig/node.json", "../../tsconfig.paths.json"],
-  "include": [
-    "src"
-  ],
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@kb-labs/devkit/tsconfig/node.json",
   "compilerOptions": {
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@kb-labs/core-platform": [
-        "../../../kb-labs-core/packages/core-platform/src/index.ts"
-      ],
-      "@kb-labs/core-platform/*": [
-        "../../../kb-labs-core/packages/core-platform/src/*"
-      ]
-    }
-  }
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"]
 }

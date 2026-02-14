@@ -3,12 +3,6 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@kb-labs/core-runtime": [
-        "../kb-labs-core/packages/core-runtime/src/index.ts"
-      ],
-      "@kb-labs/core-runtime/*": [
-        "../kb-labs-core/packages/core-runtime/src/*"
-      ],
       "@kb-labs/mind-adapters": [
         "packages/mind-adapters/src/index.ts"
       ],
@@ -51,12 +45,6 @@
       "@kb-labs/mind-indexer/*": [
         "packages/mind-indexer/src/*"
       ],
-      "@kb-labs/mind-llm": [
-        "packages/mind-llm/src/index.ts"
-      ],
-      "@kb-labs/mind-llm/*": [
-        "packages/mind-llm/src/*"
-      ],
       "@kb-labs/mind-orchestrator": [
         "packages/mind-orchestrator/src/index.ts"
       ],
@@ -80,12 +68,6 @@
       ],
       "@kb-labs/plugin-contracts/*": [
         "../kb-labs-plugin/packages/plugin-contracts/src/*"
-      ],
-      "@kb-labs/sdk": [
-        "../kb-labs-sdk/packages/sdk/src/index.ts"
-      ],
-      "@kb-labs/sdk/*": [
-        "../kb-labs-sdk/packages/sdk/src/*"
       ]
     }
   }

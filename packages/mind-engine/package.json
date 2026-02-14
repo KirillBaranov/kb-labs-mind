@@ -8,16 +8,19 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./sync": {
+      "types": "./dist/sync/index.d.ts",
       "import": "./dist/sync/index.js",
-      "types": "./dist/sync/index.d.ts"
+      "require": "./dist/sync/index.js"
     },
     "./adapters/runtime-adapter": {
+      "types": "./dist/adapters/runtime-adapter.d.ts",
       "import": "./dist/adapters/runtime-adapter.js",
-      "types": "./dist/adapters/runtime-adapter.d.ts"
+      "require": "./dist/adapters/runtime-adapter.js"
     }
   },
   "files": [
@@ -31,33 +34,33 @@
     "build": "tsup --config tsup.config.ts",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-embeddings": "link:../mind-embeddings",
-    "@kb-labs/mind-llm": "link:../mind-llm",
     "@kb-labs/mind-types": "link:../mind-types",
     "@kb-labs/mind-vector-store": "link:../mind-vector-store",
+    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "fast-glob": "^3.3.2",
     "fs-extra": "^11.0.0",
     "picomatch": "^4.0.2",
     "tree-sitter": "^0.21.1",
-    "tree-sitter-typescript": "^0.21.2",
+    "tree-sitter-go": "^0.21.1",
     "tree-sitter-javascript": "^0.21.4",
     "tree-sitter-python": "^0.21.0",
-    "tree-sitter-go": "^0.21.1",
     "tree-sitter-rust": "^0.21.0",
+    "tree-sitter-typescript": "^0.21.2",
     "typescript": "^5.6.3"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",
     "@types/fs-extra": "^11.0.0",
     "@types/node": "^24.3.3",
+    "@types/picomatch": "^4",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",

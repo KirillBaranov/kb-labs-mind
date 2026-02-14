@@ -3,9 +3,12 @@
 import {
   usePlatform,
   useLogger,
+  useLLM,
+  useEmbeddings,
   MemoryHistoryStore,
   MemoryFeedbackStore,
   createKnowledgeError,
+  type ILLM,
   type KnowledgeChunk,
   type KnowledgeEngineConfig,
   type KnowledgeQuery,
@@ -19,6 +22,7 @@ import {
   type KnowledgeEngineRegistry,
   type KnowledgeExecutionContext,
   type KnowledgeIndexOptions,
+  type IndexingStats,
 } from '@kb-labs/sdk';
 import * as path from 'node:path';
 import fs from 'fs-extra';
@@ -47,10 +51,6 @@ import {
   type EmbeddingProviderConfig,
   type EmbeddingRuntimeAdapter,
 } from '@kb-labs/mind-embeddings';
-import {
-  createLocalStubLLMEngine,
-  type MindLLMEngine,
-} from '@kb-labs/mind-llm';
 import type { VectorSearchFilters, VectorSearchMatch } from '@kb-labs/mind-vector-store';
 import type { RuntimeAdapter } from './adapters/runtime-adapter';
 import { createRuntimeAdapter } from './adapters/runtime-adapter';
@@ -93,7 +93,6 @@ import {
 } from './learning/adaptive-weights';
 import {
   PlatformEmbeddingProvider,
-  PlatformLLMEngine,
   type MindPlatformBindings,
 } from './platform/platform-adapters';
 import { AdaptiveChunkerFactory } from './chunking/adaptive-factory';
@@ -724,7 +723,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   private readonly options: NormalizedOptions;
   private readonly vectorStore: VectorStore;
   private embeddingProvider: EmbeddingProvider;
-  private readonly llmEngine: MindLLMEngine;
+  private readonly llm: ILLM | null;
   private readonly runtime: RuntimeAdapter;
   private readonly reranker: Reranker | null;
   private readonly contextOptimizer: ContextOptimizer;
@@ -823,40 +822,27 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     };
     
     this.vectorStore = createVectorStore(vectorStoreConfig, this.runtime, platform);
-    
-    // Create embedding provider
-    if (platform?.embeddings) {
-      this.embeddingProvider = new PlatformEmbeddingProvider(platform.embeddings);
-    } else {
-      const embeddingRuntime: EmbeddingRuntimeAdapter = {
-        fetch: this.runtime.fetch as any,
-        env: this.runtime.env,
-        analytics: this.runtime.analytics,
-      };
-      this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
+
+    // Create embedding provider - ALWAYS use platform.embeddings (with analytics wrapper)
+    const embeddings = platform?.embeddings ?? useEmbeddings();
+    if (!embeddings) {
+      throw new Error('Embeddings adapter not available. Ensure platform is initialized with embeddings adapter.');
     }
+    this.embeddingProvider = new PlatformEmbeddingProvider(embeddings);
     
-    // Create LLM engine: prefer platform LLM, otherwise use stub
-    if (platform?.llm) {
-      this.llmEngine = new PlatformLLMEngine(platform.llm);
-    } else {
-      this.llmEngine = createLocalStubLLMEngine({
-        id: rawOptions.llmEngineId,
-      });
-    }
-    
-    const llmAvailable = !!platform?.llm;
-    
+    // Use LLM from SDK hook
+    this.llm = useLLM() ?? null;
+
     // Create LLM compressor if enabled and LLM available
-    if (this.options.search.optimization.compression.llm.enabled && llmAvailable) {
+    if (this.options.search.optimization.compression.llm.enabled && this.llm) {
       this.llmCompressor = new OpenAILLMCompressor({
-        llmEngine: this.llmEngine,
+        llm: this.llm,
         maxTokens: this.options.search.optimization.compression.llm.maxTokens,
         compressionRatio: 0.5,
         temperature: 0.2,
       });
       this.summarizer = new ChunkSummarizer({
-        llmEngine: this.llmEngine,
+        llm: this.llm,
         maxTokens: 150,
         temperature: 0.3,
       });
@@ -880,7 +866,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       const storageType = this.options.learning.storage;
       const resolvedStorage = platform?.storage;
 
-      this.runtime.log?.('info', 'Initializing self-learning system', {
+      this.runtime.log?.('debug', 'Initializing self-learning system', {
         enabled: this.options.learning.enabled,
         storageType,
         platformStorage: !!platform?.storage,
@@ -963,7 +949,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           llmBased: this.options.search.reasoning.complexityDetection.llmBased,
           llmModel: this.options.search.reasoning.complexityDetection.llmModel,
         },
-        llmAvailable ? this.llmEngine : null,
+        this.llm,
       );
 
       const queryPlanner = new QueryPlanner(
@@ -973,7 +959,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           temperature: this.options.search.reasoning.planning.temperature,
           minSimilarity: this.options.search.reasoning.planning.minSimilarity,
         },
-        llmAvailable ? this.llmEngine : null,
+        this.llm,
       );
 
       const parallelExecutor = new ParallelExecutor({
@@ -992,7 +978,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
           temperature: this.options.search.reasoning.synthesis.temperature,
           progressiveRefinement: this.options.search.reasoning.synthesis.progressiveRefinement,
         },
-        llmAvailable ? this.llmEngine : null,
+        this.llm,
       );
 
       this.reasoningEngine = new ReasoningEngine(
@@ -1013,7 +999,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         this.runtime,
       );
 
-      this.runtime.log?.('info', 'Reasoning engine initialized', {
+      this.runtime.log?.('debug', 'Reasoning engine initialized', {
         maxDepth: this.options.search.reasoning.maxDepth,
         complexityThreshold: this.options.search.reasoning.complexityThreshold,
         maxSubqueries: this.options.search.reasoning.planning.maxSubqueries,
@@ -1025,18 +1011,9 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   }
 
   async init(options?: MindEngineOptions): Promise<void> {
-    if (options?.embedding) {
-      const embeddingConfig: EmbeddingProviderConfig = {
-        type: options.embedding.type,
-        provider: options.embedding.provider,
-      };
-      const embeddingRuntime: EmbeddingRuntimeAdapter = {
-        fetch: this.runtime.fetch as any, // Type compatibility
-        env: this.runtime.env,
-        analytics: this.runtime.analytics,
-      };
-      this.embeddingProvider = createEmbeddingProvider(embeddingConfig, embeddingRuntime);
-    }
+    // REMOVED: Fallback embedding provider creation
+    // Mind MUST use only platform.embeddings (PlatformEmbeddingProvider)
+    // No alternatives allowed - ensures analytics tracking works
   }
 
   async dispose(): Promise<void> {
@@ -1046,7 +1023,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   async index(
     sources: KnowledgeSource[],
     options: KnowledgeIndexOptions,
-  ): Promise<void> {
+  ): Promise<IndexingStats> {
     // Pipeline-based Indexing Architecture
     // Breaks down monolithic index() into independent, testable stages
 
@@ -1067,10 +1044,18 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // await this.vectorStore.replaceScope(options.scope.id, []);
 
     // Create pipeline context
+    const effectiveWorkspaceRoot = options.workspaceRoot ?? this.workspaceRoot;
+    console.log('[Mind Engine DEBUG] index() called with:');
+    console.log('[Mind Engine DEBUG]   options.workspaceRoot:', options.workspaceRoot);
+    console.log('[Mind Engine DEBUG]   this.workspaceRoot:', this.workspaceRoot);
+    console.log('[Mind Engine DEBUG]   effectiveWorkspaceRoot:', effectiveWorkspaceRoot);
+    console.log('[Mind Engine DEBUG]   sources count:', sources.length);
+    console.log('[Mind Engine DEBUG]   sources[0].paths:', sources[0]?.paths);
+
     const context: any = {
       sources,
       scopeId: options.scope.id,
-      workspaceRoot: this.workspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
+      workspaceRoot: effectiveWorkspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
       logger,
       memoryMonitor,
       onProgress: undefined, // TODO: wire up progress reporting
@@ -1104,7 +1089,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     if (discoveredFiles.length === 0) {
       this.runtime.log?.('warn', `No files found for scope ${options.scope.id}`);
-      return;
+      return {
+        filesDiscovered: 0,
+        filesProcessed: 0,
+        filesSkipped: 0,
+        chunksStored: 0,
+        chunksUpdated: 0,
+        chunksSkipped: 0,
+        errorCount: 0,
+        durationMs: Date.now() - context.stats.startTime,
+      };
     }
 
     // Add filtering stage to skip unchanged files (incremental indexing optimization)
@@ -1127,11 +1121,20 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     const filteredFiles = filteringStage.getFilteredFiles();
 
     if (filteredFiles.length === 0) {
-      this.runtime.log?.('info', `All files unchanged, skipping indexing for scope ${options.scope.id}`);
-      return;
+      this.runtime.log?.('debug', `All files unchanged, skipping indexing for scope ${options.scope.id}`);
+      return {
+        filesDiscovered: context.stats.filesDiscovered,
+        filesProcessed: 0,
+        filesSkipped: context.stats.filesDiscovered,
+        chunksStored: 0,
+        chunksUpdated: 0,
+        chunksSkipped: 0,
+        errorCount: 0,
+        durationMs: Date.now() - context.stats.startTime,
+      };
     }
 
-    this.runtime.log?.('info', `Filtered files for indexing`, {
+    this.runtime.log?.('debug', `Filtered files for indexing`, {
       totalFiles: discoveredFiles.length,
       filesToIndex: filteredFiles.length,
       skipped: discoveredFiles.length - filteredFiles.length,
@@ -1156,7 +1159,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     if (chunks.length === 0) {
       this.runtime.log?.('warn', `No chunks generated for scope ${options.scope.id}`);
-      return;
+      return {
+        filesDiscovered: context.stats.filesDiscovered,
+        filesProcessed: context.stats.filesProcessed,
+        filesSkipped: context.stats.filesSkipped,
+        chunksStored: 0,
+        chunksUpdated: 0,
+        chunksSkipped: 0,
+        errorCount: 0,
+        durationMs: Date.now() - context.stats.startTime,
+      };
     }
 
     // Create embedding provider adapter
@@ -1238,8 +1250,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // Execute storage
     await storageStage.execute(context);
 
-    // Log final stats
-    this.runtime.log?.('info', `Indexing complete`, {
+    // Log final stats (debug level - UI will show summary)
+    this.runtime.log?.('debug', `Indexing complete`, {
       scopeId: options.scope.id,
       filesDiscovered: context.stats.filesDiscovered,
       filesProcessed: context.stats.filesProcessed,
@@ -1248,6 +1260,18 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       errors: context.stats.errors.length,
       duration: `${((Date.now() - context.stats.startTime) / 1000).toFixed(2)}s`,
     });
+
+    // Return indexing statistics
+    return {
+      filesDiscovered: context.stats.filesDiscovered,
+      filesProcessed: context.stats.filesProcessed,
+      filesSkipped: context.stats.filesSkipped,
+      chunksStored: context.chunksStored ?? 0,
+      chunksUpdated: 0, // TODO: track separately in StorageStage
+      chunksSkipped: 0, // TODO: track separately in StorageStage
+      errorCount: context.stats.errors.length,
+      durationMs: Date.now() - context.stats.startTime,
+    };
   }
 
   async query(
@@ -1562,19 +1586,19 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         queryVector: queryVector.values,
       };
 
-      this.runtime.log?.('info', 'Saving query history', {
+      this.runtime.log?.('debug', 'Saving query history', {
         queryId,
         queryText: query.text.substring(0, 50),
         chunksCount: chunks.length,
         hasQueryHistory: !!this.queryHistory,
         queryVectorLength: queryVector.values.length,
       });
-      
+
       // Save query history
       // For testing: await to see errors immediately (remove await in production)
       try {
         await this.queryHistory.save(historyEntry);
-        this.runtime.log?.('info', 'Query history saved successfully', { 
+        this.runtime.log?.('debug', 'Query history saved successfully', {
           queryId,
           queryText: query.text.substring(0, 30),
         });
@@ -1811,7 +1835,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         absolute: false,
       });
 
-      this.runtime.log?.('info', `Found ${files.length} files for source ${source.id}`, {
+      this.runtime.log?.('debug', `Found ${files.length} files for source ${source.id}`, {
         sourceId: source.id,
         paths: source.paths,
         filesCount: files.length,
@@ -1852,7 +1876,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       }
     }
     
-    this.runtime.log?.('info', `Total chunks collected: ${chunkList.length}`, {
+    this.runtime.log?.('debug', `Total chunks collected: ${chunkList.length}`, {
       sourcesCount: sources.length,
       totalChunks: chunkList.length,
       filesCount: fileMetadata.size,
@@ -1965,7 +1989,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
   private async embedChunks(chunks: MindChunk[]) {
     const texts = chunks.map(chunk => chunk.text);
-    
+
     // Track analytics
     const startTime = Date.now();
     this.runtime.analytics?.track('rag.embed_chunks.start', {

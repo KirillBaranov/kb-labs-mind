@@ -1,17 +1,9 @@
 {
-  "extends": "../../tsconfig.paths.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "baseUrl": ".",
-    "paths": {},
-    "moduleResolution": "bundler",
-    "module": "ESNext",
-    "target": "ES2022",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "declaration": true,
-    "declarationDir": "dist",
-    "skipLibCheck": true
+    "paths": {}
   },
   "include": [
     "src/**/*"

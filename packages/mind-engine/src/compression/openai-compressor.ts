@@ -3,18 +3,16 @@
  * OpenAI-based LLM compression implementation
  */
 
-import { useLogger } from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import { useLogger, type ILLM, type KnowledgeChunk } from '@kb-labs/sdk';
 import type { LLMCompressor } from './llm-compressor';
 
 const getCompressionLogger = () => useLogger().child({ category: 'mind:engine:compression' });
 
 export interface OpenAICompressorOptions {
   /**
-   * LLM engine to use for compression
+   * LLM to use for compression
    */
-  llmEngine: MindLLMEngine;
+  llm: ILLM;
 
   /**
    * Maximum tokens for compressed output
@@ -42,12 +40,12 @@ export interface OpenAICompressorOptions {
  * Compresses chunks using LLM while preserving meaning
  */
 export class OpenAILLMCompressor implements LLMCompressor {
-  private llmEngine: MindLLMEngine;
+  private llm: ILLM;
   private compressionRatio: number;
   private temperature: number;
 
   constructor(options: OpenAICompressorOptions) {
-    this.llmEngine = options.llmEngine;
+    this.llm = options.llm;
     this.compressionRatio = options.compressionRatio ?? 0.5;
     this.temperature = options.temperature ?? 0.2;
   }
@@ -64,17 +62,12 @@ export class OpenAILLMCompressor implements LLMCompressor {
     const prompt = this.buildCompressionPrompt(chunk, query, targetTokens);
 
     try {
-      const result = await this.llmEngine.generate(prompt, {
+      const result = await this.llm.complete(prompt, {
         maxTokens: targetTokens + 50, // Add buffer
         temperature: this.temperature,
-        metadata: {
-          chunkId: chunk.id,
-          originalTokens,
-          targetTokens,
-        },
       });
 
-      return result.text.trim();
+      return result.content.trim();
     } catch (error) {
       // Fallback to original text on error
       getCompressionLogger().warn(`LLM compression failed for chunk ${chunk.id}, using original text`, {
