@@ -154,5 +154,60 @@ describe('LocalVectorStore', () => {
       expect(true).toBe(true);
     }
   });
-});
 
+  it('should provide scoped adapter batch operations', async () => {
+    const chunks: StoredMindChunk[] = [
+      createChunk('chunk-a', 'alpha'),
+      createChunk('chunk-b', 'beta'),
+    ];
+    chunks[0]!.metadata = { fileHash: 'hash-a', fileMtime: 1000 };
+    chunks[1]!.metadata = { fileHash: 'hash-b', fileMtime: 2000 };
+    chunks[0]!.path = 'src/a.ts';
+    chunks[1]!.path = 'src/b.ts';
+
+    await store.replaceScope('test-scope', chunks);
+
+    const adapter = store.createScopedAdapter?.('test-scope');
+    expect(adapter).toBeDefined();
+    if (!adapter) {
+      return;
+    }
+
+    const existing = await adapter.checkExistence(['chunk-a', 'missing']);
+    expect(existing.has('chunk-a')).toBe(true);
+    expect(existing.has('missing')).toBe(false);
+
+    const byHash = await adapter.getChunksByHash(['hash-a', 'hash-x']);
+    expect(byHash.get('hash-a')).toContain('chunk-a');
+    expect(byHash.get('hash-x')).toBeUndefined();
+
+    const byPath = await adapter.getChunkIdsByPaths(['src/a.ts', 'src/missing.ts']);
+    expect(byPath.get('src/a.ts')).toContain('chunk-a');
+    expect(byPath.get('src/missing.ts')).toBeUndefined();
+
+    const deleted = await adapter.deleteBatch(['chunk-b']);
+    expect(deleted).toBe(1);
+    const remaining = await store.getAllChunks('test-scope');
+    expect(remaining.some(chunk => chunk.chunkId === 'chunk-b')).toBe(false);
+  });
+
+  it('should return file metadata for filtering stage', async () => {
+    const chunk = createChunk('chunk-meta', 'meta');
+    chunk.path = 'src/meta.ts';
+    chunk.metadata = { fileHash: 'meta-hash', fileMtime: 123456 };
+
+    await store.replaceScope('test-scope', [chunk]);
+    const metadata = await store.getFilesMetadata?.('test-scope', ['src/meta.ts', 'src/none.ts']);
+
+    expect(metadata).toBeDefined();
+    if (!metadata) {
+      return;
+    }
+    expect(metadata.get('src/meta.ts')).toEqual({
+      hash: 'meta-hash',
+      mtime: 123456,
+      size: 0,
+    });
+    expect(metadata.has('src/none.ts')).toBe(false);
+  });
+});

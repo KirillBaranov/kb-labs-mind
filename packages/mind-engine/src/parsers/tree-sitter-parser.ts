@@ -85,20 +85,17 @@ export class TreeSitterParser implements LanguageParser {
           return rust.default || rust;
 
         case 'java':
-          // @ts-expect-error - tree-sitter-java is an optional peer dependency
           const java = await import('tree-sitter-java');
           return java.default || java;
 
         case 'c':
         case 'cpp':
         case 'c++':
-          // @ts-expect-error - tree-sitter-c is an optional peer dependency
           const c = await import('tree-sitter-c');
           return c.default || c;
 
         case 'csharp':
         case 'cs':
-          // @ts-expect-error - tree-sitter-c-sharp is an optional peer dependency
           const cs = await import('tree-sitter-c-sharp');
           return cs.default || cs;
 

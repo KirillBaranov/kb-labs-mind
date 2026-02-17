@@ -52,4 +52,3 @@ export class PlatformFeedbackStoreAdapter implements FeedbackStore {
     };
   }
 }
-

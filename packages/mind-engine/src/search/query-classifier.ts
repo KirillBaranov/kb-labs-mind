@@ -2,11 +2,16 @@
  * @module @kb-labs/mind-engine/search/query-classifier
  * Query classification for adaptive search weights
  */
+import type { ILLM, LLMMessage, LLMToolCallOptions } from '@kb-labs/sdk';
 
 export type QueryType = 'lookup' | 'concept' | 'code' | 'debug' | 'general';
+export type RetrievalProfile = 'exact_lookup' | 'semantic_explore';
+export type RecallStrategy = 'default' | 'broad_recall';
 
 export interface QueryClassification {
   type: QueryType;
+  retrievalProfile: RetrievalProfile;
+  recallStrategy: RecallStrategy;
   confidence: number;
   weights: {
     vector: number;
@@ -19,6 +24,13 @@ interface QueryPattern {
   patterns: RegExp[];
   weights: { vector: number; keyword: number };
   suggestedLimit: number;
+}
+
+export interface QueryClassifierLLMOptions {
+  llm?: ILLM | null;
+  enabled?: boolean;
+  minRuleConfidence?: number;
+  maxRuleConfidence?: number;
 }
 
 /**
@@ -35,11 +47,14 @@ const QUERY_PATTERNS: Record<QueryType, QueryPattern> = {
       /^(get|set|create|delete|update|find)\w+$/i, // Method patterns
       /`\w+`/,                                   // Backtick identifiers
       /"\w+"|\'\w+\'/,                           // Quoted identifiers
+      /\b[a-z0-9]+(?:-[a-z0-9]+)+\b/,            // kebab-case (commands, file ids)
+      /--[a-z0-9-]+/,                             // CLI flags
       /^where\s+is\s+/i,                         // "where is X"
       /^find\s+(the\s+)?\w+/i,                   // "find X"
+      /\b(cli|command|subcommand|flag|option)\b/i,
     ],
     weights: { vector: 0.3, keyword: 0.7 },
-    suggestedLimit: 10,
+    suggestedLimit: 120,
   },
 
   // Concept: understanding, explanations, "how does X work"
@@ -90,11 +105,12 @@ const QUERY_PATTERNS: Record<QueryType, QueryPattern> = {
       /issue/i,
       /problem/i,
       /why\s+(does|is).*not/i,
+      /invalid/i,
       /undefined|null|NaN/i,
       /exception|throw/i,
     ],
-    weights: { vector: 0.5, keyword: 0.5 },
-    suggestedLimit: 15,
+    weights: { vector: 0.4, keyword: 0.6 },
+    suggestedLimit: 80,
   },
 
   // General: default fallback
@@ -131,9 +147,11 @@ export function classifyQuery(query: string): QueryClassification {
     if (/^[A-Z][a-z]+[A-Z]?\w*$/.test(identifier)) {
       return {
         type: 'lookup',
+        retrievalProfile: 'exact_lookup',
+        recallStrategy: 'default',
         confidence: 0.85,
         weights: { vector: 0.3, keyword: 0.7 },
-        suggestedLimit: 10,
+        suggestedLimit: 120,
       };
     }
   }
@@ -144,9 +162,11 @@ export function classifyQuery(query: string): QueryClassification {
     if (identifiers.length > 0) {
       return {
         type: 'lookup',
+        retrievalProfile: 'exact_lookup',
+        recallStrategy: 'default',
         confidence: 0.9,
         weights: { vector: 0.3, keyword: 0.7 },
-        suggestedLimit: 10,
+        suggestedLimit: 120,
       };
     }
   }
@@ -164,6 +184,8 @@ export function classifyQuery(query: string): QueryClassification {
 
       return {
         type,
+        retrievalProfile: type === 'lookup' || type === 'debug' ? 'exact_lookup' : 'semantic_explore',
+        recallStrategy: 'default',
         confidence,
         weights: pattern.weights,
         suggestedLimit: pattern.suggestedLimit,
@@ -174,10 +196,182 @@ export function classifyQuery(query: string): QueryClassification {
   // Default to general
   return {
     type: 'general',
+    retrievalProfile: 'semantic_explore',
+    recallStrategy: 'default',
     confidence: 0.5,
     weights: QUERY_PATTERNS.general.weights,
     suggestedLimit: QUERY_PATTERNS.general.suggestedLimit,
   };
+}
+
+const CLASSIFIER_TOOL_NAME = 'set_query_profile';
+const classifierCache = new Map<string, { expiresAt: number; value: QueryClassification }>();
+
+export async function classifyQueryWithLLMFallback(
+  query: string,
+  options: QueryClassifierLLMOptions = {},
+): Promise<QueryClassification> {
+  const baseline = classifyQuery(query);
+  if (!shouldUseLLMClassifier(query, baseline, options)) {
+    return baseline;
+  }
+
+  const cacheKey = buildClassifierCacheKey(query);
+  const now = Date.now();
+  const cached = classifierCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  const llm = options.llm;
+  if (!llm?.chatWithTools) {
+    return baseline;
+  }
+
+  try {
+    const messages: LLMMessage[] = [
+        {
+          role: 'system',
+          content:
+            'Classify retrieval intent for agent search. Use the provided tool exactly once with the best profile.',
+        },
+        {
+          role: 'user',
+          content: `Query: ${query}`,
+        },
+      ];
+    const toolOptions: LLMToolCallOptions = {
+        temperature: 0,
+        maxTokens: 200,
+        tools: [
+          {
+            name: CLASSIFIER_TOOL_NAME,
+            description:
+              'Set retrieval profile and calibration strategy for query routing.',
+            inputSchema: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                profile: { type: 'string', enum: ['exact_lookup', 'semantic_explore'] },
+                confidence: { type: 'number', minimum: 0, maximum: 1 },
+                recallStrategy: { type: 'string', enum: ['default', 'broad_recall'] },
+                reason: { type: 'string' },
+              },
+              required: ['profile', 'confidence', 'recallStrategy'],
+            },
+          },
+        ],
+        toolChoice: { type: 'function', function: { name: CLASSIFIER_TOOL_NAME } },
+      };
+    const response = await llm.chatWithTools(messages, toolOptions);
+
+    const toolCall = response.toolCalls?.find((call) => call?.name === CLASSIFIER_TOOL_NAME);
+    const parsed = parseToolClassification(toolCall?.input);
+    if (!parsed) {
+      return baseline;
+    }
+
+    const merged = mergeClassificationDecision(baseline, parsed);
+    classifierCache.set(cacheKey, {
+      value: merged,
+      expiresAt: now + 5 * 60_000,
+    });
+    return merged;
+  } catch {
+    return baseline;
+  }
+}
+
+function shouldUseLLMClassifier(
+  query: string,
+  baseline: QueryClassification,
+  options: QueryClassifierLLMOptions,
+): boolean {
+  if (options.enabled === false) {
+    return false;
+  }
+  const minRuleConfidence = options.minRuleConfidence ?? 0.55;
+  const maxRuleConfidence = options.maxRuleConfidence ?? 0.88;
+  const inUncertaintyBand =
+    baseline.confidence >= minRuleConfidence && baseline.confidence <= maxRuleConfidence;
+
+  const technicalSignals =
+    /`[^`]+`/.test(query) ||
+    /--[a-z0-9-]+/.test(query) ||
+    /\b[a-z0-9]+(?:-[a-z0-9]+)+\b/.test(query) ||
+    /\b[A-Z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/.test(query);
+  const likelyNoExactAnswer = /\b(explain|why|how)\b/i.test(query) && !technicalSignals;
+
+  return inUncertaintyBand || likelyNoExactAnswer;
+}
+
+function parseToolClassification(
+  input: unknown,
+): { profile: RetrievalProfile; confidence: number; recallStrategy: RecallStrategy } | null {
+  if (!input || typeof input !== 'object') {
+    return null;
+  }
+  const data = input as Record<string, unknown>;
+  const profile = data.profile;
+  const confidence = Number(data.confidence);
+  const recallStrategy = data.recallStrategy;
+  if (
+    (profile !== 'exact_lookup' && profile !== 'semantic_explore') ||
+    !Number.isFinite(confidence) ||
+    confidence < 0 ||
+    confidence > 1 ||
+    (recallStrategy !== 'default' && recallStrategy !== 'broad_recall')
+  ) {
+    return null;
+  }
+  return {
+    profile,
+    confidence,
+    recallStrategy,
+  };
+}
+
+function mergeClassificationDecision(
+  baseline: QueryClassification,
+  llmDecision: { profile: RetrievalProfile; confidence: number; recallStrategy: RecallStrategy },
+): QueryClassification {
+  // Prevent low-confidence LLM override from destabilizing exact lookups.
+  if (llmDecision.confidence < 0.6) {
+    return baseline;
+  }
+
+  if (llmDecision.profile === baseline.retrievalProfile) {
+    return {
+      ...baseline,
+      confidence: Math.max(baseline.confidence, llmDecision.confidence),
+      recallStrategy: llmDecision.recallStrategy,
+    };
+  }
+
+  if (llmDecision.profile === 'exact_lookup') {
+    return {
+      ...baseline,
+      type: baseline.type === 'general' ? 'lookup' : baseline.type,
+      retrievalProfile: 'exact_lookup',
+      recallStrategy: llmDecision.recallStrategy,
+      confidence: llmDecision.confidence,
+      weights: { vector: 0.3, keyword: 0.7 },
+      suggestedLimit: Math.max(baseline.suggestedLimit, 80),
+    };
+  }
+
+  return {
+    ...baseline,
+    retrievalProfile: 'semantic_explore',
+    recallStrategy: llmDecision.recallStrategy,
+    confidence: llmDecision.confidence,
+    weights: { vector: 0.75, keyword: 0.25 },
+    suggestedLimit: Math.max(baseline.suggestedLimit, 20),
+  };
+}
+
+function buildClassifierCacheKey(query: string): string {
+  return query.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 /**
@@ -189,6 +383,8 @@ export function hasExactIdentifier(query: string): boolean {
     /`[^`]+`/.test(query) ||
     /"[^"]+"/.test(query) ||
     /'[^']+'/.test(query) ||
+    /\b[a-z0-9]+(?:-[a-z0-9]+)+\b/.test(query) ||
+    /--[a-z0-9-]+/.test(query) ||
     /\b[A-Z][a-z]+[A-Z]\w*\b/.test(query) ||
     /\b[a-z]+[A-Z]\w+\b/.test(query)
   );
@@ -199,6 +395,24 @@ export function hasExactIdentifier(query: string): boolean {
  */
 export function extractIdentifiers(query: string): string[] {
   const identifiers: string[] = [];
+  const commonSentenceWords = new Set([
+    'What',
+    'Where',
+    'When',
+    'How',
+    'Why',
+    'Which',
+    'Who',
+    'Is',
+    'Are',
+    'Can',
+    'Do',
+    'Does',
+    'Tell',
+    'Show',
+    'Find',
+    'Explain',
+  ]);
 
   // Backtick identifiers
   const backticks = query.match(/`([^`]+)`/g);
@@ -215,13 +429,27 @@ export function extractIdentifiers(query: string): string[] {
   // PascalCase
   const pascalCase = query.match(/\b[A-Z][a-zA-Z0-9]+\b/g);
   if (pascalCase) {
-    identifiers.push(...pascalCase);
+    identifiers.push(
+      ...pascalCase.filter((token) => !commonSentenceWords.has(token)),
+    );
   }
 
   // camelCase (starting with lowercase)
   const camelCase = query.match(/\b[a-z]+[A-Z][a-zA-Z0-9]*\b/g);
   if (camelCase) {
     identifiers.push(...camelCase);
+  }
+
+  // kebab-case (commands like rag-index, paths/tokens)
+  const kebabCase = query.match(/\b[a-z0-9]+(?:-[a-z0-9]+)+\b/g);
+  if (kebabCase) {
+    identifiers.push(...kebabCase);
+  }
+
+  // CLI flags (--mode, --text)
+  const cliFlags = query.match(/--[a-z0-9-]+/g);
+  if (cliFlags) {
+    identifiers.push(...cliFlags);
   }
 
   return [...new Set(identifiers)];
