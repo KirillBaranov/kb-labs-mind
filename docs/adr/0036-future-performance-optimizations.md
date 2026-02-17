@@ -61,7 +61,7 @@ kb daemon stop
 
 **Implementation:**
 ```typescript
-// Enable prompt caching in llm-provider
+// Enable prompt caching in LLM adapter layer
 const result = await openai.chat.completions.create({
   model: 'gpt-4o-mini',
   messages: [

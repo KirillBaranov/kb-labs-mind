@@ -57,7 +57,7 @@ Parent Process (CLI bin)          Child Process (Plugin sandbox)
 
 ### 2. Auto-Detection via Manifest
 
-Plugins declare their config section in `manifest.v2.ts`:
+Plugins declare their config section in `manifest.v3.ts`:
 
 ```typescript
 export const manifest: ManifestV2 = {
@@ -166,7 +166,7 @@ const config = await useConfig(); // ← productId='mind' inferred from manifest
    - `sdk/helpers.ts`: Re-exported async `useConfig()`
 
 6. **Plugin Integration**:
-   - `mind-cli/manifest.v2.ts`: Added `configSection: 'mind'`
+   - `mind-cli/manifest.v3.ts`: Added `configSection: 'mind'`
    - `mind-cli/commands/init.ts`: Changed to `await useConfig()` (no parameter)
    - `mind-cli/commands/rag-index.ts`: Changed to `await useConfig()` (no parameter)
 
