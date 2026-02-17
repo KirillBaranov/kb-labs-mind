@@ -64,7 +64,7 @@ export class ChunkSummarizer {
     chunks: KnowledgeChunk[],
     query?: string,
   ): Promise<string[]> {
-    return await Promise.all(
+    return Promise.all(
       chunks.map((chunk) => this.summarize(chunk, query)),
     );
   }

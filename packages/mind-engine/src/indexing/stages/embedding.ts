@@ -2,7 +2,7 @@
  * EmbeddingStage - Generate embeddings for chunks
  *
  * Responsibilities:
- * - Receive chunks from ChunkingStage
+ * - Receive chunks from ParallelChunkingStage
  * - Batch chunks for efficient API calls
  * - Call embedding provider with batched chunks
  * - Handle rate limits via RateLimiter
@@ -11,7 +11,7 @@
  */
 
 import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
-import type { MindChunk } from './chunking';
+import type { MindChunk } from './types';
 import type {
   RateLimiter} from '../../rate-limiting/index';
 import {
@@ -49,6 +49,11 @@ export interface EmbeddingProvider {
    * If not provided, default OpenAI tier-2 limits will be used
    */
   readonly rateLimits?: RateLimitConfig;
+}
+
+interface EmbeddingEntry {
+  chunk: MindChunk;
+  text: string;
 }
 
 export interface EmbeddingStageOptions {
@@ -161,7 +166,29 @@ export class EmbeddingStage implements PipelineStage {
           throw new Error(`Batch at index ${currentIndex} is undefined`);
         }
         const { chunks: batch, index: batchStart } = batchItem;
-        const texts = batch.map((c: { text: string }) => c.text);
+        const validEntries: EmbeddingEntry[] = [];
+        for (let idx = 0; idx < batch.length; idx++) {
+          const chunk = batch[idx];
+          if (!chunk) {
+            continue;
+          }
+          const sanitizedText = this.sanitizeEmbeddingText(chunk.text);
+          if (!sanitizedText) {
+            context.stats.errors.push({
+              file: chunk.path,
+              error: 'Embedding skipped: empty or invalid chunk text',
+            });
+            errorCount += 1;
+            continue;
+          }
+          validEntries.push({ chunk, text: sanitizedText });
+        }
+
+        if (validEntries.length === 0) {
+          results[currentIndex] = [];
+          continue;
+        }
+        const texts = validEntries.map(entry => entry.text);
 
         // Estimate tokens for this batch
         const estimatedTokens = estimateBatchTokens(texts);
@@ -186,9 +213,10 @@ export class EmbeddingStage implements PipelineStage {
 
           // Combine chunks with embeddings
           const batchResults: ChunkWithEmbedding[] = [];
-          for (let j = 0; j < batch.length; j++) {
+          for (let j = 0; j < validEntries.length; j++) {
             const embedding = embeddings[j];
-            const chunk = batch[j];
+            const entry = validEntries[j];
+            const chunk = entry?.chunk;
             if (embedding && chunk) {
               batchResults.push({
                 ...chunk,
@@ -206,7 +234,7 @@ export class EmbeddingStage implements PipelineStage {
             await this.sleep(1);
           }
           mutex.locked = true;
-          processedCount += batch.length;
+          processedCount += validEntries.length;
           const currentProcessed = processedCount;
           mutex.locked = false;
 
@@ -229,6 +257,34 @@ export class EmbeddingStage implements PipelineStage {
           // Apply memory backpressure
           await context.memoryMonitor.applyBackpressure();
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isInvalidInput = this.isInvalidInputError(errorMessage);
+
+          // Recover from invalid input by recursively splitting batch.
+          if (isInvalidInput && validEntries.length > 1) {
+            context.logger.warn('Embedding batch contains invalid input, isolating bad chunks', {
+              batchIndex: currentIndex,
+              batchSize: batch.length,
+              validEntries: validEntries.length,
+            });
+
+            const recovered = await this.embedEntriesWithSplit(validEntries, context);
+            const recoveredResults = recovered.results;
+            errorCount += recovered.failed;
+
+            // Release rate limiter slot on recovery path as well
+            this.rateLimiter.release();
+            results[currentIndex] = recoveredResults;
+
+            while (mutex.locked) {
+              await this.sleep(1);
+            }
+            mutex.locked = true;
+            processedCount += recoveredResults.length;
+            mutex.locked = false;
+            continue;
+          }
+
           // Release rate limiter slot on error
           this.rateLimiter.release();
 
@@ -237,7 +293,7 @@ export class EmbeddingStage implements PipelineStage {
             await this.sleep(1);
           }
           mutex.locked = true;
-          errorCount += batch.length;
+          errorCount += validEntries.length;
           const currentErrors = context.stats.errors.length;
           mutex.locked = false;
 
@@ -245,14 +301,14 @@ export class EmbeddingStage implements PipelineStage {
           context.logger.error('Failed to embed batch', {
             batchIndex: currentIndex,
             batchSize: batch.length,
-            error: error instanceof Error ? error.message : String(error),
+            error: errorMessage,
           });
 
           // Add to error stats
-          for (const chunk of batch) {
+          for (const chunk of validEntries.map(entry => entry.chunk)) {
             context.stats.errors.push({
               file: chunk.path,
-              error: `Embedding failed: ${error instanceof Error ? error.message : String(error)}`,
+              error: `Embedding failed: ${errorMessage}`,
             });
           }
 
@@ -324,6 +380,11 @@ export class EmbeddingStage implements PipelineStage {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
+        // Invalid input is deterministic - retries won't help.
+        if (this.isInvalidInputError(lastError.message)) {
+          throw lastError;
+        }
+
         // Check if it's a rate limit error - if so, the rate limiter will handle it
         const isRateLimit = lastError.message.toLowerCase().includes('rate limit');
 
@@ -378,6 +439,79 @@ export class EmbeddingStage implements PipelineStage {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private sanitizeEmbeddingText(text: unknown): string | null {
+    if (typeof text !== 'string') {
+      return null;
+    }
+
+    // Strip problematic control chars and normalize invalid UTF-16 sequences.
+    const noNulls = text.replace(/\u0000/g, '');
+    const normalized = Buffer.from(noNulls, 'utf8').toString('utf8').trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private isInvalidInputError(message: string): boolean {
+    const lower = message.toLowerCase();
+    return lower.includes('$.input') || lower.includes('invalid input');
+  }
+
+  private async embedEntriesWithSplit(
+    entries: EmbeddingEntry[],
+    context: PipelineContext,
+  ): Promise<{ results: ChunkWithEmbedding[]; failed: number }> {
+    if (entries.length === 0) {
+      return { results: [], failed: 0 };
+    }
+
+    try {
+      const embeddings = await this.embedBatchWithRetry(entries.map(entry => entry.text), context);
+      const results: ChunkWithEmbedding[] = [];
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const embedding = embeddings[i];
+        if (!entry || !embedding) {
+          continue;
+        }
+        results.push({
+          ...entry.chunk,
+          chunkId: entry.chunk.chunkId ?? '',
+          sourceId: entry.chunk.sourceId ?? '',
+          path: entry.chunk.path ?? '',
+          embedding,
+        });
+      }
+      return { results, failed: 0 };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!this.isInvalidInputError(message)) {
+        throw error;
+      }
+
+      if (entries.length === 1) {
+        const entry = entries[0];
+        context.stats.errors.push({
+          file: entry?.chunk.path ?? '<unknown>',
+          error: `Embedding failed (invalid input): ${message}`,
+        });
+        context.logger.warn('Dropped invalid embedding chunk', {
+          chunkId: entry?.chunk.chunkId,
+          path: entry?.chunk.path,
+          textLength: entry?.text.length ?? 0,
+          textPreview: (entry?.text ?? '').slice(0, 120),
+        });
+        return { results: [], failed: 1 };
+      }
+
+      const middle = Math.floor(entries.length / 2);
+      const left = await this.embedEntriesWithSplit(entries.slice(0, middle), context);
+      const right = await this.embedEntriesWithSplit(entries.slice(middle), context);
+      return {
+        results: [...left.results, ...right.results],
+        failed: left.failed + right.failed,
+      };
+    }
   }
 
   /**

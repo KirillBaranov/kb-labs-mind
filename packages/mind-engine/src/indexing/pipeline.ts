@@ -18,7 +18,7 @@ import type {
  *
  * Executes stages sequentially:
  * 1. FileDiscoveryStage - Find files to index
- * 2. ChunkingStage - Convert files to chunks
+ * 2. ParallelChunkingStage - Convert files to chunks
  * 3. EmbeddingStage - Generate embeddings
  * 4. StorageStage - Store in vector DB
  */

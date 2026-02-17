@@ -7,6 +7,8 @@ import {
   useEmbeddings,
   MemoryHistoryStore,
   MemoryFeedbackStore,
+  FileHistoryStore,
+  FileFeedbackStore,
   createKnowledgeError,
   type ILLM,
   type KnowledgeChunk,
@@ -28,6 +30,7 @@ import fs from 'fs-extra';
 import fg from 'fast-glob';
 import picomatch from 'picomatch';
 import { createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { getChunkerForFile, type Chunk } from './chunking/index';
 
 // Use SDK logger (lazy initialization)
@@ -53,8 +56,13 @@ import type { RuntimeAdapter } from './adapters/runtime-adapter';
 import { createRuntimeAdapter } from './adapters/runtime-adapter';
 import { createVectorStore, type VectorStoreConfig } from './vector-store/index';
 import type { VectorStore } from './vector-store/vector-store';
-import { hybridSearch } from './search/hybrid';
-import { keywordSearch } from './search/keyword';
+import { adaptiveHybridSearch } from './search/adaptive-hybrid';
+import {
+  applyFreshnessRanking,
+  resolveRetrievalMode,
+} from './search/freshness';
+import { applyConflictResolution } from './search/conflicts';
+import { buildConfidenceAdjustments, evaluateReliability } from './search/reliability';
 import { createReranker, type RerankerConfig } from './reranking/index';
 import type { Reranker } from './reranking/reranker';
 import { ContextOptimizer } from './optimization/index';
@@ -71,8 +79,6 @@ import type { FeedbackStore, FeedbackEntry } from './learning/feedback';
 import { SelfFeedbackGenerator } from './learning/feedback';
 import { PlatformHistoryStoreAdapter } from './learning/platform-history-store';
 import { PlatformFeedbackStoreAdapter } from './learning/platform-feedback-store';
-import { FileHistoryStore } from './learning/file-history-store';
-import { FileFeedbackStore } from './learning/file-feedback-store';
 import {
   PopularityBoostCalculator,
   type PopularityBoost,
@@ -159,6 +165,111 @@ export interface MindEngineSearchOptions {
    * Default: 60
    */
   rrfK?: number;
+
+  /**
+   * Freshness-aware ranking adjustments.
+   * Helps prioritize newer docs/ADR chunks over stale ones.
+   */
+  freshness?: {
+    /**
+     * Enable freshness adjustments.
+     * Default: true
+     */
+    enabled?: boolean;
+
+    /**
+     * Freshness weight for docs/ADR-like chunks.
+     * Default: 0.25
+     */
+    docsWeight?: number;
+
+    /**
+     * Freshness weight for code/config chunks.
+     * Default: 0.1
+     */
+    codeWeight?: number;
+
+    /**
+     * Source trust weight.
+     * Default: 0.1
+     */
+    trustWeight?: number;
+
+    /**
+     * Hard cap for total boost added to base score.
+     * Default: 0.3
+     */
+    maxBoost?: number;
+
+    /**
+     * Index staleness thresholds in hours.
+     */
+    staleThresholdHours?: {
+      /**
+       * Soft threshold (warning level).
+       * Default: 72
+       */
+      soft?: number;
+
+      /**
+       * Hard threshold (critical stale level).
+       * Default: 168
+       */
+      hard?: number;
+    };
+  };
+
+  /**
+   * Conflict resolution across docs/ADR candidates.
+   */
+  conflicts?: {
+    /**
+     * Enable deterministic conflict handling.
+     * Default: true
+     */
+    enabled?: boolean;
+
+    /**
+     * Conflict resolution policy.
+     * Default: 'freshness-first'
+     */
+    policy?: 'freshness-first';
+
+    /**
+     * Max losers to penalize in one topic group.
+     * Default: 3
+     */
+    maxLosersPerTopic?: number;
+
+    /**
+     * Score penalty applied to loser chunks.
+     * Default: 0.2
+     */
+    penalty?: number;
+  };
+
+  /**
+   * Reliability policies for agent/thinking consumers.
+   */
+  reliability?: {
+    /**
+     * Fail-closed when staleness is hard and mode is strict.
+     * Default: true
+     */
+    hardStaleFailClosed?: boolean;
+
+    /**
+     * Confidence floor for strict mode.
+     * Default: 0.75
+     */
+    confidenceFloor?: number;
+
+    /**
+     * Treat thinking mode as strict.
+     * Default: true
+     */
+    thinkingModeStrict?: boolean;
+  };
 
   /**
    * Re-ranking configuration
@@ -604,6 +715,28 @@ interface NormalizedOptions {
     vectorWeight: number;
     keywordWeight: number;
     rrfK: number;
+    freshness: {
+      enabled: boolean;
+      docsWeight: number;
+      codeWeight: number;
+      trustWeight: number;
+      maxBoost: number;
+      staleThresholdHours: {
+        soft: number;
+        hard: number;
+      };
+    };
+    conflicts: {
+      enabled: boolean;
+      policy: 'freshness-first';
+      maxLosersPerTopic: number;
+      penalty: number;
+    };
+    reliability: {
+      hardStaleFailClosed: boolean;
+      confidenceFloor: number;
+      thinkingModeStrict: boolean;
+    };
     reranking: {
       enabled: boolean;
       type: 'cross-encoder' | 'heuristic' | 'none';
@@ -715,6 +848,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
   readonly id: string;
   readonly type = 'mind';
   private readonly workspaceRoot: string;
+  private readonly engineConfigHash: string;
   private readonly options: NormalizedOptions;
   private readonly vectorStore: VectorStore;
   private embeddingProvider: EmbeddingProvider;
@@ -768,6 +902,11 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     this.workspaceRoot = context.workspaceRoot ?? (typeof process !== 'undefined' && process.cwd ? process.cwd() : '/');
     const rawOptions = (config.options ?? {}) as MindEngineOptions;
     this.options = normalizeOptions(rawOptions);
+    this.engineConfigHash = hashConfigForDeterminism({
+      id: config.id,
+      type: config.type,
+      options: sanitizeEngineOptionsForHash(rawOptions),
+    });
 
     // Use SDK's usePlatform() as fallback if not explicitly provided
     const platform = rawOptions.platform ?? usePlatform();
@@ -816,7 +955,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       },
     };
     
-    this.vectorStore = createVectorStore(vectorStoreConfig, this.runtime, platform);
+    this.vectorStore = createVectorStore(vectorStoreConfig);
 
     // Create embedding provider - ALWAYS use platform.embeddings (with analytics wrapper)
     const embeddings = platform?.embeddings ?? useEmbeddings();
@@ -1040,17 +1179,14 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     // Create pipeline context
     const effectiveWorkspaceRoot = options.workspaceRoot ?? this.workspaceRoot;
-    console.log('[Mind Engine DEBUG] index() called with:');
-    console.log('[Mind Engine DEBUG]   options.workspaceRoot:', options.workspaceRoot);
-    console.log('[Mind Engine DEBUG]   this.workspaceRoot:', this.workspaceRoot);
-    console.log('[Mind Engine DEBUG]   effectiveWorkspaceRoot:', effectiveWorkspaceRoot);
-    console.log('[Mind Engine DEBUG]   sources count:', sources.length);
-    console.log('[Mind Engine DEBUG]   sources[0].paths:', sources[0]?.paths);
-
+    const indexRevision = randomUUID();
+    const indexedAt = Date.now();
     const context: any = {
       sources,
       scopeId: options.scope.id,
       workspaceRoot: effectiveWorkspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
+      indexRevision,
+      indexedAt,
       logger,
       memoryMonitor,
       onProgress: undefined, // TODO: wire up progress reporting
@@ -1063,6 +1199,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         errors: [],
       },
     };
+
+    if (!this.vectorStore.createScopedAdapter) {
+      throw createKnowledgeError(
+        'KNOWLEDGE_ENGINE_FAILED',
+        'Vector store must implement createScopedAdapter for indexing pipeline.',
+      );
+    }
+    const vectorStoreAdapter = this.vectorStore.createScopedAdapter(options.scope.id);
+    let deletedFiles = 0;
+    let deletedChunks = 0;
 
     // Build pipeline stages
     const discoveryStage = new FileDiscoveryStage();
@@ -1082,6 +1228,50 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     await discoveryStage.execute(context);
     const discoveredFiles = discoveryStage.getDiscoveredFiles();
 
+    // Stale lifecycle cleanup: remove chunks for deleted files in current scope.
+    // Skip this in partial indexing mode (--include/--exclude), otherwise we can
+    // accidentally treat unscanned files as deleted and wipe most of the scope.
+    const isPartialIndexMode = this.isPartialIndexMode(sources, effectiveWorkspaceRoot);
+    if (!isPartialIndexMode && this.vectorStore.getAllChunks) {
+      try {
+        const existingChunks = await this.vectorStore.getAllChunks(options.scope.id);
+        const discoveredPathSet = new Set(discoveredFiles.map(file => file.relativePath.replace(/\\/g, '/')));
+        const staleChunkIds = existingChunks
+          .filter(chunk => !discoveredPathSet.has(chunk.path.replace(/\\/g, '/')))
+          .map(chunk => chunk.chunkId);
+
+        if (staleChunkIds.length > 0) {
+          const deleted = await vectorStoreAdapter.deleteBatch(staleChunkIds);
+          deletedChunks += deleted;
+          if (deleted > 0) {
+            const stalePaths = new Set(
+              existingChunks
+                .filter(chunk => !discoveredPathSet.has(chunk.path.replace(/\\/g, '/')))
+                .map(chunk => chunk.path.replace(/\\/g, '/'))
+            );
+            deletedFiles += stalePaths.size;
+          }
+          this.runtime.log?.('debug', 'Deleted stale chunks for removed files', {
+            scopeId: options.scope.id,
+            staleChunkIds: staleChunkIds.length,
+            deleted,
+            staleFilesDeleted: deletedFiles,
+            indexRevision,
+          });
+        }
+      } catch (error) {
+        this.runtime.log?.('warn', 'Failed stale chunk cleanup; continuing indexing', {
+          scopeId: options.scope.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    } else if (isPartialIndexMode) {
+      this.runtime.log?.('debug', 'Skipping removed-file stale cleanup in partial indexing mode', {
+        scopeId: options.scope.id,
+        indexRevision,
+      });
+    }
+
     if (discoveredFiles.length === 0) {
       this.runtime.log?.('warn', `No files found for scope ${options.scope.id}`);
       return {
@@ -1093,7 +1283,10 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         chunksSkipped: 0,
         errorCount: 0,
         durationMs: Date.now() - context.stats.startTime,
-      };
+        deletedFiles,
+        deletedChunks,
+        invalidChunks: 0,
+      } as IndexingStats;
     }
 
     // Add filtering stage to skip unchanged files (incremental indexing optimization)
@@ -1126,7 +1319,10 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         chunksSkipped: 0,
         errorCount: 0,
         durationMs: Date.now() - context.stats.startTime,
-      };
+        deletedFiles,
+        deletedChunks,
+        invalidChunks: 0,
+      } as IndexingStats;
     }
 
     this.runtime.log?.('debug', `Filtered files for indexing`, {
@@ -1163,7 +1359,10 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         chunksSkipped: 0,
         errorCount: 0,
         durationMs: Date.now() - context.stats.startTime,
-      };
+        deletedFiles,
+        deletedChunks,
+        invalidChunks: 0,
+      } as IndexingStats;
     }
 
     // Create embedding provider adapter
@@ -1204,34 +1403,6 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     await embeddingStage.execute(context);
     const chunksWithEmbeddings = embeddingStage.getChunksWithEmbeddings();
 
-    // Create scoped vector store adapter for StorageStage
-    // This uses the optimized batch methods in PlatformVectorStoreAdapter
-    const vectorStoreAdapter = this.vectorStore.createScopedAdapter
-      ? this.vectorStore.createScopedAdapter(options.scope.id)
-      : {
-          // Fallback adapter for vector stores that don't support createScopedAdapter
-          insertBatch: async (chunks: any[]) => {
-            const storedChunks = chunks.map(c => ({
-              chunkId: c.chunkId,
-              scopeId: options.scope.id,
-              sourceId: c.sourceId,
-              path: c.path,
-              span: c.span,
-              text: c.text,
-              metadata: { ...c.metadata, fileHash: c.hash, fileMtime: c.mtime },
-              embedding: { values: c.embedding as number[], dim: (c.embedding as number[]).length },
-            }));
-            if (this.vectorStore.upsertChunks) {
-              await this.vectorStore.upsertChunks(options.scope.id, storedChunks);
-            }
-            return chunks.length;
-          },
-          updateBatch: async (chunks: any[]) => chunks.length,
-          checkExistence: async (_chunkIds: string[]) => new Set<string>(),
-          getChunksByHash: async (_hashes: string[]) => new Map<string, string[]>(),
-          deleteBatch: async (_chunkIds: string[]) => 0,
-        };
-
     // Create storage stage with optimized batch processing
     // Check if deduplication should be skipped (via environment variable for now)
     const skipDedup = process.env.KB_SKIP_DEDUPLICATION === 'true' || (options as any).skipDeduplication === true;
@@ -1243,7 +1414,15 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     pipeline.addStage(storageStage);
 
     // Execute storage
-    await storageStage.execute(context);
+    const storageResult = await storageStage.execute(context);
+    const storageData = (storageResult.data ?? {}) as Record<string, unknown>;
+    const chunksUpdated = Number(storageData.chunksUpdated ?? 0);
+    const chunksSkipped = Number(storageData.chunksSkipped ?? 0);
+    const staleChunksDeleted = Number(storageData.staleChunksDeleted ?? 0);
+    const staleFilesDeleted = Number(storageData.staleFilesDeleted ?? 0);
+    const invalidChunks = Number(storageData.chunksInvalid ?? 0);
+    deletedChunks += staleChunksDeleted;
+    deletedFiles += staleFilesDeleted;
 
     // Log final stats (debug level - UI will show summary)
     this.runtime.log?.('debug', `Indexing complete`, {
@@ -1252,6 +1431,11 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       filesProcessed: context.stats.filesProcessed,
       filesSkipped: context.stats.filesSkipped,
       totalChunks: context.stats.totalChunks,
+      chunksUpdated,
+      chunksSkipped,
+      deletedFiles,
+      deletedChunks,
+      invalidChunks,
       errors: context.stats.errors.length,
       duration: `${((Date.now() - context.stats.startTime) / 1000).toFixed(2)}s`,
     });
@@ -1262,11 +1446,14 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       filesProcessed: context.stats.filesProcessed,
       filesSkipped: context.stats.filesSkipped,
       chunksStored: context.chunksStored ?? 0,
-      chunksUpdated: 0, // TODO: track separately in StorageStage
-      chunksSkipped: 0, // TODO: track separately in StorageStage
+      chunksUpdated,
+      chunksSkipped,
       errorCount: context.stats.errors.length,
       durationMs: Date.now() - context.stats.startTime,
-    };
+      deletedFiles,
+      deletedChunks,
+      invalidChunks,
+    } as IndexingStats;
   }
 
   async query(
@@ -1287,7 +1474,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
             const originalReasoningEnabled = this.options.search.reasoning.enabled;
             this.options.search.reasoning.enabled = false;
             try {
-              return await this.executeQuery(q, ctx);
+              return this.executeQuery(q, ctx);
             } finally {
               this.options.search.reasoning.enabled = originalReasoningEnabled;
             }
@@ -1317,7 +1504,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     }
 
     // Regular query execution (or fallback from reasoning)
-    return await this.executeQuery(query, context);
+    return this.executeQuery(query, context);
   }
 
   /**
@@ -1337,7 +1524,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     }
 
     const filters = this.createSearchFilters(context);
+    const sourcesDigest = this.computeSourcesDigest(context.sources);
     let matches: VectorSearchMatch[];
+    let queryClassification: {
+      type: string;
+      retrievalProfile: 'exact_lookup' | 'semantic_explore';
+      recallStrategy: 'default' | 'broad_recall';
+      confidence: number;
+      usedWeights: { vector: number; keyword: number };
+      identifiers: string[];
+    } | null = null;
 
     // Get search weights - priority: query.metadata > adaptive learning > config defaults
     let vectorWeight = this.options.search.vectorWeight;
@@ -1383,12 +1579,16 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       // Get all chunks for keyword search
       const allChunks = await this.vectorStore.getAllChunks(context.scope.id, filters);
 
-      // Perform hybrid search
-      matches = await hybridSearch(
+      const forceWeights =
+        metadataWeights?.vectorWeight !== undefined && metadataWeights?.keywordWeight !== undefined
+          ? { vector: vectorWeight, keyword: keywordWeight }
+          : undefined;
+
+      // Perform adaptive hybrid search (lookup/concept aware + exact identifier boost)
+      const adaptiveResult = await adaptiveHybridSearch(
         async (scopeId, vector, limit, searchFilters) => {
-          return await this.vectorStore.search(scopeId, vector, limit, searchFilters);
+          return this.vectorStore.search(scopeId, vector, limit, searchFilters);
         },
-        keywordSearch,
         context.scope.id,
         queryVector,
         query.text,
@@ -1396,11 +1596,31 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         context.limit,
         filters,
         {
-          vectorWeight,
-          keywordWeight,
           rrfK,
+          forceWeights,
+          adaptiveWeights: forceWeights ? false : true,
+          sourceBoost: true,
+          classifier: {
+            enabled: true,
+            llm: this.llm,
+          },
         },
       );
+      matches = adaptiveResult.matches;
+      queryClassification = {
+        type: adaptiveResult.classification.type,
+        retrievalProfile: adaptiveResult.classification.retrievalProfile,
+        recallStrategy: adaptiveResult.classification.recallStrategy,
+        confidence: adaptiveResult.classification.confidence,
+        usedWeights: adaptiveResult.usedWeights,
+        identifiers: adaptiveResult.identifiers,
+      };
+      this.runtime.log?.('debug', 'Adaptive hybrid classification', {
+        queryType: adaptiveResult.classification.type,
+        confidence: adaptiveResult.classification.confidence,
+        usedWeights: adaptiveResult.usedWeights,
+        identifiers: adaptiveResult.identifiers,
+      });
     } else {
       // Vector search only
       this.reportProgress('searching_vector_store');
@@ -1462,6 +1682,38 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       this.reportProgress('re_ranking_completed', `${finalMatches.length} reranked`, { reranked: finalMatches.length });
     }
 
+    const requestedMode = (query.metadata as { mode?: unknown } | undefined)?.mode
+      ?? context.profile?.id;
+    const retrievalMode = resolveRetrievalMode(requestedMode);
+    const freshnessResult = applyFreshnessRanking(
+      finalMatches,
+      this.options.search.freshness,
+      retrievalMode,
+    );
+    finalMatches = freshnessResult.matches;
+    const conflictsResult = applyConflictResolution(
+      finalMatches,
+      this.options.search.conflicts,
+      retrievalMode,
+    );
+    finalMatches = conflictsResult.matches;
+    const queryMetadata = (query.metadata as Record<string, unknown> | undefined) ?? undefined;
+    const reliabilityDecision = evaluateReliability(
+      {
+        stalenessLevel: freshnessResult.diagnostics.stalenessLevel,
+        retrievalMode,
+        scores: finalMatches.map((match) => match.score),
+        queryMetadata,
+      },
+      this.options.search.reliability,
+    );
+    const confidenceAdjustments = buildConfidenceAdjustments({
+      stalenessLevel: freshnessResult.diagnostics.stalenessLevel,
+      penalizedConflicts: conflictsResult.diagnostics.penalizedChunks,
+      confidenceFloor: this.options.search.reliability.confidenceFloor,
+      decision: reliabilityDecision,
+    });
+
     // Convert to chunks
     let chunks: KnowledgeChunk[] = finalMatches.map((match: VectorSearchMatch) => ({
       id: match.chunk.chunkId,
@@ -1486,6 +1738,35 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         tokenBudget: (context as any).tokenBudget,
         avgTokensPerChunk: this.options.search.optimization.avgTokensPerChunk,
       });
+    }
+
+    if (reliabilityDecision.failClosed) {
+      return {
+        query: { ...query, limit: context.limit },
+        chunks: [],
+        contextText: '',
+        engineId: this.id,
+        generatedAt: new Date().toISOString(),
+        metadata: {
+          queryClassification,
+          retrievalProfile: freshnessResult.diagnostics.retrievalProfile,
+          freshnessApplied: freshnessResult.diagnostics.applied,
+          boostedCandidates: freshnessResult.diagnostics.boostedCandidates,
+          stalenessLevel: freshnessResult.diagnostics.stalenessLevel,
+          conflictsDetected: conflictsResult.diagnostics.conflictsDetected,
+          conflictTopics: conflictsResult.diagnostics.conflictTopics,
+          conflictPolicy: conflictsResult.diagnostics.policy,
+          confidence: reliabilityDecision.confidence,
+          complete: false,
+          recoverable: true,
+          failClosed: true,
+          recoverableHints: reliabilityDecision.recoverableHints,
+          confidenceAdjustments,
+          indexRevision: (finalMatches[0]?.chunk.metadata?.indexRevision as string | undefined) ?? null,
+          engineConfigHash: this.engineConfigHash,
+          sourcesDigest,
+        },
+      };
     }
 
     // In-memory cache for compressed chunks (per query)
@@ -1712,6 +1993,23 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
             } : undefined,
           },
         } : {}),
+        queryClassification,
+        retrievalProfile: freshnessResult.diagnostics.retrievalProfile,
+        freshnessApplied: freshnessResult.diagnostics.applied,
+        boostedCandidates: freshnessResult.diagnostics.boostedCandidates,
+        stalenessLevel: freshnessResult.diagnostics.stalenessLevel,
+        conflictsDetected: conflictsResult.diagnostics.conflictsDetected,
+        conflictTopics: conflictsResult.diagnostics.conflictTopics,
+        conflictPolicy: conflictsResult.diagnostics.policy,
+        confidence: reliabilityDecision.confidence,
+        complete: !reliabilityDecision.belowConfidenceFloor,
+        recoverable: reliabilityDecision.belowConfidenceFloor,
+        failClosed: false,
+        recoverableHints: reliabilityDecision.recoverableHints,
+        confidenceAdjustments,
+        indexRevision: (chunks[0]?.metadata?.indexRevision as string | undefined) ?? null,
+        engineConfigHash: this.engineConfigHash,
+        sourcesDigest,
       },
     };
   }
@@ -2031,6 +2329,49 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     }
     return Object.keys(filters).length ? filters : undefined;
   }
+
+  private computeSourcesDigest(sources: KnowledgeSource[]): string {
+    const normalized = sources.map((source) => ({
+      id: source.id,
+      kind: source.kind,
+      paths: source.paths,
+      exclude: source.exclude,
+      language: source.language,
+    }));
+    return hashConfigForDeterminism(normalized);
+  }
+
+  private isPartialIndexMode(
+    sources: KnowledgeSource[],
+    workspaceRoot: string,
+  ): boolean {
+    for (const source of sources) {
+      for (const candidatePath of source.paths ?? []) {
+        if (this.isLikelySingleFileTarget(candidatePath, workspaceRoot)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private isLikelySingleFileTarget(candidatePath: string, workspaceRoot: string): boolean {
+    if (this.hasGlobSyntax(candidatePath)) {
+      return false;
+    }
+    const absolutePath = path.resolve(workspaceRoot, candidatePath);
+    try {
+      return fs.statSync(absolutePath).isFile();
+    } catch {
+      // Fail-closed for safety: when path doesn't resolve (or can't be read),
+      // treat as partial target to avoid accidental stale mass-deletions.
+      return true;
+    }
+  }
+
+  private hasGlobSyntax(value: string): boolean {
+    return /[*?[\]{}()!]/.test(value);
+  }
 }
 
 function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
@@ -2051,6 +2392,28 @@ function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
       vectorWeight: raw.search?.vectorWeight ?? 0.7,
       keywordWeight: raw.search?.keywordWeight ?? 0.3,
       rrfK: raw.search?.rrfK ?? 60,
+      freshness: {
+        enabled: raw.search?.freshness?.enabled ?? true,
+        docsWeight: raw.search?.freshness?.docsWeight ?? 0.25,
+        codeWeight: raw.search?.freshness?.codeWeight ?? 0.1,
+        trustWeight: raw.search?.freshness?.trustWeight ?? 0.1,
+        maxBoost: raw.search?.freshness?.maxBoost ?? 0.3,
+        staleThresholdHours: {
+          soft: raw.search?.freshness?.staleThresholdHours?.soft ?? 72,
+          hard: raw.search?.freshness?.staleThresholdHours?.hard ?? 168,
+        },
+      },
+      conflicts: {
+        enabled: raw.search?.conflicts?.enabled ?? true,
+        policy: 'freshness-first',
+        maxLosersPerTopic: raw.search?.conflicts?.maxLosersPerTopic ?? 3,
+        penalty: raw.search?.conflicts?.penalty ?? 0.2,
+      },
+      reliability: {
+        hardStaleFailClosed: raw.search?.reliability?.hardStaleFailClosed ?? true,
+        confidenceFloor: raw.search?.reliability?.confidenceFloor ?? 0.75,
+        thinkingModeStrict: raw.search?.reliability?.thinkingModeStrict ?? true,
+      },
       reranking: {
         enabled: rerankingEnabled,
         type: rerankingType,
@@ -2236,6 +2599,37 @@ function smartTruncate(
   }
   
   return result;
+}
+
+function sanitizeEngineOptionsForHash(options: MindEngineOptions): Record<string, unknown> {
+  const {
+    _runtime: _runtimeIgnored,
+    onProgress: _onProgressIgnored,
+    platform: _platformIgnored,
+    ...rest
+  } = options;
+  return rest as Record<string, unknown>;
+}
+
+function hashConfigForDeterminism(value: unknown): string {
+  return createHash('sha256').update(stableStringify(value)).digest('hex');
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(sortObjectDeep(value));
+}
+
+function sortObjectDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortObjectDeep);
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => [key, sortObjectDeep(val)] as const);
+    return Object.fromEntries(entries);
+  }
+  return value;
 }
 
 /**

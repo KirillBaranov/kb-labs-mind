@@ -7,13 +7,13 @@
  */
 
 import type { MindCandidate } from '@kb-labs/mind-types';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 
 export interface ContextCompressionOptions {
   /**
    * LLM engine for compression (GPT-4o-mini recommended)
    */
-  llmEngine: MindLLMEngine;
+  llmEngine: ILLM;
 
   /**
    * Target compression ratio (0-1)
@@ -131,13 +131,13 @@ export class ContextCompressor {
 
     // Call cheap AI (GPT-4o-mini)
     const fullPrompt = `${COMPRESSION_SYSTEM_PROMPT}\n\n${prompt}`;
-    const response = await this.options.llmEngine.generate(fullPrompt, {
+    const response = await this.options.llmEngine.complete(fullPrompt, {
       temperature: this.options.temperature,
       maxTokens: this.options.maxOutputTokens,
     });
 
     // Parse structured response
-    const compressed = this.parseCompressionResponse(response.text, candidates);
+    const compressed = this.parseCompressionResponse(response.content, candidates);
 
     // Calculate compression metrics
     const compressedTokens = this.estimateTokens(JSON.stringify(compressed));

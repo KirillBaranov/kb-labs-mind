@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { QueryPlanner } from '../query-planner';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 
 describe('QueryPlanner', () => {
   describe('planning', () => {
@@ -17,9 +17,14 @@ describe('QueryPlanner', () => {
     });
 
     it('should generate multiple sub-queries when LLM available', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockResolvedValue({ text: '["sub-query 1", "sub-query 2", "sub-query 3"]' }),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockResolvedValue({
+          content: '["sub-query 1", "sub-query 2", "sub-query 3"]',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          model: 'test',
+          finishReason: 'stop',
+        }),
+        stream: vi.fn(async function* () {}),
       };
 
       const planner = new QueryPlanner(
@@ -30,13 +35,13 @@ describe('QueryPlanner', () => {
       const plan = await planner.plan('complex query about compression', 0.8);
       expect(plan.originalQuery).toBe('complex query about compression');
       expect(plan.subqueries.length).toBeGreaterThan(1);
-      expect(mockLLM.generate).toHaveBeenCalled();
+      expect(mockLLM.complete).toHaveBeenCalled();
     });
 
     it('should handle LLM errors gracefully', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockRejectedValue(new Error('LLM error')),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockRejectedValue(new Error('LLM error')),
+        stream: vi.fn(async function* () {}),
       };
 
       const planner = new QueryPlanner(
@@ -50,9 +55,14 @@ describe('QueryPlanner', () => {
     });
 
     it('should limit sub-queries to maxSubqueries', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockResolvedValue({ text: '["q1", "q2", "q3", "q4", "q5", "q6", "q7"]' }),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockResolvedValue({
+          content: '["q1", "q2", "q3", "q4", "q5", "q6", "q7"]',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          model: 'test',
+          finishReason: 'stop',
+        }),
+        stream: vi.fn(async function* () {}),
       };
 
       const planner = new QueryPlanner(
@@ -65,7 +75,5 @@ describe('QueryPlanner', () => {
     });
   });
 });
-
-
 
 

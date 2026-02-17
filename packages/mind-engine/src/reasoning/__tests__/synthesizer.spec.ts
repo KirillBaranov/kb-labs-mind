@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ResultSynthesizer } from '../synthesizer';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
-import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/sdk';
+import type { KnowledgeResult, KnowledgeChunk, ILLM } from '@kb-labs/sdk';
 
 describe('ResultSynthesizer', () => {
   const createMockChunk = (id: string, text: string, score: number = 0.8): KnowledgeChunk => ({
@@ -61,9 +60,14 @@ describe('ResultSynthesizer', () => {
 
   describe('LLM synthesis', () => {
     it('should use LLM when enabled', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockResolvedValue({ text: 'Synthesized context from chunks' }),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockResolvedValue({
+          content: 'Synthesized context from chunks',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          model: 'test',
+          finishReason: 'stop',
+        }),
+        stream: vi.fn(async function* () {}),
       };
 
       const synthesizer = new ResultSynthesizer(
@@ -79,14 +83,14 @@ describe('ResultSynthesizer', () => {
       const results = [createMockResult(chunks)];
       const synthesized = await synthesizer.synthesize(results, 'test query');
 
-      expect(mockLLM.generate).toHaveBeenCalled();
+      expect(mockLLM.complete).toHaveBeenCalled();
       expect(synthesized.contextText).toBe('Synthesized context from chunks');
     });
 
     it('should fallback to concatenation if LLM fails', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockRejectedValue(new Error('LLM error')),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockRejectedValue(new Error('LLM error')),
+        stream: vi.fn(async function* () {}),
       };
 
       const synthesizer = new ResultSynthesizer(
@@ -129,7 +133,5 @@ describe('ResultSynthesizer', () => {
     });
   });
 });
-
-
 
 

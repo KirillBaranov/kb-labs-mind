@@ -1,4 +1,4 @@
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 import type { QueryPlan, SubQuery } from './types';
 
 export interface QueryPlannerOptions {
@@ -29,14 +29,14 @@ export interface QueryPlannerOptions {
 
 export class QueryPlanner {
   private readonly maxSubqueries: number;
-  private readonly llmEngine: MindLLMEngine | null;
+  private readonly llmEngine: ILLM | null;
   private readonly model: string;
   private readonly temperature: number;
   private readonly minSimilarity: number;
 
   constructor(
     options: QueryPlannerOptions,
-    llmEngine: MindLLMEngine | null,
+    llmEngine: ILLM | null,
   ) {
     this.maxSubqueries = options.maxSubqueries ?? 5;
     this.llmEngine = llmEngine;
@@ -82,13 +82,13 @@ Respond with ONLY a JSON array of strings, each string being a sub-query. No exp
 Example format: ["sub-query 1", "sub-query 2", "sub-query 3"]`;
 
     try {
-      const result = await this.llmEngine.generate(prompt, {
+      const result = await this.llmEngine.complete(prompt, {
         temperature: this.temperature,
         maxTokens: 200,
       });
 
       // Parse JSON response
-      const cleaned = result.text.trim().replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+      const cleaned = result.content.trim().replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
       let subqueryTexts: string[];
       
       try {
@@ -149,4 +149,3 @@ Example format: ["sub-query 1", "sub-query 2", "sub-query 3"]`;
     }
   }
 }
-

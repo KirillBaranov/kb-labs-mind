@@ -17,6 +17,12 @@ export interface IndexManifest {
   /** ISO timestamp when index was created */
   createdAt: string;
 
+  /** Revision ID for this index build */
+  indexRevision: string;
+
+  /** ISO timestamp when index build finished */
+  builtAt: string;
+
   /** Git commit hash at index time */
   gitRevision: string;
 
@@ -25,6 +31,15 @@ export interface IndexManifest {
 
   /** Scope ID for this index */
   scopeId: string;
+
+  /** Workspace root used for index build */
+  workspaceRoot: string;
+
+  /** Hash of engine config used for this build */
+  engineConfigHash: string;
+
+  /** Hash of sources topology used for this build */
+  sourcesDigest: string;
 
   /** Index statistics */
   stats: IndexStats;
@@ -96,7 +111,7 @@ export interface IndexedFile {
 /**
  * Current manifest format version
  */
-export const MANIFEST_VERSION = '1.0.0';
+export const MANIFEST_VERSION = '2.0.0';
 
 /**
  * Default manifest filename
@@ -110,6 +125,11 @@ export function createManifest(options: {
   scopeId: string;
   gitRevision: string;
   branch: string;
+  indexRevision: string;
+  builtAt?: string;
+  workspaceRoot: string;
+  engineConfigHash: string;
+  sourcesDigest: string;
   stats: IndexStats;
   storage: IndexStorage;
   files?: IndexedFile[];
@@ -117,9 +137,14 @@ export function createManifest(options: {
   return {
     version: MANIFEST_VERSION,
     createdAt: new Date().toISOString(),
+    indexRevision: options.indexRevision,
+    builtAt: options.builtAt ?? new Date().toISOString(),
     gitRevision: options.gitRevision,
     branch: options.branch,
     scopeId: options.scopeId,
+    workspaceRoot: options.workspaceRoot,
+    engineConfigHash: options.engineConfigHash,
+    sourcesDigest: options.sourcesDigest,
     stats: options.stats,
     storage: options.storage,
     files: options.files,
@@ -145,6 +170,24 @@ export async function loadManifest(manifestPath: string): Promise<IndexManifest>
   if (!isCompatibleManifest(manifest)) {
     throw new Error(
       `Incompatible manifest version: ${manifest.version}. Expected: ${MANIFEST_VERSION}`
+    );
+  }
+
+  const hasRequiredFields =
+    typeof manifest.indexRevision === 'string' &&
+    manifest.indexRevision.length > 0 &&
+    typeof manifest.builtAt === 'string' &&
+    manifest.builtAt.length > 0 &&
+    typeof manifest.workspaceRoot === 'string' &&
+    manifest.workspaceRoot.length > 0 &&
+    typeof manifest.engineConfigHash === 'string' &&
+    manifest.engineConfigHash.length > 0 &&
+    typeof manifest.sourcesDigest === 'string' &&
+    manifest.sourcesDigest.length > 0;
+
+  if (!hasRequiredFields) {
+    throw new Error(
+      'Incompatible manifest schema: missing required v2 fields (indexRevision, builtAt, workspaceRoot, engineConfigHash, sourcesDigest)'
     );
   }
 

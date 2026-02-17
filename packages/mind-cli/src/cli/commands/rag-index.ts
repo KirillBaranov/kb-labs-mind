@@ -87,6 +87,7 @@ export default defineCommand({
         // Track analytics if available (runs in parent process)
         platform?.analytics?.track?.('mind.rag-index', {
           scopeIds: result.scopeIds,
+          stats: result.stats,
         }).catch(() => {});
 
         if (flags.json) {
@@ -107,7 +108,7 @@ export default defineCommand({
             : '0.00';
 
           ctx.ui.success(
-            `Indexed ${stats.filesProcessed} files, ${stats.filesSkipped} skipped, ${stats.chunksStored} chunks`,
+            `Indexed ${stats.filesProcessed} files, ${stats.filesSkipped} skipped, ${stats.chunksStored} chunks, deleted ${stats.deletedFiles ?? 0} files/${stats.deletedChunks ?? 0} chunks`,
             {
               title: 'Mind RAG Index',
               sections: [
@@ -123,7 +124,23 @@ export default defineCommand({
                   header: 'Chunks',
                   items: [
                     `Stored: ${stats.chunksStored}`,
+                    `Updated: ${stats.chunksUpdated}`,
+                    `Skipped: ${stats.chunksSkipped}`,
                     `Rate:   ${chunksPerFile}/file`,
+                  ],
+                },
+                {
+                  header: 'Cleanup',
+                  items: [
+                    `Deleted files:  ${stats.deletedFiles ?? 0}`,
+                    `Deleted chunks: ${stats.deletedChunks ?? 0}`,
+                    `Invalid chunks: ${stats.invalidChunks ?? 0}`,
+                  ],
+                },
+                {
+                  header: 'Health',
+                  items: [
+                    `Errors: ${stats.errorCount}`,
                   ],
                 },
               ],
@@ -157,6 +174,7 @@ export default defineCommand({
         platform?.analytics?.track?.('mind.rag-index', {
           error: true,
           errorMessage: message,
+          timingMs: timing,
         }).catch(() => {});
 
         return { exitCode: 1, ok: false };

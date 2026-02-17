@@ -8,11 +8,15 @@ import {
   type AgentErrorResponse,
   type KnowledgeLogger,
   type PlatformServices,
+  type IndexingStats,
 } from '@kb-labs/sdk';
+import { createHash } from 'node:crypto';
+import * as path from 'node:path';
 import {
   MIND_PRODUCT_ID,
   createMindKnowledgeRuntime,
 } from '../shared/knowledge';
+import { loadManifest } from '@kb-labs/mind-engine';
 import type {
   AgentQueryOrchestrator} from '@kb-labs/mind-orchestrator';
 import {
@@ -49,15 +53,16 @@ export interface AdapterInfo {
   cache: string;
 }
 
+export interface RagIndexStats extends IndexingStats {
+  deletedFiles?: number;
+  deletedChunks?: number;
+  invalidChunks?: number;
+}
+
 export interface RagIndexResult {
   scopeIds: string[];
   adapters: AdapterInfo;
-  stats: {
-    filesDiscovered: number;
-    filesProcessed: number;
-    filesSkipped: number;
-    chunksStored: number;
-  };
+  stats: RagIndexStats;
 }
 
 export interface RagIndexOptionsWithRuntime extends RagIndexOptions {
@@ -154,18 +159,32 @@ export async function runRagIndex(
     filesProcessed: 0,
     filesSkipped: 0,
     chunksStored: 0,
-  };
+    chunksUpdated: 0,
+    chunksSkipped: 0,
+    errorCount: 0,
+    durationMs: 0,
+    deletedFiles: 0,
+    deletedChunks: 0,
+    invalidChunks: 0,
+  } satisfies RagIndexStats;
 
   try {
     for (const scopeId of scopeIds) {
       console.log('[runRagIndex DEBUG] Calling service.index for scopeId:', scopeId);
-      const scopeStats = await runtime.service.index(scopeId);
+      const scopeStats = await runtime.service.index(scopeId) as RagIndexStats;
       console.log('[runRagIndex DEBUG] service.index returned:', scopeStats);
       if (scopeStats) {
         aggregatedStats.filesDiscovered += scopeStats.filesDiscovered;
         aggregatedStats.filesProcessed += scopeStats.filesProcessed;
         aggregatedStats.filesSkipped += scopeStats.filesSkipped;
         aggregatedStats.chunksStored += scopeStats.chunksStored;
+        aggregatedStats.chunksUpdated += scopeStats.chunksUpdated;
+        aggregatedStats.chunksSkipped += scopeStats.chunksSkipped;
+        aggregatedStats.errorCount += scopeStats.errorCount;
+        aggregatedStats.durationMs += scopeStats.durationMs;
+        aggregatedStats.deletedFiles = (aggregatedStats.deletedFiles ?? 0) + (scopeStats.deletedFiles ?? 0);
+        aggregatedStats.deletedChunks = (aggregatedStats.deletedChunks ?? 0) + (scopeStats.deletedChunks ?? 0);
+        aggregatedStats.invalidChunks = (aggregatedStats.invalidChunks ?? 0) + (scopeStats.invalidChunks ?? 0);
       }
     }
   } finally {
@@ -180,7 +199,7 @@ export async function runRagIndex(
   // Invalidate query cache after re-indexing
   // This ensures fresh results after index update
   if (globalOrchestrator) {
-    globalOrchestrator.invalidateCache(scopeIds);
+    await globalOrchestrator.invalidateCache(scopeIds);
   }
 
   return { scopeIds, adapters, stats: aggregatedStats };
@@ -351,6 +370,9 @@ export interface AgentRagQueryOptions {
   scopeId?: string;
   text: string;
   mode?: AgentQueryMode;
+  indexRevision?: string;
+  engineConfigHash?: string;
+  sourcesDigest?: string;
   debug?: boolean;
   runtime?: Parameters<typeof createMindKnowledgeRuntime>[0]['runtime'];
   broker?: any; // StateBroker-like interface (duck typing to avoid circular deps)
@@ -363,6 +385,19 @@ export interface AgentRagQueryOptions {
 }
 
 export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
+
+interface CacheContext {
+  indexRevision?: string;
+  engineConfigHash?: string;
+  sourcesDigest?: string;
+}
+
+interface ManifestCacheContext {
+  found: boolean;
+  indexRevision?: string;
+  engineConfigHash?: string;
+  sourcesDigest?: string;
+}
 
 /**
  * Run agent-optimized RAG query with orchestration.
@@ -440,6 +475,15 @@ export async function runAgentRagQuery(
     };
   }
 
+  const cacheContext = await resolveCacheContext({
+    cwd: options.cwd,
+    scopeId,
+    config: runtime.config,
+    providedIndexRevision: options.indexRevision,
+    providedEngineConfigHash: options.engineConfigHash,
+    providedSourcesDigest: options.sourcesDigest,
+  });
+
   // Create query function for orchestrator with adaptive weights support
   const queryFn = async (queryOptions: {
     text: string;
@@ -455,28 +499,176 @@ export async function runAgentRagQuery(
       text: queryOptions.text,
       limit: queryOptions.limit,
       // Pass adaptive weights via metadata for mind-engine to use
-      metadata: queryOptions.vectorWeight !== undefined && queryOptions.keywordWeight !== undefined
-        ? {
-            vectorWeight: queryOptions.vectorWeight,
-            keywordWeight: queryOptions.keywordWeight,
-          }
-        : undefined,
+      metadata: {
+        agentMode: true,
+        consumer: 'agent',
+        mode: options.mode ?? 'auto',
+        ...(queryOptions.vectorWeight !== undefined && queryOptions.keywordWeight !== undefined
+          ? {
+              vectorWeight: queryOptions.vectorWeight,
+              keywordWeight: queryOptions.keywordWeight,
+            }
+          : {}),
+      },
     });
 
     return {
       chunks: result.chunks,
+      metadata: result.metadata ?? {},
     };
   };
 
   // Execute orchestrated query
-  return await orchestrator.query(
+  return orchestrator.query(
     {
       cwd: options.cwd,
       scopeId,
       text: options.text,
       mode: options.mode,
+      indexRevision: cacheContext.indexRevision,
+      engineConfigHash: cacheContext.engineConfigHash,
+      sourcesDigest: cacheContext.sourcesDigest,
       debug: options.debug,
     },
     queryFn,
   );
+}
+
+async function resolveCacheContext(options: {
+  cwd: string;
+  scopeId: string;
+  config: any;
+  providedIndexRevision?: string;
+  providedEngineConfigHash?: string;
+  providedSourcesDigest?: string;
+}): Promise<CacheContext> {
+  const manifestContext = await readCacheContextFromManifest(options.cwd, options.config, options.scopeId);
+
+  const indexRevision = options.providedIndexRevision
+    ?? manifestContext.indexRevision;
+  const engineConfigHash = options.providedEngineConfigHash
+    ?? manifestContext.engineConfigHash
+    ?? computeEngineConfigHash(options.config, options.scopeId);
+  const sourcesDigest = options.providedSourcesDigest
+    ?? manifestContext.sourcesDigest;
+
+  return {
+    indexRevision,
+    engineConfigHash,
+    sourcesDigest,
+  };
+}
+
+function computeEngineConfigHash(config: any, scopeId: string): string | undefined {
+  const scope = Array.isArray(config?.scopes)
+    ? config.scopes.find((item: any) => item?.id === scopeId)
+    : undefined;
+  const engineId = scope?.defaultEngine
+    ?? config?.defaults?.fallbackEngineId
+    ?? config?.engines?.[0]?.id;
+  const engine = Array.isArray(config?.engines)
+    ? config.engines.find((item: any) => item?.id === engineId)
+    : undefined;
+
+  if (!engine) {
+    return undefined;
+  }
+
+  const sanitized = {
+    id: engine.id,
+    type: engine.type,
+    options: sanitizeEngineOptionsForHash(engine.options ?? {}),
+  };
+
+  return createHash('sha256').update(stableStringify(sanitized)).digest('hex');
+}
+
+async function readCacheContextFromManifest(
+  cwd: string,
+  config: any,
+  scopeId: string,
+): Promise<ManifestCacheContext> {
+  const scope = Array.isArray(config?.scopes)
+    ? config.scopes.find((item: any) => item?.id === scopeId)
+    : undefined;
+  const engineId = scope?.defaultEngine
+    ?? config?.defaults?.fallbackEngineId
+    ?? config?.engines?.[0]?.id;
+  const engine = Array.isArray(config?.engines)
+    ? config.engines.find((item: any) => item?.id === engineId)
+    : undefined;
+  const configuredIndexDir = typeof engine?.options?.indexDir === 'string'
+    ? engine.options.indexDir
+    : '.kb/mind/rag';
+
+  const candidatePaths = [
+    path.resolve(cwd, configuredIndexDir, scopeId, 'manifest.json'),
+    path.resolve(cwd, configuredIndexDir, 'manifest.json'),
+    path.resolve(cwd, '.kb/mind/indexes', scopeId, 'manifest.json'),
+    path.resolve(cwd, '.kb/mind/rag', scopeId, 'manifest.json'),
+  ];
+
+  for (const manifestPath of candidatePaths) {
+    try {
+      const manifest = await loadManifest(manifestPath);
+      const indexRevision = (manifest as { indexRevision?: unknown }).indexRevision;
+      const engineConfigHash = (manifest as { engineConfigHash?: unknown }).engineConfigHash;
+      const sourcesDigest = (manifest as { sourcesDigest?: unknown }).sourcesDigest;
+
+      if (typeof indexRevision !== 'string' || indexRevision.length === 0) {
+        throw new Error('missing indexRevision');
+      }
+
+      if (typeof engineConfigHash !== 'string' || engineConfigHash.length === 0) {
+        throw new Error('missing engineConfigHash');
+      }
+      if (typeof sourcesDigest !== 'string' || sourcesDigest.length === 0) {
+        throw new Error('missing sourcesDigest');
+      }
+
+      return {
+        found: true,
+        indexRevision,
+        engineConfigHash,
+        sourcesDigest,
+      };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException | undefined)?.code;
+      if (code === 'ENOENT') {
+        continue;
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid index manifest at ${manifestPath}: ${message}`);
+    }
+  }
+
+  return { found: false };
+}
+
+function sanitizeEngineOptionsForHash(options: Record<string, unknown>): Record<string, unknown> {
+  const {
+    _runtime: _runtimeIgnored,
+    onProgress: _onProgressIgnored,
+    platform: _platformIgnored,
+    ...rest
+  } = options as Record<string, unknown>;
+  return rest;
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(sortObjectDeep(value));
+}
+
+function sortObjectDeep(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sortObjectDeep);
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => [key, sortObjectDeep(val)] as const);
+    return Object.fromEntries(entries);
+  }
+  return value;
 }

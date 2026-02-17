@@ -44,10 +44,12 @@ export interface PipelineContext {
   memoryMonitor: MemoryMonitor;
   workspaceRoot?: string;
   onProgress?: ProgressReporter;
+  indexRevision?: string;
+  indexedAt?: number;
 
   // Stage outputs (populated as pipeline progresses)
   filePaths?: string[];           // From FileDiscoveryStage
-  chunksProcessed?: number;       // From ChunkingStage
+  chunksProcessed?: number;       // From ParallelChunkingStage
   embeddingsGenerated?: number;   // From EmbeddingStage
   chunksStored?: number;          // From StorageStage
 

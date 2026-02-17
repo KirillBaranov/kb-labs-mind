@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ComplexityDetector } from '../complexity-detector';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 
 describe('ComplexityDetector', () => {
   describe('heuristic detection', () => {
@@ -42,9 +42,14 @@ describe('ComplexityDetector', () => {
 
   describe('LLM-based detection', () => {
     it('should use LLM when enabled', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockResolvedValue({ text: '{"score": 0.7, "reason": "test"}' }),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockResolvedValue({
+          content: '{"score": 0.7, "reason": "test"}',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          model: 'test',
+          finishReason: 'stop',
+        }),
+        stream: vi.fn(async function* () {}),
       };
 
       const detector = new ComplexityDetector(
@@ -53,15 +58,15 @@ describe('ComplexityDetector', () => {
       );
 
       const result = await detector.detectComplexity('test query');
-      expect(mockLLM.generate).toHaveBeenCalled();
+      expect(mockLLM.complete).toHaveBeenCalled();
       expect(result.score).toBeGreaterThanOrEqual(0);
       expect(result.score).toBeLessThanOrEqual(1);
     });
 
     it('should fallback to heuristics if LLM fails', async () => {
-      const mockLLM: MindLLMEngine = {
-        id: 'test',
-        generate: vi.fn().mockRejectedValue(new Error('LLM error')),
+      const mockLLM: ILLM = {
+        complete: vi.fn().mockRejectedValue(new Error('LLM error')),
+        stream: vi.fn(async function* () {}),
       };
 
       const detector = new ComplexityDetector(
@@ -77,4 +82,3 @@ describe('ComplexityDetector', () => {
     });
   });
 });
-

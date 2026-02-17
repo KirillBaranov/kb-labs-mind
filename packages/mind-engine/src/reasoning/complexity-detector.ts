@@ -1,4 +1,4 @@
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 import type { ComplexityResult } from './types';
 
 export interface ComplexityDetectorOptions {
@@ -30,12 +30,12 @@ export class ComplexityDetector {
   private readonly threshold: number;
   private readonly useHeuristics: boolean;
   private readonly useLLM: boolean;
-  private readonly llmEngine: MindLLMEngine | null;
+  private readonly llmEngine: ILLM | null;
   private readonly llmModel: string;
 
   constructor(
     options: ComplexityDetectorOptions,
-    llmEngine: MindLLMEngine | null,
+    llmEngine: ILLM | null,
   ) {
     this.threshold = options.threshold ?? 0.6;
     this.useHeuristics = options.heuristics ?? true;
@@ -203,7 +203,7 @@ export class ComplexityDetector {
    * Uses LLM to semantically analyze query complexity.
    * Language-agnostic and works with any language.
    * 
-   * Future: Supports local LLM models (Ollama, etc.) via MindLLMEngine interface.
+   * Future: Supports local LLM models (Ollama, etc.) via platform ILLM interface.
    * The engine abstraction allows switching between OpenAI, local models, or any
    * LLM provider without changing this code.
    * 
@@ -239,11 +239,11 @@ Where:
 Respond ONLY with valid JSON, no other text.`;
 
     try {
-      const result = await this.llmEngine.generate(prompt, {
+      const result = await this.llmEngine.complete(prompt, {
         temperature: 0.2, // Low temperature for consistent scoring
         maxTokens: 150,
       });
-      const response = result.text;
+      const response = result.content;
 
       // Try to parse JSON response
       const cleaned = response.trim();
@@ -291,4 +291,3 @@ Respond ONLY with valid JSON, no other text.`;
     }
   }
 }
-

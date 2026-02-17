@@ -1,5 +1,5 @@
 import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/sdk';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 
 export interface ResultSynthesizerOptions {
   /**
@@ -65,14 +65,14 @@ export class ResultSynthesizer {
   private readonly enabled: boolean;
   private readonly deduplication: boolean;
   private readonly maxTokens: number;
-  private readonly llmEngine: MindLLMEngine | null;
+  private readonly llmEngine: ILLM | null;
   private readonly model: string;
   private readonly temperature: number;
   private readonly progressiveRefinement: boolean;
 
   constructor(
     options: ResultSynthesizerOptions,
-    llmEngine: MindLLMEngine | null,
+    llmEngine: ILLM | null,
   ) {
     this.enabled = options.enabled ?? true;
     this.deduplication = options.deduplication ?? true;
@@ -236,12 +236,12 @@ Synthesize these results into a clear, well-organized context that directly addr
 Respond with ONLY the synthesized context, no explanations or meta-commentary.`;
 
     try {
-      const result = await this.llmEngine.generate(prompt, {
+      const result = await this.llmEngine.complete(prompt, {
         temperature: this.temperature,
         maxTokens: this.maxTokens,
       });
 
-      return result.text.trim();
+      return result.content.trim();
     } catch (error) {
       // Fallback to simple concatenation if LLM fails
       return chunks
@@ -250,4 +250,3 @@ Respond with ONLY the synthesized context, no explanations or meta-commentary.`;
     }
   }
 }
-
