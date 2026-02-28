@@ -14,7 +14,7 @@
  * - Personalization support
  */
 
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 
 export interface RankingSignal {
   /**

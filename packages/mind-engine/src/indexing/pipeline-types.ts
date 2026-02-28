@@ -5,7 +5,7 @@
  * Each stage is independent, testable, and composable.
  */
 
-import type { KnowledgeSource } from '@kb-labs/sdk';
+import type { KnowledgeSource } from '../types/engine-contracts';
 import type { MemoryMonitor } from './memory-monitor';
 
 /**

@@ -13,7 +13,7 @@ import type {
   VectorSearchMatch,
   VectorSearchFilters,
 } from './vector-store';
-import type { EmbeddingVector } from '@kb-labs/sdk';
+import type { EmbeddingVector } from './vector-store';
 
 interface PlatformAdapterOptions {
   vectorStore: IVectorStore;
@@ -210,6 +210,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       updateBatch: async (chunks: any[]) => this.updateBatch(scopeId, chunks),
       checkExistence: async (chunkIds: string[]) => this.checkExistence(scopeId, chunkIds),
       getChunksByHash: async (hashes: string[]) => this.getChunksByHash(scopeId, hashes),
+      getChunkIdsByPaths: async (paths: string[]) => this.getChunkIdsByPaths(scopeId, paths),
       deleteBatch: async (chunkIds: string[]) => this.deleteBatch(scopeId, chunkIds),
     };
   }
@@ -314,6 +315,45 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       return hashMap;
     } catch (error) {
       // Return empty map on failure
+      return new Map();
+    }
+  }
+
+  /**
+   * Get chunk IDs grouped by path.
+   * Used by incremental indexing to remove stale chunks for changed files.
+   */
+  private async getChunkIdsByPaths(scopeId: string, paths: string[]): Promise<Map<string, string[]>> {
+    if (paths.length === 0) {return new Map();}
+    if (!this.vectorStore.query) {return new Map();}
+
+    try {
+      const results = await this.vectorStore.query({
+        field: 'path',
+        operator: 'in',
+        value: paths,
+      });
+
+      const pathToChunkIds = new Map<string, string[]>();
+      for (const result of results) {
+        const path = result.metadata?.path as string;
+        const chunkId = result.metadata?.chunkId as string;
+        const resultScopeId = result.metadata?.scopeId as string | undefined;
+
+        if (!path || !chunkId) {
+          continue;
+        }
+        if (resultScopeId && resultScopeId !== scopeId) {
+          continue;
+        }
+
+        const existing = pathToChunkIds.get(path) ?? [];
+        existing.push(chunkId);
+        pathToChunkIds.set(path, existing);
+      }
+
+      return pathToChunkIds;
+    } catch (error) {
       return new Map();
     }
   }

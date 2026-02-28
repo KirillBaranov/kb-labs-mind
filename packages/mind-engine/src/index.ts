@@ -9,22 +9,24 @@ import {
   MemoryFeedbackStore,
   FileHistoryStore,
   FileFeedbackStore,
-  createKnowledgeError,
   type ILLM,
-  type KnowledgeChunk,
-  type KnowledgeEngineConfig,
-  type KnowledgeQuery,
-  type KnowledgeResult,
-  type KnowledgeSource,
-  type SpanRange,
-  type KnowledgeEngine,
-  type KnowledgeEngineFactory,
-  type KnowledgeEngineFactoryContext,
-  type KnowledgeEngineRegistry,
-  type KnowledgeExecutionContext,
-  type KnowledgeIndexOptions,
-  type IndexingStats,
 } from '@kb-labs/sdk';
+import type {
+  KnowledgeChunk,
+  KnowledgeEngineConfig,
+  KnowledgeQuery,
+  KnowledgeResult,
+  KnowledgeSource,
+  SpanRange,
+  KnowledgeEngine,
+  KnowledgeEngineFactory,
+  KnowledgeEngineFactoryContext,
+  KnowledgeEngineRegistry,
+  KnowledgeExecutionContext,
+  KnowledgeIndexOptions,
+  IndexingStats,
+} from './types/engine-contracts';
+import { createKnowledgeError } from './types/engine-contracts';
 import * as path from 'node:path';
 import fs from 'fs-extra';
 import fg from 'fast-glob';
@@ -47,11 +49,11 @@ const logger = {
     }
   },
 };
-import {
-  type EmbeddingProvider,
-  type EmbeddingProviderConfig,
-} from '@kb-labs/mind-embeddings';
-import type { VectorSearchFilters, VectorSearchMatch } from '@kb-labs/mind-vector-store';
+import type {
+  EmbeddingProvider,
+  EmbeddingProviderConfig,
+} from './types/embedding-provider';
+import type { VectorSearchFilters, VectorSearchMatch } from './vector-store/vector-store';
 import type { RuntimeAdapter } from './adapters/runtime-adapter';
 import { createRuntimeAdapter } from './adapters/runtime-adapter';
 import { createVectorStore, type VectorStoreConfig } from './vector-store/index';
@@ -844,7 +846,7 @@ interface MindChunk {
   metadata?: Record<string, unknown>;
 }
 
-export class MindKnowledgeEngine implements KnowledgeEngine {
+export class MindEngine implements KnowledgeEngine {
   readonly id: string;
   readonly type = 'mind';
   private readonly workspaceRoot: string;
@@ -964,8 +966,19 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     }
     this.embeddingProvider = new PlatformEmbeddingProvider(embeddings);
     
-    // Use LLM from SDK hook
-    this.llm = useLLM() ?? null;
+    // Use LLM from SDK hook with cache/stream policy for mind RAG internals
+    this.llm = useLLM({
+      execution: {
+        cache: {
+          mode: 'prefer',
+          scope: 'segments',
+        },
+        stream: {
+          mode: 'prefer',
+          fallbackToComplete: true,
+        },
+      },
+    }) ?? null;
 
     // Create LLM compressor if enabled and LLM available
     if (this.options.search.optimization.compression.llm.enabled && this.llm) {
@@ -1379,7 +1392,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         }));
         const embeddingVectors = await this.embedChunks(tempChunks);
         // Convert EmbeddingVector[] to number[][]
-        return embeddingVectors.map(v => v.values);
+        return embeddingVectors.map((v: { values: number[] }) => v.values);
       },
       maxBatchSize: 100,
       dimension: 1536, // OpenAI default
@@ -1525,6 +1538,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     const filters = this.createSearchFilters(context);
     const sourcesDigest = this.computeSourcesDigest(context.sources);
+    const limit = context.limit ?? query.limit ?? 20;
     let matches: VectorSearchMatch[];
     let queryClassification: {
       type: string;
@@ -1593,7 +1607,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         queryVector,
         query.text,
         allChunks,
-        context.limit,
+        limit,
         filters,
         {
           rrfK,
@@ -1627,7 +1641,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       matches = await this.vectorStore.search(
       context.scope.id,
       queryVector,
-      context.limit,
+      limit,
       filters,
     );
     }
@@ -1639,7 +1653,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       this.reportProgress('applying_popularity_boost');
       matches = await Promise.all(
         matches.map(async (match) => {
-          const boost = await this.popularityBoost!.getBoost(match.chunk.chunkId, context.scope.id);
+          const chunkId = match.chunk.chunkId ?? `${match.chunk.path}:${match.chunk.span.startLine}-${match.chunk.span.endLine}`;
+          const boost = await this.popularityBoost!.getBoost(chunkId, context.scope.id);
           return {
             ...match,
             score: match.score * boost,
@@ -1716,8 +1731,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     // Convert to chunks
     let chunks: KnowledgeChunk[] = finalMatches.map((match: VectorSearchMatch) => ({
-      id: match.chunk.chunkId,
-      sourceId: match.chunk.sourceId,
+      id: match.chunk.chunkId ?? `${match.chunk.path}:${match.chunk.span.startLine}-${match.chunk.span.endLine}`,
+      sourceId: match.chunk.sourceId ?? 'unknown',
       path: match.chunk.path,
       span: match.chunk.span,
       text: match.chunk.text,
@@ -1728,7 +1743,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     // Apply context optimization if enabled
     if (this.options.search.optimization.enabled) {
       chunks = this.contextOptimizer.optimize(finalMatches, {
-        maxChunks: context.limit,
+        maxChunks: limit,
         deduplication: this.options.search.optimization.deduplication,
         deduplicationThreshold: this.options.search.optimization.deduplicationThreshold,
         diversification: this.options.search.optimization.diversification,
@@ -1742,7 +1757,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
 
     if (reliabilityDecision.failClosed) {
       return {
-        query: { ...query, limit: context.limit },
+        query: { ...query, intent: query.intent ?? 'search', limit },
         chunks: [],
         contextText: '',
         engineId: this.id,
@@ -1785,7 +1800,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
       chunks.map(async (chunk) => {
         // Check cache first (if cache is enabled and using memory)
         if (compressionOptions.enabled && compressionOptions.cache === 'memory') {
-          const cached = compressionCache.get(chunk.id);
+          const chunkId = chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
+          const cached = compressionCache.get(chunkId);
           if (cached) {
             return cached;
           }
@@ -1811,7 +1827,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         
         // Cache the result
         if (compressionOptions.enabled && compressionOptions.cache === 'memory') {
-          compressionCache.set(chunk.id, formatted);
+          const chunkId = chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
+          compressionCache.set(chunkId, formatted);
         }
         
         return formatted;
@@ -1857,8 +1874,8 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         queryHash,
         scopeId: context.scope.id,
         timestamp: Date.now(),
-        resultChunkIds: chunks.map(c => c.id),
-        topChunkIds: chunks.slice(0, 10).map(c => c.id),
+        resultChunkIds: chunks.map(c => c.id ?? `${c.path}:${c.span.startLine}-${c.span.endLine}`),
+        topChunkIds: chunks.slice(0, 10).map(c => c.id ?? `${c.path}:${c.span.startLine}-${c.span.endLine}`),
         queryVector: queryVector.values,
       };
 
@@ -1912,7 +1929,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
                 .digest('hex')
                 .substring(0, 16),
               queryId,
-              chunkId: chunk.id,
+              chunkId: chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`,
               scopeId: context.scope.id,
               type: 'self',
               score: feedback.score,
@@ -1926,7 +1943,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
             await this.feedbackStore!.save(feedbackEntry);
           } catch (error) {
             this.runtime.log?.('warn', 'Failed to generate self-feedback', {
-              chunkId: chunk.id,
+              chunkId: chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`,
               error: error instanceof Error ? error.message : String(error),
             });
           }
@@ -1939,7 +1956,7 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
     }
 
     return {
-      query: { ...query, limit: context.limit },
+      query: { ...query, intent: query.intent ?? 'search', limit },
       chunks,
       contextText,
       engineId: this.id,
@@ -2084,14 +2101,14 @@ export class MindKnowledgeEngine implements KnowledgeEngine {
         try {
           chunkText = await this.llmCompressor.compress(chunk, query);
           this.runtime.log?.('debug', 'LLM compression applied', {
-            chunkId: chunk.id,
+            chunkId: chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`,
             originalLength: chunk.text.length,
             compressedLength: chunkText.length,
             compressionRatio: ((chunkText.length / chunk.text.length) * 100).toFixed(1) + '%',
           });
         } catch (error) {
           this.runtime.log?.('warn', 'LLM compression failed, using original', {
-            chunkId: chunk.id,
+            chunkId: chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`,
             error: error instanceof Error ? error.message : String(error),
           });
           // Fall through to smart truncation
@@ -2674,9 +2691,9 @@ function formatMetadataOnly(chunk: KnowledgeChunk): string {
   return parts.join('\n');
 }
 
-export function createMindKnowledgeEngineFactory(): KnowledgeEngineFactory {
+export function createMindEngineFactory(): KnowledgeEngineFactory {
   return (config: KnowledgeEngineConfig, context: KnowledgeEngineFactoryContext) => 
-    new MindKnowledgeEngine(config, context);
+    new MindEngine(config, context);
 }
 
 export interface RegisterMindEngineOptions {
@@ -2697,7 +2714,7 @@ export interface RegisterMindEngineOptions {
   platform?: MindPlatformBindings;
 }
 
-export function registerMindKnowledgeEngine(
+export function registerMindEngine(
   registry: KnowledgeEngineRegistry,
   options?: RegisterMindEngineOptions,
 ): void {
@@ -2723,7 +2740,7 @@ export function registerMindKnowledgeEngine(
         }
       : configWithRuntime;
 
-    return new MindKnowledgeEngine(configWithPlatform, context);
+    return new MindEngine(configWithPlatform, context);
   };
 
   registry.register('mind', factory);

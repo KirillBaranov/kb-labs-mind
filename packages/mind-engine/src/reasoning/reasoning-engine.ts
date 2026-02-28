@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { KnowledgeQuery, KnowledgeExecutionContext } from '@kb-labs/sdk';
+import type { KnowledgeQuery, KnowledgeExecutionContext } from '../types/engine-contracts';
 import type { ComplexityDetector } from './complexity-detector';
 import type { QueryPlanner } from './query-planner';
 import type { ParallelExecutor, QueryExecutor } from './parallel-executor';
@@ -235,9 +235,9 @@ export class ReasoningEngine {
       // Convert chunks to VectorSearchMatch format for optimizer
       const matches = allChunks.map(chunk => ({
         chunk: {
-          chunkId: chunk.id,
+          chunkId: chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`,
           scopeId: context.scope.id,
-          sourceId: chunk.sourceId,
+          sourceId: chunk.sourceId ?? 'unknown',
           path: chunk.path,
           span: chunk.span,
           text: chunk.text,
@@ -248,7 +248,7 @@ export class ReasoningEngine {
       }));
       
       const optimized = this.contextOptimizer.optimize(matches, {
-        maxChunks: context.limit * 2, // Allow more chunks for reasoning
+        maxChunks: (context.limit ?? 20) * 2, // Allow more chunks for reasoning
         deduplication: true,
         deduplicationThreshold: 0.9,
         diversification: true,
@@ -450,4 +450,3 @@ export class ReasoningEngine {
       .digest('hex');
   }
 }
-

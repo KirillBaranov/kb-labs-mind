@@ -7,7 +7,7 @@
  */
 
 import { cosineSimilarity } from '@kb-labs/mind-core';
-import type { VectorSearchMatch } from '@kb-labs/mind-vector-store';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface DeduplicationOptions {
   /**

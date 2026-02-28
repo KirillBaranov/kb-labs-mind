@@ -3,7 +3,7 @@
  * Format Mind query results as structured JSON for external integrations
  */
 
-import type { KnowledgeResult } from '@kb-labs/sdk';
+import type { KnowledgeResult } from '../types/engine-contracts';
 import type {
   MindQueryResponse,
   MindCandidate,

@@ -1,6 +1,6 @@
 # Mind Document Synchronization API
 
-Independent channel for synchronizing external data sources (ClickUp, Git, Confluence, etc.) into Mind's knowledge base.
+Independent channel for synchronizing external data sources (ClickUp, Git, Confluence, etc.) into Mind's Mind index.
 
 ## Overview
 
@@ -251,7 +251,7 @@ done
 
 #### `addDocument(options: AddDocumentOptions): Promise<SyncResult>`
 
-Add a new document to the knowledge base.
+Add a new document to the Mind index.
 
 #### `updateDocument(options: UpdateDocumentOptions): Promise<SyncResult>`
 

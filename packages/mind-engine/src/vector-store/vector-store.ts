@@ -3,10 +3,7 @@
  * Vector store interface for abstracting storage backends
  */
 
-import type {
-  EmbeddingVector,
-  SpanRange,
-} from '@kb-labs/sdk';
+import type { EmbeddingVector, SpanRange } from '../types/engine-contracts';
 
 // Re-export for convenience
 export type { EmbeddingVector };

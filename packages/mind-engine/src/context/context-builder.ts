@@ -15,7 +15,7 @@
  * - Automatic context expansion (related code)
  */
 
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 
 export interface ContextChunk {
   chunkId: string;
@@ -140,7 +140,7 @@ export class ContextBuilder {
    */
   private toContextChunk(chunk: KnowledgeChunk): ContextChunk {
     return {
-      chunkId: chunk.id,
+      chunkId: chunk.id ?? chunk.chunkId ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`,
       path: chunk.path,
       span: chunk.span,
       text: chunk.text,

@@ -6,7 +6,7 @@
  * improving precision by removing noise from search results.
  */
 
-import type { VectorSearchMatch } from '@kb-labs/mind-vector-store';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface NegativeFilterOptions {
   /**
@@ -245,14 +245,14 @@ export class NegativeFilter {
   private calculateCodeQuality(match: VectorSearchMatch): number {
     const text = match.chunk.text;
     const lines = text.split('\n');
-    const nonEmptyLines = lines.filter(l => l.trim().length > 0);
+    const nonEmptyLines = lines.filter((l: string) => l.trim().length > 0);
 
     if (nonEmptyLines.length === 0) {return 0;}
 
     let qualityScore = 1.0;
 
     // Penalize high comment ratio (>50% comments)
-    const commentLines = lines.filter(l => {
+    const commentLines = lines.filter((l: string) => {
       const trimmed = l.trim();
       return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('#');
     });
@@ -287,7 +287,7 @@ export class NegativeFilter {
     }
 
     // Penalize chunks with no actual code (just comments/whitespace)
-    const codeLines = nonEmptyLines.filter(l => {
+    const codeLines = nonEmptyLines.filter((l: string) => {
       const trimmed = l.trim();
       return !trimmed.startsWith('//') &&
              !trimmed.startsWith('*') &&

@@ -86,7 +86,7 @@ globalChunkerRegistry.register(new GoASTChunker());
 Chunker is automatically selected when calling `chunkFile()`:
 
 ```typescript
-// In MindKnowledgeEngine
+// In MindEngine
 const chunker = getChunkerForFile(relativePath, source.language);
 const chunks = chunker.chunk(contents, relativePath, options);
 ```

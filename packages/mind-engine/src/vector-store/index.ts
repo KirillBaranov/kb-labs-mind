@@ -11,7 +11,7 @@ export type {
 } from './vector-store';
 
 // Re-export EmbeddingVector for convenience
-export type { EmbeddingVector } from '@kb-labs/sdk';
+export type { EmbeddingVector } from './vector-store';
 
 export { LocalVectorStore } from './local';
 export type { LocalVectorStoreOptions } from './local';

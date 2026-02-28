@@ -6,7 +6,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
+import type { EmbeddingProvider } from '../types/embedding-provider';
 import type { VectorStore, StoredMindChunk } from '../vector-store/vector-store';
 import type { ChangedFile } from './git-diff';
 import { getChunkerForFile, type Chunk } from '../chunking/index';

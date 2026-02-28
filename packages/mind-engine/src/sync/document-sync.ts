@@ -4,7 +4,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
+import type { EmbeddingProvider } from '../types/embedding-provider';
 import type { VectorStore, StoredMindChunk } from '../vector-store/vector-store';
 import { getChunkerForFile } from '../chunking/index';
 import type { RuntimeAdapter } from '../adapters/runtime-adapter';

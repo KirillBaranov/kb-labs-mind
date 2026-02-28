@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Knowledge engine adapter for KB Labs Mind (RAG, embeddings, vector store integration).",
+  "description": "Mind engine adapter for KB Labs Mind (RAG, embeddings, vector store integration).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -37,14 +37,16 @@
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest --passWithNoTests"
+    "test:watch": "vitest --passWithNoTests",
+    "benchmark:quality": "node ./scripts/run-quality-eval.mjs",
+    "benchmark:quality:all-modes": "node ./scripts/run-quality-eval.mjs --modes instant,auto,thinking --runs 1"
   },
   "dependencies": {
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-embeddings": "link:../mind-embeddings",
     "@kb-labs/mind-types": "link:../mind-types",
     "@kb-labs/mind-vector-store": "link:../mind-vector-store",
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
+    "@kb-labs/sdk": "^1.0.0",
     "fast-glob": "^3.3.2",
     "fs-extra": "^11.0.0",
     "picomatch": "^4.0.2",

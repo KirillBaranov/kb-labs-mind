@@ -3,7 +3,7 @@
  * Types and interfaces for document synchronization
  */
 
-import type { SpanRange } from '@kb-labs/sdk';
+import type { SpanRange } from '../types/engine-contracts';
 
 /**
  * External document from a sync source

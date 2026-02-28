@@ -5,8 +5,6 @@
 
 import type {
   EmbeddingVector,
-} from '@kb-labs/sdk';
-import type {
   VectorStore,
   StoredMindChunk,
   VectorSearchFilters,

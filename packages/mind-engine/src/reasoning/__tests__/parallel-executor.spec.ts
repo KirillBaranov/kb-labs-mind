@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ParallelExecutor } from '../parallel-executor';
 import type { QueryPlan, ReasoningContext } from '../types';
-import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '@kb-labs/sdk';
+import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '../../types/engine-contracts';
 
 describe('ParallelExecutor', () => {
   const createMockContext = (): KnowledgeExecutionContext => ({
@@ -38,7 +38,7 @@ describe('ParallelExecutor', () => {
     const mockExecutor = async (query: KnowledgeQuery): Promise<KnowledgeResult> => {
       const index = parseInt(query.text.split(' ')[1]!);
       executionOrder.push(index);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => { setTimeout(resolve, 10); });
       return {
         query,
         chunks: [],
@@ -65,7 +65,7 @@ describe('ParallelExecutor', () => {
     const mockExecutor = async (query: KnowledgeQuery): Promise<KnowledgeResult> => {
       const index = parseInt(query.text.split(' ')[1]!);
       executionOrder.push(index);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => { setTimeout(resolve, 10); });
       return {
         query,
         chunks: [],
@@ -95,7 +95,7 @@ describe('ParallelExecutor', () => {
     const mockExecutor = async (query: KnowledgeQuery): Promise<KnowledgeResult> => {
       concurrentExecutions++;
       maxConcurrent = Math.max(maxConcurrent, concurrentExecutions);
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise<void>(resolve => { setTimeout(resolve, 20); });
       concurrentExecutions--;
       return {
         query,
@@ -179,7 +179,6 @@ describe('ParallelExecutor', () => {
     expect(results.length).toBe(2);
   });
 });
-
 
 
 

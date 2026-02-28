@@ -1,5 +1,5 @@
 import { useLogger } from '@kb-labs/sdk';
-import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '@kb-labs/sdk';
+import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '../types/engine-contracts';
 import type { QueryPlan, ReasoningContext } from './types';
 
 const getParallelLogger = () => useLogger().child({ category: 'mind:engine:reasoning:parallel' });

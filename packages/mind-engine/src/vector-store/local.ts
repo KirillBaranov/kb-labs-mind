@@ -11,9 +11,6 @@ import type {
 } from './vector-store';
 import {
   MindVectorStore,
-  type StoredMindChunk as MindStoredMindChunk,
-  type VectorSearchFilters as MindVectorSearchFilters,
-  type VectorSearchMatch as MindVectorSearchMatch,
 } from '@kb-labs/mind-vector-store';
 
 export interface LocalVectorStoreOptions {
@@ -33,9 +30,7 @@ export class LocalVectorStore implements VectorStore {
   }
 
   async replaceScope(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
-    // Convert StoredMindChunk to MindStoredMindChunk (they should be compatible)
-    const mindChunks: MindStoredMindChunk[] = chunks as unknown as MindStoredMindChunk[];
-    await this.store.replaceScope(scopeId, mindChunks);
+    await this.store.replaceScope(scopeId, chunks as any[]);
   }
 
   async search(
@@ -45,10 +40,9 @@ export class LocalVectorStore implements VectorStore {
     filters?: VectorSearchFilters,
   ): Promise<VectorSearchMatch[]> {
     // Convert filters if needed
-    const mindFilters: MindVectorSearchFilters | undefined = filters as unknown as MindVectorSearchFilters | undefined;
-    const mindMatches: MindVectorSearchMatch[] = await this.store.search(scopeId, vector, limit, mindFilters);
+    const mindMatches = await this.store.search(scopeId, vector as any, limit, filters as any);
     // Convert back to VectorSearchMatch
-    return mindMatches as unknown as VectorSearchMatch[];
+    return mindMatches as VectorSearchMatch[];
   }
 
   async getAllChunks(scopeId: string, filters?: VectorSearchFilters): Promise<StoredMindChunk[]> {

@@ -3,7 +3,7 @@
  * Context optimization: deduplication, diversification, adaptive selection
  */
 
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface ContextOptimizationOptions {
@@ -222,14 +222,15 @@ export class ContextOptimizer {
       if (fileChunksList.length > 0) {
         const topChunk = fileChunksList[0]!;
         diversified.push(topChunk);
-        selected.add(topChunk.id);
+        selected.add(topChunk.id ?? `${topChunk.path}:${topChunk.span.startLine}-${topChunk.span.endLine}`);
         fileCounts.set(file, 1);
       }
     }
 
     // Second pass: add more chunks from files, ensuring diversity
     for (const chunk of chunks) {
-      if (selected.has(chunk.id)) {
+      const chunkId = chunk.id ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
+      if (selected.has(chunkId)) {
         continue;
       }
 
@@ -253,7 +254,7 @@ export class ContextOptimizer {
 
       if (isDiverse) {
         diversified.push(chunk);
-        selected.add(chunk.id);
+        selected.add(chunkId);
         fileCounts.set(chunk.path, fileCount + 1);
       }
     }
@@ -303,7 +304,6 @@ export class ContextOptimizer {
     return chunks.slice(0, k);
   }
 }
-
 
 
 

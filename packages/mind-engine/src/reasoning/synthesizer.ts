@@ -1,4 +1,4 @@
-import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/sdk';
+import type { KnowledgeResult, KnowledgeChunk } from '../types/engine-contracts';
 import type { ILLM } from '@kb-labs/sdk';
 
 export interface ResultSynthesizerOptions {
@@ -144,8 +144,9 @@ export class ResultSynthesizer {
     const deduplicated: KnowledgeChunk[] = [];
 
     for (const chunk of chunks) {
+      const chunkId = chunk.id ?? chunk.chunkId ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
       // Check by chunkId first
-      if (seen.has(chunk.id)) {
+      if (seen.has(chunkId)) {
         continue;
       }
 
@@ -160,7 +161,7 @@ export class ResultSynthesizer {
       }
 
       if (!isDuplicate) {
-        seen.add(chunk.id);
+        seen.add(chunkId);
         deduplicated.push(chunk);
       }
     }

@@ -3,7 +3,8 @@
  * LLM-based summarization for chunks
  */
 
-import type { ILLM, KnowledgeChunk } from '@kb-labs/sdk';
+import type { ILLM } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 
 export interface SummarizerOptions {
   /**
@@ -160,4 +161,3 @@ Summary:`;
     return `Code from ${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
   }
 }
-

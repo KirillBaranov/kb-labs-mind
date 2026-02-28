@@ -10,7 +10,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
+import type { EmbeddingProvider } from '../types/embedding-provider';
 import type { VectorStore } from '../vector-store/vector-store';
 import { GitDiffDetector, type ChangedFile } from './git-diff';
 import { MergedVectorStore, type MergedIndexStats } from './merged-store';
