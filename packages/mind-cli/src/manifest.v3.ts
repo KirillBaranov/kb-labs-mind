@@ -83,7 +83,7 @@ export const manifest = {
   display: {
     name: 'Mind',
     description: 'AI-powered code search and RAG system for semantic codebase understanding.',
-    tags: ['search', 'rag', 'ai', 'semantic', 'knowledge'],
+    tags: ['search', 'rag', 'ai', 'semantic', 'mind-index'],
   },
 
   // Configuration section in kb.config.json
@@ -119,7 +119,7 @@ export const manifest = {
       {
         id: 'mind:rag-index',
         group: 'mind',
-        describe: 'Build Mind knowledge indexes',
+        describe: 'Build Mind indexes',
         handler: './cli/commands/rag-index.js#default',
         handlerPath: './cli/commands/rag-index.js',
       },

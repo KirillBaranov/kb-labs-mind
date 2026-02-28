@@ -4,6 +4,8 @@
  * Tests: add, update, delete, restore, cleanup, batch
  */
 
+// ESM in .mjs files requires explicit .js extensions for local imports
+// eslint-disable-next-line import/extensions
 import { runSyncAdd, runSyncUpdate, runSyncDelete, runSyncRestore, runSyncCleanup, runSyncBatch } from './dist/application/sync.js';
 
 const TEST_SOURCE = 'test-sync';

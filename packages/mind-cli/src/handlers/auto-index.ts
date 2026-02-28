@@ -4,7 +4,7 @@
  */
 
 import type { PlatformServices } from '@kb-labs/sdk';
-import { runRagIndex } from '../application/rag';
+import { runRagIndex } from '../features/rag';
 
 interface AutoIndexInput {
   scopeId?: string;

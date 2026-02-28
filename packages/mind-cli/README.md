@@ -158,6 +158,13 @@ src/__tests__/
 
 ### Limitations
 
+## Breaking changes (no legacy compatibility)
+
+- `runRagQuery` response field `knowledge` renamed to `result`.
+- Runtime wrappers `createKnowledgeService/createKnowledgeEngineRegistry` removed from `mind-cli`.
+- Config resolution now supports only `.kb/kb.config.json` and `kb.config.json` with `profiles[].products.mind` (or root `mind`).
+- Legacy `knowledge.json` and top-level `knowledge` config are rejected.
+
 - **Command Types**: Fixed command types
 - **Output Formats**: Fixed output formats
 
@@ -209,4 +216,3 @@ See [CONTRIBUTING.md](../../CONTRIBUTING.md) for development guidelines.
 ## 📄 License
 
 MIT © KB Labs
-
