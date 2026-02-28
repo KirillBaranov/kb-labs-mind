@@ -263,7 +263,7 @@ kb-labs-mind/
 | [@kb-labs/mind-engine](./packages/mind-engine/) | Core knowledge engine with vector search, chunking, and self-learning |
 | [@kb-labs/mind-orchestrator](./packages/mind-orchestrator/) | Agent-optimized RAG query orchestration with analytics |
 | [@kb-labs/mind-embeddings](./packages/mind-embeddings/) | Embedding providers (OpenAI, deterministic) |
-| [@kb-labs/mind-llm](./packages/mind-llm/) | LLM client abstraction |
+| LLM integration (`@kb-labs/sdk` `ILLM`) | Platform-provided LLM abstraction |
 | [@kb-labs/mind-vector-store](./packages/mind-vector-store/) | Vector store implementations (Qdrant, local) |
 | [@kb-labs/mind-cli](./packages/mind-cli/) | CLI commands for RAG operations |
 

@@ -38,7 +38,7 @@ Query implementations live in `packages/mind-query/src/queries/`, and the dispat
 2. **Wire the query** into the switch statement in `execute-query.ts`. Add any additional metadata (e.g., `filesScanned`, `edgesTouched`) required for analytics.
 3. **Expose types**: update `QueryName` / `QueryResult` in `@kb-labs/mind-types` so the new query is part of the shared API.
 4. **Cache keys**: if the query output depends on additional parameters, ensure they are captured when calling `QueryCache.set`.
-5. **Add CLI binding** by editing `packages/mind-cli/src/cli/query.ts` and updating the manifest (`manifest.v2.ts`) so the command is discoverable.
+5. **Add CLI binding** by editing `packages/mind-cli/src/cli/query.ts` and updating the manifest (`manifest.v3.ts`) so the command is discoverable.
 6. **Tests**: add unit tests under `packages/mind-query/src/__tests__/` and integration coverage via `packages/mind-tests`.
 
 ## Validation Checklist

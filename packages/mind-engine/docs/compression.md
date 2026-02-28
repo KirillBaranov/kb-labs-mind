@@ -13,7 +13,7 @@ The compression system includes several techniques to reduce the number of token
 
 ## Configuration
 
-Compression is configured in `kb.config.json` in the `knowledge.engines[].options.search.optimization.compression` section:
+Compression is configured in `kb.config.json` in the `mind.engines[].options.search.optimization.compression` section:
 
 ```json
 {

@@ -2,9 +2,9 @@
  * Main entry point for medium project
  */
 
-import { CoreService } from '@/services/core';
-import { DataProcessor } from '@/services/processor';
-import { ConfigManager } from '@/utils/config';
+import { CoreService } from '@/services/core.js';
+import { DataProcessor } from '@/services/processor.js';
+import { ConfigManager } from '@/utils/config.js';
 
 /**
  * Application class with multiple dependencies
@@ -55,8 +55,8 @@ export const app = new MediumApp();
 /**
  * Utility function using external dependency
  */
-export function processWithLodash<T>(items: T[]): T[] {
-  const _ = require('lodash');
+export async function processWithLodash<T>(items: T[]): Promise<T[]> {
+  const _ = await import('lodash');
   return _.uniqBy(items, 'id');
 }
 

@@ -11,7 +11,7 @@
 **Mind плагин выполняется в sandbox с ограничениями:**
 
 ```typescript
-// kb-labs-mind/packages/mind-cli/src/manifest.v2.ts
+// kb-labs-mind/packages/mind-cli/src/manifest.v3.ts
 permissions: {
   fs: {
     mode: 'readWrite',
@@ -50,7 +50,7 @@ permissions: {
 **Идея:** Добавить network permissions с whitelist доменов
 
 ```typescript
-// kb-labs-mind/packages/mind-cli/src/manifest.v2.ts
+// kb-labs-mind/packages/mind-cli/src/manifest.v3.ts
 permissions: {
   fs: {
     mode: 'readWrite',
@@ -366,7 +366,7 @@ export async function run(input, ctx) {
 ### Шаг 1: Обновить манифест
 
 ```typescript
-// packages/mind-cli/src/manifest.v2.ts
+// packages/mind-cli/src/manifest.v3.ts
 
 permissions: {
   // ... существующие permissions ...
