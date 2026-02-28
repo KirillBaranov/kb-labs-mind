@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto';
-import type { EmbeddingVector } from '@kb-labs/sdk';
+export interface EmbeddingVector {
+  dim: number;
+  values: number[];
+}
+
 import type { EmbeddingRuntimeAdapter } from './runtime-adapter-types';
 import { createOpenAIEmbeddingProvider } from './providers/openai';
 import { createLocalEmbeddingProvider } from './providers/local';

@@ -10,6 +10,82 @@ export * from './json-output';
 // Schema version
 export type SchemaVersion = "1.0";
 
+// Canonical Mind runtime/query types (public API)
+export type MindIntent = 'summary' | 'search' | 'similar' | 'nav';
+
+export interface MindSpan {
+  startLine: number;
+  endLine: number;
+}
+
+export interface MindChunk {
+  id: string;
+  chunkId?: string;
+  sourceId?: string;
+  path: string;
+  span: MindSpan;
+  text: string;
+  score: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MindSource {
+  id: string;
+  paths: string[];
+  exclude?: string[];
+}
+
+export interface MindScope {
+  id: string;
+  sourceIds?: string[];
+  defaultEngine?: string;
+  [key: string]: unknown;
+}
+
+export interface MindQuery {
+  text: string;
+  intent?: MindIntent;
+  limit?: number;
+  profileId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MindQueryResult {
+  query: {
+    text: string;
+    intent: MindIntent;
+  };
+  chunks: MindChunk[];
+  contextText: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MindExecutionContext {
+  scope: MindScope;
+  sources: MindSource[];
+  workspaceRoot: string;
+  limit?: number;
+  profile?: { id: string };
+  filters?: {
+    sourceIds?: string[];
+    paths?: string[];
+  };
+}
+
+export interface MindIndexStats {
+  filesDiscovered: number;
+  filesProcessed: number;
+  filesSkipped: number;
+  chunksStored: number;
+  chunksUpdated: number;
+  chunksSkipped: number;
+  errorCount: number;
+  durationMs: number;
+  deletedFiles?: number;
+  deletedChunks?: number;
+  invalidChunks?: number;
+}
+
 // Core index types
 export interface MindIndex {
   schemaVersion: SchemaVersion;

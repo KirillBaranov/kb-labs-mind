@@ -42,7 +42,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "zod": "^3.23.8"
   },
   "devDependencies": {

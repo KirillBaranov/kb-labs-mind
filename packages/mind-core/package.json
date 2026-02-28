@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@kb-labs/mind-types": "link:../mind-types",
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk"
+    "@kb-labs/sdk": "^1.0.0"
   },
   "engines": {
     "node": ">=20.0.0",

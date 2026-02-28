@@ -20,6 +20,11 @@ export type { CommandContract, CommandContractsMap } from './types/commands';
 export type { WorkflowContract, WorkflowContractsMap, WorkflowStepContract } from './types/workflows';
 export type {
   MindConfig,
+  MindConfigInput,
+  MindSourceConfig,
+  MindEngineConfig,
+  MindScopeConfig,
+  MindDefaultsConfig,
   MindSyncConfig,
   MindSyncRegistryConfig,
   MindSyncSoftDeleteConfig,
