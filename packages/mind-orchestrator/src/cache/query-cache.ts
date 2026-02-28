@@ -8,13 +8,18 @@
  */
 
 import { createHash } from 'node:crypto';
-import type { AgentQueryMode, AgentResponse } from '@kb-labs/sdk';
+import type { AgentQueryMode, AgentResponse } from '../types';
 
 export interface CacheEntry {
   response: AgentResponse;
   timestamp: number;
   hits: number;
   queryHash: string;
+  scopeId: string;
+  mode: AgentQueryMode;
+  indexRevision: string;
+  engineConfigHash: string;
+  sourcesDigest?: string;
 }
 
 export interface StateBrokerLike {
@@ -44,6 +49,10 @@ const DEFAULT_OPTIONS = {
   },
 };
 
+const BROKER_QUERY_PREFIX = 'mind:query:entry:';
+const BROKER_SCOPE_PREFIX = 'mind:query:scope:';
+const BROKER_SCOPES_KEY = 'mind:query:scopes';
+
 /**
  * Query Cache - LRU cache for agent responses
  *
@@ -56,12 +65,14 @@ export class QueryCache {
   private readonly broker?: StateBrokerLike;
   private readonly cache: Map<string, CacheEntry>;
   private readonly accessOrder: string[];
+  private readonly scopeIndex: Map<string, Set<string>>;
 
   constructor(options: QueryCacheOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.broker = options.broker;
     this.cache = new Map();
     this.accessOrder = [];
+    this.scopeIndex = new Map();
   }
 
   /**
@@ -71,10 +82,13 @@ export class QueryCache {
     query: string,
     scopeId: string,
     mode: AgentQueryMode,
+    indexRevision: string,
+    engineConfigHash: string,
+    sourcesDigest?: string,
   ): string {
     const normalized = query.toLowerCase().trim();
     return createHash('sha256')
-      .update(`${scopeId}:${mode}:${normalized}`)
+      .update(`${scopeId}:${mode}:${normalized}:${indexRevision}:${engineConfigHash}:${sourcesDigest ?? '-'}`)
       .digest('hex')
       .substring(0, 16);
   }
@@ -86,14 +100,24 @@ export class QueryCache {
     query: string,
     scopeId: string,
     mode: AgentQueryMode,
+    indexRevision: string,
+    engineConfigHash: string,
+    sourcesDigest?: string,
   ): Promise<AgentResponse | null> {
-    const key = this.generateKey(query, scopeId, mode);
+    const key = this.generateKey(
+      query,
+      scopeId,
+      mode,
+      indexRevision,
+      engineConfigHash,
+      sourcesDigest,
+    );
     const ttl = this.options.ttlByMode[mode] ?? this.options.defaultTtlMs;
 
     // Try StateBroker first (persistent cache)
     if (this.broker) {
       try {
-        const brokerKey = `mind:query:${key}`;
+        const brokerKey = this.brokerEntryKey(key);
         const entry = await this.broker.get<CacheEntry>(brokerKey);
 
         if (entry) {
@@ -126,8 +150,12 @@ export class QueryCache {
     const age = Date.now() - entry.timestamp;
 
     if (age > ttl) {
+      const staleEntry = this.cache.get(key);
       this.cache.delete(key);
       this.removeFromAccessOrder(key);
+      if (staleEntry) {
+        this.removeFromScopeIndex(staleEntry.scopeId, key);
+      }
       return null;
     }
 
@@ -152,6 +180,9 @@ export class QueryCache {
     query: string,
     scopeId: string,
     mode: AgentQueryMode,
+    indexRevision: string,
+    engineConfigHash: string,
+    sourcesDigest: string | undefined,
     response: AgentResponse,
   ): Promise<void> {
     // Don't cache error responses or low confidence
@@ -159,7 +190,14 @@ export class QueryCache {
       return;
     }
 
-    const key = this.generateKey(query, scopeId, mode);
+    const key = this.generateKey(
+      query,
+      scopeId,
+      mode,
+      indexRevision,
+      engineConfigHash,
+      sourcesDigest,
+    );
     const ttl = this.options.ttlByMode[mode] ?? this.options.defaultTtlMs;
 
     const entry: CacheEntry = {
@@ -167,13 +205,19 @@ export class QueryCache {
       timestamp: Date.now(),
       hits: 0,
       queryHash: key,
+      scopeId,
+      mode,
+      indexRevision,
+      engineConfigHash,
+      sourcesDigest,
     };
 
     // Store in StateBroker first (persistent cache)
     if (this.broker) {
       try {
-        const brokerKey = `mind:query:${key}`;
+        const brokerKey = this.brokerEntryKey(key);
         await this.broker.set(brokerKey, entry, ttl);
+        await this.addBrokerScopeKey(scopeId, key);
       } catch (error) {
         // Fallback to in-memory if broker fails
       }
@@ -187,26 +231,35 @@ export class QueryCache {
 
     this.cache.set(key, entry);
     this.updateAccessOrder(key);
+    this.addToScopeIndex(scopeId, key);
   }
 
   /**
    * Invalidate cache for a scope (e.g., after re-indexing)
    */
-  invalidateScope(scopeId: string): number {
+  async invalidateScope(scopeId: string): Promise<number> {
     let invalidated = 0;
-    const keysToDelete: string[] = [];
+    const indexedKeys = this.scopeIndex.get(scopeId);
+    const keysToDelete = indexedKeys ? Array.from(indexedKeys) : [];
 
-    // We need to check each entry - in production, use a scope index
-    for (const [key, _entry] of this.cache) {
-      // Since we hash the key, we can't easily filter by scope
-      // For now, clear everything (in production, store scope in entry)
-      keysToDelete.push(key);
-      invalidated++;
+    if (!indexedKeys) {
+      for (const [key, entry] of this.cache) {
+        if (entry.scopeId === scopeId) {
+          keysToDelete.push(key);
+        }
+      }
     }
 
     for (const key of keysToDelete) {
-      this.cache.delete(key);
+      if (this.cache.delete(key)) {
+        invalidated++;
+      }
       this.removeFromAccessOrder(key);
+    }
+    this.scopeIndex.delete(scopeId);
+
+    if (this.broker) {
+      invalidated += await this.invalidateBrokerScope(scopeId);
     }
 
     return invalidated;
@@ -215,9 +268,16 @@ export class QueryCache {
   /**
    * Clear entire cache
    */
-  clear(): void {
+  async clear(): Promise<number> {
+    const invalidated = this.cache.size;
     this.cache.clear();
     this.accessOrder.length = 0;
+    this.scopeIndex.clear();
+
+    if (this.broker) {
+      await this.clearBrokerCache();
+    }
+    return invalidated;
   }
 
   /**
@@ -280,8 +340,88 @@ export class QueryCache {
 
     const lruKey = this.accessOrder.shift();
     if (lruKey) {
+      const entry = this.cache.get(lruKey);
       this.cache.delete(lruKey);
+      if (entry) {
+        this.removeFromScopeIndex(entry.scopeId, lruKey);
+      }
     }
+  }
+
+  private addToScopeIndex(scopeId: string, key: string): void {
+    const existing = this.scopeIndex.get(scopeId);
+    if (existing) {
+      existing.add(key);
+      return;
+    }
+    this.scopeIndex.set(scopeId, new Set([key]));
+  }
+
+  private removeFromScopeIndex(scopeId: string, key: string): void {
+    const existing = this.scopeIndex.get(scopeId);
+    if (!existing) {
+      return;
+    }
+    existing.delete(key);
+    if (existing.size === 0) {
+      this.scopeIndex.delete(scopeId);
+    }
+  }
+
+  private brokerEntryKey(key: string): string {
+    return `${BROKER_QUERY_PREFIX}${key}`;
+  }
+
+  private brokerScopeKey(scopeId: string): string {
+    return `${BROKER_SCOPE_PREFIX}${scopeId}`;
+  }
+
+  private async addBrokerScopeKey(scopeId: string, key: string): Promise<void> {
+    if (!this.broker) {
+      return;
+    }
+    const scopeKey = this.brokerScopeKey(scopeId);
+    const existing = (await this.broker.get<string[]>(scopeKey)) ?? [];
+    if (!existing.includes(key)) {
+      existing.push(key);
+      await this.broker.set(scopeKey, existing);
+    }
+
+    const scopes = (await this.broker.get<string[]>(BROKER_SCOPES_KEY)) ?? [];
+    if (!scopes.includes(scopeId)) {
+      scopes.push(scopeId);
+      await this.broker.set(BROKER_SCOPES_KEY, scopes);
+    }
+  }
+
+  private async invalidateBrokerScope(scopeId: string): Promise<number> {
+    if (!this.broker) {
+      return 0;
+    }
+    const scopeKey = this.brokerScopeKey(scopeId);
+    const keys = (await this.broker.get<string[]>(scopeKey)) ?? [];
+    let invalidated = 0;
+    for (const key of keys) {
+      await this.broker.delete(this.brokerEntryKey(key));
+      invalidated++;
+    }
+    await this.broker.delete(scopeKey);
+
+    const scopes = (await this.broker.get<string[]>(BROKER_SCOPES_KEY)) ?? [];
+    const nextScopes = scopes.filter((value) => value !== scopeId);
+    await this.broker.set(BROKER_SCOPES_KEY, nextScopes);
+    return invalidated;
+  }
+
+  private async clearBrokerCache(): Promise<void> {
+    if (!this.broker) {
+      return;
+    }
+    const scopes = (await this.broker.get<string[]>(BROKER_SCOPES_KEY)) ?? [];
+    for (const scopeId of scopes) {
+      await this.invalidateBrokerScope(scopeId);
+    }
+    await this.broker.delete(BROKER_SCOPES_KEY);
   }
 }
 

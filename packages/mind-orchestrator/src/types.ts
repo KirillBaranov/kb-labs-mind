@@ -4,14 +4,91 @@
  * Internal types for the orchestration pipeline.
  */
 
-import type {
-  AgentQueryMode,
-  AgentResponse,
-  AgentErrorResponse,
-  AgentSource,
-  AgentWarning,
-} from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { MindChunk } from '@kb-labs/mind-types';
+
+// === AGENT CONTRACTS (package-local public surface) ===
+
+export type AgentQueryMode = 'instant' | 'auto' | 'thinking';
+export type AgentSourceKind = 'file' | 'doc' | 'adr' | 'repo' | 'code' | 'config' | 'external';
+export type AgentErrorCode = string;
+export type AgentWarningCode = string;
+
+export interface AgentSource {
+  file: string;
+  lines?: [number, number];
+  snippet?: string;
+  kind: AgentSourceKind;
+  relevance?: number | string;
+}
+
+export interface AgentWarning {
+  code: AgentWarningCode;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+export interface AgentMeta {
+  schemaVersion: string;
+  requestId: string;
+  mode: AgentQueryMode;
+  timingMs: number;
+  cached: boolean;
+  confidence?: number;
+  complete?: boolean;
+  sources?: number;
+  indexVersion?: string;
+  warnings?: AgentWarning[];
+  [key: string]: unknown;
+}
+
+export interface AgentSuggestion {
+  type: string;
+  label: string;
+  ref: string;
+}
+
+export interface AgentDebugInfo {
+  [key: string]: unknown;
+}
+
+export interface AgentSourcesSummary {
+  code: number;
+  docs: number;
+  external: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface AgentResponse {
+  answer: string;
+  sources: AgentSource[];
+  confidence: number;
+  complete: boolean;
+  sourcesSummary?: AgentSourcesSummary;
+  warnings?: AgentWarning[];
+  suggestions?: AgentSuggestion[];
+  meta: AgentMeta;
+  debug?: AgentDebugInfo;
+}
+
+export interface AgentErrorResponse {
+  error: { code: AgentErrorCode; message: string; recoverable: boolean };
+  meta: AgentMeta;
+}
+
+export const AGENT_RESPONSE_SCHEMA_VERSION = 'agent-response-v1';
+export const CONFIDENCE_THRESHOLDS = {
+  high: 0.8,
+  medium: 0.6,
+  low: 0.3,
+} as const;
+
+export function isAgentError(value: unknown): value is AgentErrorResponse {
+  return !!value && typeof value === 'object' && 'error' in value;
+}
+
+export function isAgentSuccess(value: unknown): value is AgentResponse {
+  return !!value && typeof value === 'object' && 'answer' in value && 'sources' in value;
+}
 
 // === ORCHESTRATOR CONFIG ===
 
@@ -78,6 +155,9 @@ export interface OrchestratorQueryOptions {
   scopeId?: string;
   text: string;
   mode?: AgentQueryMode;
+  indexRevision?: string;
+  engineConfigHash?: string;
+  sourcesDigest?: string;
   sources?: string[];
   maxTokens?: number;
   noCache?: boolean;
@@ -100,9 +180,36 @@ export interface DecomposedQuery {
 }
 
 export interface GatheredChunks {
-  chunks: KnowledgeChunk[];
-  subqueryResults: Map<string, KnowledgeChunk[]>;
+  chunks: MindChunk[];
+  subqueryResults: Map<string, MindChunk[]>;
   totalMatches: number;
+  retrieval?: RetrievalTelemetry;
+}
+
+export interface ConfidenceAdjustments {
+  stalenessPenalty?: number;
+  conflictPenalty?: number;
+  floorGap?: number;
+  finalConfidence?: number;
+}
+
+export interface RetrievalTelemetry {
+  retrievalProfile?: AgentQueryMode;
+  freshnessApplied?: boolean;
+  boostedCandidates?: number;
+  stalenessLevel?: 'fresh' | 'soft-stale' | 'hard-stale';
+  conflictsDetected?: number;
+  conflictTopics?: number;
+  conflictPolicy?: string;
+  confidence?: number;
+  complete?: boolean;
+  recoverable?: boolean;
+  failClosed?: boolean;
+  recoverableHints?: string[];
+  confidenceAdjustments?: ConfidenceAdjustments;
+  indexRevision?: string | null;
+  engineConfigHash?: string | null;
+  sourcesDigest?: string | null;
 }
 
 export interface CompletenessResult {

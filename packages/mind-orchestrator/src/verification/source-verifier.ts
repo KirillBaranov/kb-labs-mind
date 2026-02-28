@@ -5,8 +5,8 @@
  * and contain the claimed content. Key anti-hallucination layer.
  */
 
-import type { AgentSource, AgentWarning } from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { AgentSource, AgentWarning } from '../types';
+import type { MindChunk } from '@kb-labs/mind-types';
 
 export interface SourceVerificationResult {
   source: AgentSource;
@@ -54,7 +54,7 @@ export class SourceVerifier {
    */
   verifyAll(
     sources: AgentSource[],
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
     baseConfidence: number,
   ): VerificationSummary {
     const results: SourceVerificationResult[] = [];
@@ -127,7 +127,7 @@ export class SourceVerifier {
   /**
    * Verify a single source against chunks
    */
-  verifySource(source: AgentSource, chunks: KnowledgeChunk[]): SourceVerificationResult {
+  verifySource(source: AgentSource, chunks: MindChunk[]): SourceVerificationResult {
     // Find matching chunk by file path
     const matchingChunks = chunks.filter(chunk =>
       this.pathMatches(chunk.path, source.file)
@@ -195,7 +195,7 @@ export class SourceVerifier {
   /**
    * Verify snippet exists in chunks
    */
-  private verifySnippet(snippet: string, chunks: KnowledgeChunk[]): boolean {
+  private verifySnippet(snippet: string | undefined, chunks: MindChunk[]): boolean {
     if (!snippet || snippet.trim().length === 0) {
       return true; // Empty snippet is valid
     }
@@ -240,7 +240,10 @@ export class SourceVerifier {
   /**
    * Verify line numbers are reasonable
    */
-  private verifyLines(lines: [number, number], chunks: KnowledgeChunk[]): boolean {
+  private verifyLines(lines: [number, number] | undefined, chunks: MindChunk[]): boolean {
+    if (!lines) {
+      return true; // Missing line range is acceptable
+    }
     const [start, end] = lines;
 
     // Invalid line numbers
@@ -307,7 +310,7 @@ export function extractCodeMentions(answer: string): string[] {
  */
 export function verifyMentionsInChunks(
   mentions: string[],
-  chunks: KnowledgeChunk[],
+  chunks: MindChunk[],
 ): { verified: string[]; unverified: string[] } {
   const verified: string[] = [];
   const unverified: string[] = [];

@@ -5,8 +5,8 @@
  * actually exist in the source code. Catches hallucinated parameters.
  */
 
-import type { AgentWarning } from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { AgentWarning } from '../types';
+import type { MindChunk } from '@kb-labs/mind-types';
 
 export interface FieldCheckResult {
   verified: string[];
@@ -72,7 +72,7 @@ export class FieldChecker {
   /**
    * Check all fields mentioned in an answer against source chunks
    */
-  check(answer: string, chunks: KnowledgeChunk[]): FieldCheckResult {
+  check(answer: string, chunks: MindChunk[]): FieldCheckResult {
     const mentionedFields = this.extractFields(answer);
     const verified: string[] = [];
     const unverified: string[] = [];
@@ -237,7 +237,7 @@ export class FieldChecker {
  */
 export function hasLikelyHallucinations(
   answer: string,
-  chunks: KnowledgeChunk[],
+  chunks: MindChunk[],
   threshold = 0.7,
 ): boolean {
   const checker = new FieldChecker();

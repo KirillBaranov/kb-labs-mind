@@ -2,7 +2,8 @@
  * Analytics event payload types for Mind orchestrator
  */
 
-import type { AgentQueryMode } from '@kb-labs/sdk';
+import type { AgentQueryMode } from '../types';
+import type { RetrievalTelemetry } from '../types';
 
 // === EVENT TYPES ===
 
@@ -157,6 +158,7 @@ export interface MindAnalyticsContext {
   subqueries: string[];
   iterations: number;
   compressionApplied: boolean;
+  retrieval?: RetrievalTelemetry;
 }
 
 // === LLM COST CONFIGURATION ===

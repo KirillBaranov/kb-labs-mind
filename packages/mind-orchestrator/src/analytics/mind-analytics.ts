@@ -3,7 +3,8 @@
  * Transport is delegated to platform analytics adapter (IAnalytics).
  */
 
-import type { IAnalytics, AgentResponse, AgentErrorResponse } from '@kb-labs/sdk';
+import type { IAnalytics } from '@kb-labs/sdk';
+import type { AgentResponse, AgentErrorResponse } from '../types';
 import type {
   MindAnalyticsContext,
   QueryStartedPayload,
@@ -100,6 +101,12 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
         subqueriesCount: ctx.subqueries.length,
         iterationsCount: ctx.iterations,
         compressionApplied: ctx.compressionApplied,
+        retrievalProfile: ctx.retrieval?.retrievalProfile,
+        stalenessLevel: ctx.retrieval?.stalenessLevel,
+        failClosed: ctx.retrieval?.failClosed ?? false,
+        conflictsDetected: ctx.retrieval?.conflictsDetected ?? 0,
+        confidenceAdjustments: ctx.retrieval?.confidenceAdjustments,
+        indexRevision: ctx.retrieval?.indexRevision ?? result.meta.indexVersion,
       };
 
       await safeEmit('mind.query.completed', payload);
@@ -164,6 +171,7 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
       if (updates.subqueries) {ctx.subqueries.push(...updates.subqueries);}
       if (updates.iterations !== undefined) {ctx.iterations = updates.iterations;}
       if (updates.compressionApplied !== undefined) {ctx.compressionApplied = updates.compressionApplied;}
+      if (updates.retrieval !== undefined) {ctx.retrieval = updates.retrieval;}
     },
   };
 }

@@ -5,7 +5,7 @@
  * while staying within LLM context limits.
  */
 
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { MindChunk } from '@kb-labs/mind-types';
 
 export interface TokenBudgetConfig {
   /** Total token budget for context */
@@ -23,7 +23,7 @@ export interface TokenBudgetConfig {
 }
 
 export interface AssembledContext {
-  chunks: KnowledgeChunk[];
+  chunks: MindChunk[];
   tokensUsed: number;
   tokensAvailable: number;
   truncated: boolean;
@@ -55,9 +55,9 @@ export class TokenBudgetPlanner {
   /**
    * Assemble context from chunks within token budget
    */
-  assemble(chunks: KnowledgeChunk[]): AssembledContext {
+  assemble(chunks: MindChunk[]): AssembledContext {
     const availableBudget = this.config.budget - this.config.reserveForAnswer;
-    const selectedChunks: KnowledgeChunk[] = [];
+    const selectedChunks: MindChunk[] = [];
     const fileChunkCounts = new Map<string, number>();
     let tokensUsed = 0;
     let droppedChunks = 0;
@@ -114,7 +114,7 @@ export class TokenBudgetPlanner {
   /**
    * Boost definition chunks higher in ranking
    */
-  private boostDefinitions(chunks: KnowledgeChunk[]): KnowledgeChunk[] {
+  private boostDefinitions(chunks: MindChunk[]): MindChunk[] {
     return chunks
       .map(chunk => ({
         chunk,
@@ -127,7 +127,7 @@ export class TokenBudgetPlanner {
   /**
    * Check if chunk contains a definition (function, class, interface, etc.)
    */
-  private isDefinition(chunk: KnowledgeChunk): boolean {
+  private isDefinition(chunk: MindChunk): boolean {
     const definitionPatterns = [
       /^export\s+(function|class|interface|type|const|enum)\s+/m,
       /^(function|class|interface|type)\s+\w+/m,
@@ -148,7 +148,7 @@ export class TokenBudgetPlanner {
   /**
    * Truncate chunk to fit within token budget
    */
-  private truncateChunk(chunk: KnowledgeChunk, maxTokens: number): KnowledgeChunk | null {
+  private truncateChunk(chunk: MindChunk, maxTokens: number): MindChunk | null {
     const maxChars = maxTokens * CHARS_PER_TOKEN;
 
     if (chunk.text.length <= maxChars) {
@@ -203,7 +203,7 @@ export class TokenBudgetPlanner {
  * Format chunks for LLM with source numbers
  */
 export function formatChunksWithNumbers(
-  chunks: KnowledgeChunk[],
+  chunks: MindChunk[],
   maxLines = 50,
 ): string {
   return chunks
@@ -221,19 +221,19 @@ export function formatChunksWithNumbers(
 /**
  * Categorize chunks by source type for structured prompts
  */
-export function categorizeChunks(chunks: KnowledgeChunk[]): {
-  adrs: KnowledgeChunk[];
-  code: KnowledgeChunk[];
-  docs: KnowledgeChunk[];
-  config: KnowledgeChunk[];
-  other: KnowledgeChunk[];
+export function categorizeChunks(chunks: MindChunk[]): {
+  adrs: MindChunk[];
+  code: MindChunk[];
+  docs: MindChunk[];
+  config: MindChunk[];
+  other: MindChunk[];
 } {
   const result = {
-    adrs: [] as KnowledgeChunk[],
-    code: [] as KnowledgeChunk[],
-    docs: [] as KnowledgeChunk[],
-    config: [] as KnowledgeChunk[],
-    other: [] as KnowledgeChunk[],
+    adrs: [] as MindChunk[],
+    code: [] as MindChunk[],
+    docs: [] as MindChunk[],
+    config: [] as MindChunk[],
+    other: [] as MindChunk[],
   };
 
   for (const chunk of chunks) {

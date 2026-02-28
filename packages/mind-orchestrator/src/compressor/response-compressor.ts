@@ -4,12 +4,12 @@
  * Compresses agent responses to fit within token budget.
  */
 
-import type { AgentResponse, AgentSource } from '@kb-labs/sdk';
-import type { LLMProvider } from '../llm/llm-provider';
+import type { ILLM } from '@kb-labs/sdk';
+import type { AgentResponse, AgentSource } from '../types';
 import type { OrchestratorCompressionConfig } from '../types';
 
 export interface ResponseCompressorOptions {
-  llm?: LLMProvider;
+  llm?: ILLM;
   config: OrchestratorCompressionConfig;
 }
 
@@ -25,7 +25,7 @@ function estimateTokens(text: string): number {
  * Response Compressor - fits response within token budget
  */
 export class ResponseCompressor {
-  private readonly llm?: LLMProvider;
+  private readonly llm?: ILLM;
   private readonly config: OrchestratorCompressionConfig;
 
   constructor(options: ResponseCompressorOptions) {
@@ -88,7 +88,7 @@ export class ResponseCompressor {
   private truncateResponse(response: AgentResponse): AgentResponse {
     const truncatedSources = response.sources.map(source => ({
       ...source,
-      snippet: this.truncateSnippet(source.snippet, this.config.maxSnippetLines),
+      snippet: this.truncateSnippet(source.snippet ?? '', this.config.maxSnippetLines),
     }));
 
     const result: AgentResponse = {
@@ -127,7 +127,7 @@ export class ResponseCompressor {
       .slice(0, 3)
       .map(source => ({
         ...source,
-        snippet: this.truncateSnippet(source.snippet, 5),
+        snippet: this.truncateSnippet(source.snippet ?? '', 5),
       }));
 
     // Truncate answer if very long
@@ -160,8 +160,8 @@ export class ResponseCompressor {
       const summarizedSources: AgentSource[] = [];
 
       for (const source of response.sources.slice(0, this.config.maxSources)) {
-        if (source.snippet.length > 200) {
-          const summary = await this.summarizeSnippet(source.snippet);
+        if ((source.snippet ?? '').length > 200) {
+          const summary = await this.summarizeSnippet(source.snippet ?? '');
           summarizedSources.push({
             ...source,
             snippet: summary,
@@ -198,13 +198,12 @@ ${snippet}
 
 Return only the summarized code, no explanation.`;
 
-    const result = await this.llm.complete({
-      prompt,
+    const response = await this.llm.complete(prompt, {
       maxTokens: 200,
       temperature: 0.1,
     });
 
-    return result.trim();
+    return response.content.trim();
   }
 
   /**

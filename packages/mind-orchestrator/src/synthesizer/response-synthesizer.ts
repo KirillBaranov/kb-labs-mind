@@ -6,9 +6,10 @@
  */
 
 import { useLogger } from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
-import type { AgentQueryMode, AgentSource, AgentSourceKind, AgentWarning } from '@kb-labs/sdk';
-import type { LLMProvider } from '../llm/llm-provider';
+import type { ILLM } from '@kb-labs/sdk';
+import type { MindChunk } from '@kb-labs/mind-types';
+import type { AgentQueryMode, AgentSource, AgentSourceKind, AgentWarning } from '../types';
+import { completeJSON } from '../llm/json';
 import type { SynthesisResult, OrchestratorConfig } from '../types';
 import {
   SYNTHESIS_SYSTEM_PROMPT,
@@ -45,7 +46,7 @@ interface InstantSynthesisResponse {
 }
 
 export interface ResponseSynthesizerOptions {
-  llm: LLMProvider;
+  llm: ILLM;
   config: OrchestratorConfig;
 }
 
@@ -53,7 +54,7 @@ export interface ResponseSynthesizerOptions {
  * Response Synthesizer - creates agent-friendly responses
  */
 export class ResponseSynthesizer {
-  private readonly llm: LLMProvider;
+  private readonly llm: ILLM;
   private readonly config: OrchestratorConfig;
 
   constructor(options: ResponseSynthesizerOptions) {
@@ -66,7 +67,7 @@ export class ResponseSynthesizer {
    */
   async synthesize(
     query: string,
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
     mode: AgentQueryMode,
   ): Promise<SynthesisResult> {
     // No chunks = no answer
@@ -100,7 +101,7 @@ export class ResponseSynthesizer {
    */
   private async synthesizeInstant(
     query: string,
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
   ): Promise<SynthesisResult> {
     // For simple instant mode, build answer from chunks without LLM
     if (this.config.modes.instant.skipLLM) {
@@ -114,7 +115,7 @@ export class ResponseSynthesizer {
         .replace('{query}', query)
         .replace('{chunks}', chunksText);
 
-      const response = await this.llm.completeJSON<InstantSynthesisResponse>({
+      const response = await completeJSON<InstantSynthesisResponse>(this.llm, {
         prompt,
         maxTokens: 200,
         temperature: 0.1,
@@ -136,7 +137,7 @@ export class ResponseSynthesizer {
    */
   private async synthesizeFull(
     query: string,
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
     mode: AgentQueryMode,
   ): Promise<SynthesisResult> {
     const maxChunks = mode === 'thinking'
@@ -150,7 +151,7 @@ export class ResponseSynthesizer {
         .replace('{query}', query)
         .replace('{chunks}', chunksText);
 
-      const response = await this.llm.completeJSON<SynthesisResponse>({
+      const response = await completeJSON<SynthesisResponse>(this.llm, {
         prompt,
         systemPrompt: SYNTHESIS_SYSTEM_PROMPT,
         maxTokens: mode === 'thinking' ? 2000 : 1000,
@@ -221,7 +222,7 @@ export class ResponseSynthesizer {
   /**
    * Build direct answer without LLM
    */
-  private buildDirectAnswer(query: string, chunks: KnowledgeChunk[]): SynthesisResult {
+  private buildDirectAnswer(query: string, chunks: MindChunk[]): SynthesisResult {
     const topChunk = chunks[0];
     if (!topChunk) {
       return {
@@ -248,7 +249,7 @@ export class ResponseSynthesizer {
   /**
    * Convert chunks to AgentSource format
    */
-  private chunksToSources(chunks: KnowledgeChunk[]): AgentSource[] {
+  private chunksToSources(chunks: MindChunk[]): AgentSource[] {
     return chunks.map(chunk => ({
       file: chunk.path,
       lines: [chunk.span.startLine, chunk.span.endLine] as [number, number],
@@ -262,7 +263,7 @@ export class ResponseSynthesizer {
    * Format chunks for LLM prompt using TOON format
    * TOON provides compact tabular format for structured data
    */
-  private formatChunksForLLM(chunks: KnowledgeChunk[], maxChunks: number): string {
+  private formatChunksForLLM(chunks: MindChunk[], maxChunks: number): string {
     const selectedChunks = chunks.slice(0, maxChunks);
 
     // Convert chunks to TOON-friendly format
@@ -291,7 +292,7 @@ export class ResponseSynthesizer {
   /**
    * Infer source kind from chunk
    */
-  private inferSourceKind(chunk: KnowledgeChunk): AgentSourceKind {
+  private inferSourceKind(chunk: MindChunk): AgentSourceKind {
     const path = chunk.path.toLowerCase();
 
     if (path.startsWith('external://')) {
@@ -314,7 +315,7 @@ export class ResponseSynthesizer {
    */
   private parseSourceKind(kind: string | undefined, file: string): AgentSourceKind {
     if (!kind) {
-      return this.inferSourceKind({ path: file } as KnowledgeChunk);
+      return this.inferSourceKind({ path: file } as MindChunk);
     }
 
     const validKinds: AgentSourceKind[] = ['code', 'doc', 'adr', 'config', 'external'];
