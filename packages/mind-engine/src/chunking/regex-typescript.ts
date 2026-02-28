@@ -164,7 +164,7 @@ export class RegexTypeScriptChunker implements Chunker {
       let match;
       while ((match = pattern.exec(sourceCode)) !== null) {
         const name = match[1];
-        if (!name) continue; // Skip if name is undefined
+        if (!name) {continue;} // Skip if name is undefined
 
         const startIndex = match.index;
         const startLine = this.getLineNumberEfficient(sourceCode, startIndex);
@@ -284,7 +284,7 @@ export class RegexTypeScriptChunker implements Chunker {
     // Count lines in declaration text without split
     let lineCount = 1;
     for (let i = 0; i < declText.length; i++) {
-      if (declText[i] === '\n') lineCount++;
+      if (declText[i] === '\n') {lineCount++;}
     }
 
     if (lineCount <= maxLines) {

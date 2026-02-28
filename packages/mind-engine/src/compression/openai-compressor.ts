@@ -3,7 +3,8 @@
  * OpenAI-based LLM compression implementation
  */
 
-import { useLogger, type ILLM, type KnowledgeChunk } from '@kb-labs/sdk';
+import { useLogger, type ILLM } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 import type { LLMCompressor } from './llm-compressor';
 
 const getCompressionLogger = () => useLogger().child({ category: 'mind:engine:compression' });
@@ -82,10 +83,9 @@ export class OpenAILLMCompressor implements LLMCompressor {
     query: string,
   ): Promise<string[]> {
     // Process in parallel for speed
-    const results = await Promise.all(
+    return Promise.all(
       chunks.map((chunk) => this.compress(chunk, query)),
     );
-    return results;
   }
 
   /**
@@ -153,4 +153,3 @@ Compressed code:`;
     return '';
   }
 }
-

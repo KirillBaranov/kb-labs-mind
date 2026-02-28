@@ -1,10 +1,16 @@
 import path from 'node:path';
 import fs from 'fs-extra';
 import { cosineSimilarity as calculateCosineSimilarity } from '@kb-labs/mind-core';
-import type {
-  EmbeddingVector,
-  SpanRange,
-} from '@kb-labs/sdk';
+
+export interface EmbeddingVector {
+  dim: number;
+  values: number[];
+}
+
+export interface SpanRange {
+  startLine: number;
+  endLine: number;
+}
 
 export interface StoredMindChunk {
   chunkId: string;
@@ -159,7 +165,7 @@ export class MindVectorStore {
       return [];
     }
 
-    const matches = records
+    return records
       .filter(chunk => applyFilters(chunk, filters))
       .map(chunk => ({
         chunk,
@@ -168,8 +174,6 @@ export class MindVectorStore {
       .filter(match => Number.isFinite(match.score))
       .sort((a, b) => b.score - a.score)
       .slice(0, limit);
-
-    return matches;
   }
 
   private async loadScope(scopeId: string): Promise<StoredMindChunk[]> {

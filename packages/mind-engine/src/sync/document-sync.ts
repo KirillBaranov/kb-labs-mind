@@ -4,7 +4,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
+import type { EmbeddingProvider } from '../types/embedding-provider';
 import type { VectorStore, StoredMindChunk } from '../vector-store/vector-store';
 import { getChunkerForFile } from '../chunking/index';
 import type { RuntimeAdapter } from '../adapters/runtime-adapter';
@@ -80,7 +80,7 @@ export class DocumentSyncAPI {
       if (existing) {
         if (existing.deleted) {
           // Restore deleted document
-          return await this.updateDocument({
+          return this.updateDocument({
             source: options.source,
             id: options.id,
             scopeId: options.scopeId,
@@ -89,7 +89,7 @@ export class DocumentSyncAPI {
           });
         }
         // Document exists and not deleted, treat as update
-        return await this.updateDocument({
+        return this.updateDocument({
           source: options.source,
           id: options.id,
           scopeId: options.scopeId,
@@ -207,7 +207,7 @@ export class DocumentSyncAPI {
 
       if (!existing) {
         // Document doesn't exist, treat as add
-        return await this.addDocument({
+        return this.addDocument({
           source: options.source,
           id: options.id,
           scopeId: options.scopeId,
@@ -242,7 +242,7 @@ export class DocumentSyncAPI {
         !existing.deleted
       ) {
         try {
-          return await partialUpdate(
+          return partialUpdate(
             this,
             this.registry,
             options,
@@ -489,7 +489,7 @@ export class DocumentSyncAPI {
   async listDocuments(
     options: ListDocumentsOptions = {},
   ): Promise<DocumentRecord[]> {
-    return await this.registry.list(
+    return this.registry.list(
       options.source,
       options.scopeId,
       options.includeDeleted,
@@ -715,7 +715,7 @@ export class DocumentSyncAPI {
     filePath: string,
     contentType?: string,
   ): Promise<Array<{ text: string; span: { startLine: number; endLine: number } }>> {
-    return await this.chunkContent(content, filePath, contentType);
+    return this.chunkContent(content, filePath, contentType);
   }
 }
 

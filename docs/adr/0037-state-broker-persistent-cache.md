@@ -107,7 +107,7 @@ Users complained about slow query performance, especially when running multiple 
 
 #### 1. **Namespace Isolation**
 
-Plugins declare state permissions in `manifest.v2.ts`:
+Plugins declare state permissions in `manifest.v3.ts`:
 
 ```typescript
 permissions: {
@@ -258,7 +258,7 @@ Every 30 seconds, expired entries are removed. No manual cleanup needed.
    - Graceful fallback to file-based cache
 
 4. **@kb-labs/mind-cli**
-   - Added state permissions to `manifest.v2.ts`
+   - Added state permissions to `manifest.v3.ts`
    - Quotas: 10k entries, 100 MB, 1000 ops/min
 
 ### HTTP API
@@ -386,7 +386,7 @@ See "Considered Options" section above.
 - State Daemon: `kb-labs-core/packages/state-daemon/`
 - Permission Validator: `kb-labs-plugin/packages/runtime/src/permissions.ts`
 - QueryCache: `kb-labs-mind/packages/mind-query/src/cache/query-cache.ts`
-- Mind Manifest: `kb-labs-mind/packages/mind-cli/src/manifest.v2.ts`
+- Mind Manifest: `kb-labs-mind/packages/mind-cli/src/manifest.v3.ts`
 
 ## Notes
 

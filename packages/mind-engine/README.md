@@ -19,7 +19,7 @@ The Mind Engine is the heart of KB Labs' semantic code search, providing intelli
 ```
 mind-engine/
 ├── src/
-│   ├── index.ts                 # Main exports (MindKnowledgeEngine)
+│   ├── index.ts                 # Main exports (MindEngine)
 │   ├── indexing/                # Indexing pipeline
 │   │   ├── pipeline.ts          # Main indexing orchestration
 │   │   ├── chunking/            # AST & sliding window chunking
@@ -45,30 +45,22 @@ mind-engine/
 ### Creating Engine Instance
 
 ```typescript
-import { createKnowledgeService, usePlatform, type KnowledgeEngineConfig } from '@kb-labs/sdk';
+import { MindEngine } from '@kb-labs/mind-engine';
 
-// Engine automatically uses platform services (embeddings, vector store, LLM, logger)
-const config: KnowledgeEngineConfig = {
-  type: 'mind',
-  indexPath: '.kb/mind/index',
-  scope: 'default',
-};
+const engine = new MindEngine(
+  { id: 'mind-default', type: 'mind', options: {} },
+  { workspaceRoot: process.cwd() },
+);
 
-const service = createKnowledgeService(config);
-
-// Platform services are injected automatically:
-// - usePlatform().getEmbeddings() for embeddings
-// - usePlatform().getVectorStore() for vector storage
-// - usePlatform().getLLM() for reasoning
-// - useLogger() for logging
+await engine.init();
 ```
 
 ### Indexing Code
 
 ```typescript
-import type { KnowledgeSource } from '@kb-labs/sdk';
+import type { MindSource } from '@kb-labs/mind-types';
 
-const sources: KnowledgeSource[] = [
+const sources: MindSource[] = [
   {
     id: 'src/auth.ts',
     kind: 'code',
@@ -81,7 +73,7 @@ const sources: KnowledgeSource[] = [
   },
 ];
 
-await service.index(sources, {
+await engine.index(sources as any, {
   scope: 'default',
   incremental: true,
 });
@@ -90,16 +82,20 @@ await service.index(sources, {
 ### Querying
 
 ```typescript
-import type { KnowledgeQuery } from '@kb-labs/sdk';
+import type { MindQuery } from '@kb-labs/mind-types';
 
-const query: KnowledgeQuery = {
+const query: MindQuery = {
   text: 'How does authentication work?',
   intent: 'concept',
   scope: 'default',
   limit: 10,
 };
 
-const result = await service.query(query);
+const result = await engine.query(query as any, {
+  scope: { id: 'default' },
+  sources: sources as any,
+  workspaceRoot: process.cwd(),
+});
 
 console.log('Found', result.chunks.length, 'relevant chunks');
 result.chunks.forEach(chunk => {
@@ -123,6 +119,12 @@ Results are merged using **RRF (Reciprocal Rank Fusion)** with adaptive weights:
 - **Architecture queries** (e.g., "Explain X architecture"): 60% vector, 40% BM25
 
 **Reference**: [ADR-0033: Adaptive Search Weights](../../docs/adr/0033-adaptive-search-weights-by-intent.md)
+
+## Breaking changes (no legacy compatibility)
+
+- `MindKnowledgeEngine` removed; use `MindEngine`.
+- `registerMindKnowledgeEngine` removed; use `registerMindEngine`.
+- Legacy config paths `knowledge.json` and top-level `knowledge` are not supported.
 
 ### Chunking Strategy
 
@@ -265,7 +267,7 @@ Key ADRs affecting Mind Engine:
 - **@kb-labs/mind-orchestrator** - Query orchestration with agent modes
 - **@kb-labs/mind-embeddings** - Embedding provider abstraction
 - **@kb-labs/mind-vector-store** - Vector storage abstraction
-- **@kb-labs/mind-llm** - LLM provider abstraction
+- **LLM integration** - via platform `@kb-labs/sdk` (`ILLM`)
 - **@kb-labs/mind-cli** - CLI commands for Mind
 
 ## Contributing

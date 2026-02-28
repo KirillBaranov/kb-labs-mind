@@ -58,9 +58,7 @@ export class PopularityBoostCalculator implements PopularityBoost {
     const logBoost = Math.log(usageCount + 1) * this.options.decayFactor;
     
     // Cap at maxBoost
-    const boost = Math.min(this.options.maxBoost, 1.0 + logBoost);
-    
-    return boost;
+    return Math.min(this.options.maxBoost, 1.0 + logBoost);
   }
 
   async getUsageCount(chunkId: string, scopeId: string): Promise<number> {

@@ -59,5 +59,22 @@
         "maxSize": 100
       }
     }
+  },
+  "platform": {
+    "adapterOptions": {
+      "llm": {
+        "executionDefaults": {
+          "cache": {
+            "mode": "prefer",
+            "scope": "segments",
+            "ttlSec": 3600
+          },
+          "stream": {
+            "mode": "prefer",
+            "fallbackToComplete": true
+          }
+        }
+      }
+    }
   }
 }

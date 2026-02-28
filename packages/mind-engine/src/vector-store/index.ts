@@ -11,15 +11,13 @@ export type {
 } from './vector-store';
 
 // Re-export EmbeddingVector for convenience
-export type { EmbeddingVector } from '@kb-labs/sdk';
+export type { EmbeddingVector } from './vector-store';
 
 export { LocalVectorStore } from './local';
 export type { LocalVectorStoreOptions } from './local';
 
-import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 import { LocalVectorStore } from './local';
 import type { VectorStore } from './vector-store';
-import type { MindPlatformBindings } from '../platform/platform-adapters';
 import { PlatformVectorStoreAdapter } from './platform-adapter';
 import { usePlatform } from '@kb-labs/sdk';
 
@@ -37,8 +35,6 @@ export interface VectorStoreConfig {
  */
 export function createVectorStore(
   config: VectorStoreConfig,
-  runtime: RuntimeAdapter,
-  platform?: MindPlatformBindings,
 ): VectorStore {
   // Use SDK hook to get wrapped vectorStore with analytics
   const sdkPlatform = usePlatform();
@@ -54,4 +50,3 @@ export function createVectorStore(
   const indexDir = config.local?.indexDir ?? '.kb/mind/indexes';
   return new LocalVectorStore({ indexDir });
 }
-

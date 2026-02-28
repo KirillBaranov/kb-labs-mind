@@ -5,8 +5,9 @@
 
 export { manifest } from './manifest.v3';
 
+export * from './runtime/index';
+export * from './features/rag/index';
 export * from './shared/index';
-export * from './domain/index';
 export * from './application/index';
 export * from './infra/index';
 export * from './cli/index';

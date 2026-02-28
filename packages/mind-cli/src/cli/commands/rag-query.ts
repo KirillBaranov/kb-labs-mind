@@ -3,9 +3,8 @@
  */
 
 import { defineCommand, usePlatform, type PluginContextV3 } from '@kb-labs/sdk';
-import { runRagQuery, runAgentRagQuery } from '../../application/rag';
+import { runRagQuery, runAgentRagQuery } from '../../features/rag';
 import { isAgentError } from '@kb-labs/mind-orchestrator';
-import { MIND_ERROR_CODES } from '../../errors/error-codes';
 
 const VALID_INTENTS = ['summary', 'search', 'similar', 'nav'] as const;
 const VALID_MODES = ['instant', 'auto', 'thinking'] as const;
@@ -56,7 +55,7 @@ interface RagQueryResult {
 
 export default defineCommand({
   id: 'mind:rag-query',
-  description: 'Run semantic RAG query on Mind knowledge base',
+  description: 'Run semantic RAG query on Mind index',
 
   handler: {
     async execute(ctx: PluginContextV3, input: RagQueryInput): Promise<RagQueryResult> {
@@ -196,7 +195,7 @@ export default defineCommand({
           platform, // Pass platform for analytics adapter
           runtime: undefined, // Runtime context not available in CLI
           onProgress: (stage: string, details?: string) => {
-            if (flags.quiet || format === 'json' || format === 'json-pretty') return;
+            if (flags.quiet || format === 'json' || format === 'json-pretty') {return;}
 
             // Update current stage
             currentStage = details ? `${stage}: ${details}` : stage;
@@ -217,15 +216,15 @@ export default defineCommand({
         ctx.trace?.addEvent?.('mind.rag-query.complete', {
           mode,
           scopeId,
-          chunks: result.knowledge.chunks.length,
+          chunks: result.result.chunks.length,
           timingMs: timing,
         });
 
         // Output result
         if (format === 'json' || format === 'json-pretty') {
           // Check if we have the new JSON response format in metadata
-          if (result.knowledge.metadata?.jsonResponse) {
-            const jsonResponse = result.knowledge.metadata.jsonResponse;
+          if (result.result.metadata?.jsonResponse) {
+            const jsonResponse = result.result.metadata.jsonResponse;
             if (format === 'json-pretty') {
               ctx.ui.info(JSON.stringify(jsonResponse, null, 2));
             } else {
@@ -236,21 +235,21 @@ export default defineCommand({
             ctx.ui.info(JSON.stringify({
               ok: true,
               scopeId: result.scopeId,
-              intent: result.knowledge.query.intent,
-              chunks: result.knowledge.chunks,
-              contextText: result.knowledge.contextText,
+              intent: result.result.query.intent,
+              chunks: result.result.chunks,
+              contextText: result.result.contextText,
             }));
           }
         } else if (!flags.quiet) {
-          const topChunk = result.knowledge.chunks[0];
+          const topChunk = result.result.chunks[0];
 
           const sections: Array<{ header?: string; items: string[] }> = [
             {
               header: 'Summary',
               items: [
                 `Scope: ${result.scopeId}`,
-                `Intent: ${result.knowledge.query.intent}`,
-                `Chunks returned: ${result.knowledge.chunks.length}`,
+                `Intent: ${result.result.query.intent}`,
+                `Chunks returned: ${result.result.chunks.length}`,
               ],
             },
           ];
@@ -270,12 +269,12 @@ export default defineCommand({
           }
 
           // Show synthesized context if available (from reasoning chain)
-          if (result.knowledge.contextText && result.knowledge.contextText.length > 0) {
-            const contextPreview = result.knowledge.contextText.length > 2000
-              ? result.knowledge.contextText.substring(0, 2000) + '...'
-              : result.knowledge.contextText;
+          if (result.result.contextText && result.result.contextText.length > 0) {
+            const contextPreview = result.result.contextText.length > 2000
+              ? result.result.contextText.substring(0, 2000) + '...'
+              : result.result.contextText;
             sections.push({
-              header: `Synthesized context (${result.knowledge.contextText.length} chars)`,
+              header: `Synthesized context (${result.result.contextText.length} chars)`,
               items: [contextPreview],
             });
           }

@@ -3,7 +3,8 @@
  * LLM-based summarization for chunks
  */
 
-import type { ILLM, KnowledgeChunk } from '@kb-labs/sdk';
+import type { ILLM } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 
 export interface SummarizerOptions {
   /**
@@ -64,10 +65,9 @@ export class ChunkSummarizer {
     chunks: KnowledgeChunk[],
     query?: string,
   ): Promise<string[]> {
-    const results = await Promise.all(
+    return Promise.all(
       chunks.map((chunk) => this.summarize(chunk, query)),
     );
-    return results;
   }
 
   /**
@@ -161,4 +161,3 @@ Summary:`;
     return `Code from ${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
   }
 }
-

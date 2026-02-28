@@ -181,7 +181,7 @@ export class WorkerPool<TInput, TOutput> {
       !this.isShuttingDown
     ) {
       const task = this.queue.shift();
-      if (!task) break;
+      if (!task) {break;}
 
       this.activeWorkers++;
       this.processTask(task);
@@ -215,7 +215,7 @@ export class WorkerPool<TInput, TOutput> {
    * Sleep utility
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise<void>(resolve => { setTimeout(resolve, ms); });
   }
 }
 

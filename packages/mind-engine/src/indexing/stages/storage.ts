@@ -48,6 +48,12 @@ export interface VectorStore {
    * @returns Number of chunks deleted
    */
   deleteBatch(chunkIds: string[]): Promise<number>;
+
+  /**
+   * Get existing chunk IDs grouped by file path.
+   * Used to remove stale chunks for files being re-indexed.
+   */
+  getChunkIdsByPaths(paths: string[]): Promise<Map<string, string[]>>;
 }
 
 /**
@@ -61,6 +67,9 @@ export class StorageStage implements PipelineStage {
   private storedCount = 0;
   private updatedCount = 0;
   private skippedCount = 0;
+  private invalidCount = 0;
+  private staleDeletedCount = 0;
+  private staleDeletedFilesCount = 0;
 
   constructor(
     private vectorStore: VectorStore,
@@ -90,9 +99,36 @@ export class StorageStage implements PipelineStage {
     this.storedCount = 0;
     this.updatedCount = 0;
     this.skippedCount = 0;
+    this.invalidCount = 0;
+    this.staleDeletedCount = 0;
+    this.staleDeletedFilesCount = 0;
+
+    // Validate chunks before any storage operation.
+    // Invalid chunks are dropped to protect index consistency.
+    let chunksToStore = this.validateChunks(this.chunks, context);
+    if (chunksToStore.length === 0) {
+      context.logger.warn('No valid chunks to store after validation');
+      return {
+        success: true,
+        message: 'No valid chunks to process',
+        data: {
+          chunksStored: 0,
+          chunksUpdated: 0,
+          chunksSkipped: 0,
+          chunksInvalid: this.invalidCount,
+          staleChunksDeleted: 0,
+          totalChunks: 0,
+        },
+      };
+    }
+
+    // Remove stale chunks for changed files before insert/update.
+    // This avoids leftover chunks when file structure changed.
+    const staleCleanup = await this.deleteStaleChunksByPath(chunksToStore, context);
+    this.staleDeletedCount = staleCleanup.deletedChunks;
+    this.staleDeletedFilesCount = staleCleanup.deletedFiles;
 
     // Deduplication step (if enabled)
-    let chunksToStore = this.chunks;
     if (this.options.deduplication !== false) {
       chunksToStore = await this.deduplicateChunks(chunksToStore, context);
     }
@@ -209,19 +245,114 @@ export class StorageStage implements PipelineStage {
       chunksStored: this.storedCount,
       chunksUpdated: this.updatedCount,
       chunksSkipped: this.skippedCount,
+      chunksInvalid: this.invalidCount,
+      staleChunksDeleted: this.staleDeletedCount,
+      staleFilesDeleted: this.staleDeletedFilesCount,
       totalChunks: context.chunksStored,
     });
 
     return {
       success: true,
-      message: `Stored ${this.storedCount} new, updated ${this.updatedCount}, skipped ${this.skippedCount} chunks`,
+      message: `Stored ${this.storedCount} new, updated ${this.updatedCount}, skipped ${this.skippedCount} chunks (${this.invalidCount} invalid, ${this.staleDeletedCount} stale deleted in ${this.staleDeletedFilesCount} files)`,
       data: {
         chunksStored: this.storedCount,
         chunksUpdated: this.updatedCount,
         chunksSkipped: this.skippedCount,
+        chunksInvalid: this.invalidCount,
+        staleChunksDeleted: this.staleDeletedCount,
+        staleFilesDeleted: this.staleDeletedFilesCount,
         totalChunks: context.chunksStored,
       },
     };
+  }
+
+  private validateChunks(
+    chunks: ChunkWithEmbedding[],
+    context: PipelineContext
+  ): ChunkWithEmbedding[] {
+    const valid: ChunkWithEmbedding[] = [];
+
+    for (const chunk of chunks) {
+      const hasValidEmbedding =
+        Array.isArray(chunk.embedding)
+        && chunk.embedding.length > 0
+        && chunk.embedding.every(value => Number.isFinite(value));
+      const hasValidText = typeof chunk.text === 'string' && chunk.text.trim().length > 0;
+      const hasIdentity =
+        typeof chunk.chunkId === 'string'
+        && chunk.chunkId.length > 0
+        && typeof chunk.path === 'string'
+        && chunk.path.length > 0;
+
+      if (!hasValidEmbedding || !hasValidText || !hasIdentity) {
+        this.invalidCount++;
+        context.stats.errors.push({
+          file: chunk.path || '<unknown>',
+          error: 'Storage validation failed: invalid chunk payload',
+        });
+        continue;
+      }
+
+      valid.push(chunk);
+    }
+
+    if (this.invalidCount > 0) {
+      context.logger.warn('Dropped invalid chunks before storage', {
+        invalidChunks: this.invalidCount,
+        totalChunks: chunks.length,
+        validChunks: valid.length,
+      });
+    }
+
+    return valid;
+  }
+
+  private async deleteStaleChunksByPath(
+    chunks: ChunkWithEmbedding[],
+    context: PipelineContext
+  ): Promise<{ deletedChunks: number; deletedFiles: number }> {
+    const paths = Array.from(
+      new Set(
+        chunks
+          .map(chunk => chunk.path)
+          .filter((path): path is string => typeof path === 'string' && path.length > 0)
+      )
+    );
+
+    if (paths.length === 0) {
+      return { deletedChunks: 0, deletedFiles: 0 };
+    }
+
+    const incomingChunkIds = new Set(chunks.map(chunk => chunk.chunkId));
+    const existingByPath = await this.vectorStore.getChunkIdsByPaths(paths);
+    const staleChunkIds: string[] = [];
+
+    for (const existingIds of existingByPath.values()) {
+      for (const existingId of existingIds) {
+        if (!incomingChunkIds.has(existingId)) {
+          staleChunkIds.push(existingId);
+        }
+      }
+    }
+
+    if (staleChunkIds.length === 0) {
+      return { deletedChunks: 0, deletedFiles: 0 };
+    }
+
+    const deleted = await this.vectorStore.deleteBatch(staleChunkIds);
+    const staleFilesDeleted = Array.from(existingByPath.entries())
+      .filter(([, existingIds]) => existingIds.some(existingId => !incomingChunkIds.has(existingId)))
+      .length;
+
+    if (deleted > 0) {
+      context.logger.debug('Deleted stale chunks for changed files', {
+        staleCandidates: staleChunkIds.length,
+        staleDeleted: deleted,
+        staleFilesDeleted,
+        filesTouched: paths.length,
+      });
+    }
+    return { deletedChunks: deleted, deletedFiles: staleFilesDeleted };
   }
 
   /**

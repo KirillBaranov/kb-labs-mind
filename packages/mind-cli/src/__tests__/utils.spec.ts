@@ -97,7 +97,7 @@ describe('CLI Utilities', () => {
 
     it('should track elapsed time', async () => {
       const initial = tracker.getElapsed();
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => { setTimeout(resolve, 10); });
       const after = tracker.getElapsed();
       expect(after).toBeGreaterThan(initial);
     });

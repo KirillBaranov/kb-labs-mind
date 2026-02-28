@@ -29,9 +29,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests"
   },
-  "dependencies": {
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",
     "@types/node": "^24.3.3",

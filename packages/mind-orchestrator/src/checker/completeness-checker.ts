@@ -6,9 +6,10 @@
  */
 
 import { useLogger } from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
-import type { AgentQueryMode } from '@kb-labs/sdk';
-import type { LLMProvider } from '../llm/llm-provider';
+import type { ILLM } from '@kb-labs/sdk';
+import type { MindChunk } from '@kb-labs/mind-types';
+import type { AgentQueryMode } from '../types';
+import { completeJSON } from '../llm/json';
 import type { CompletenessResult, OrchestratorConfig } from '../types';
 import { COMPLETENESS_SYSTEM_PROMPT, COMPLETENESS_PROMPT_TEMPLATE } from './prompts';
 
@@ -26,7 +27,7 @@ interface CompletenessResponse {
 }
 
 export interface CompletenessCheckerOptions {
-  llm: LLMProvider;
+  llm: ILLM;
   config: OrchestratorConfig;
 }
 
@@ -34,7 +35,7 @@ export interface CompletenessCheckerOptions {
  * Completeness Checker - evaluates if context is sufficient
  */
 export class CompletenessChecker {
-  private readonly llm: LLMProvider;
+  private readonly llm: ILLM;
   private readonly config: OrchestratorConfig;
 
   constructor(options: CompletenessCheckerOptions) {
@@ -47,7 +48,7 @@ export class CompletenessChecker {
    */
   async check(
     query: string,
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
     mode: AgentQueryMode,
   ): Promise<CompletenessResult> {
     // Instant mode - skip LLM check, use heuristics
@@ -73,7 +74,7 @@ export class CompletenessChecker {
         .replace('{query}', query)
         .replace('{chunks_summary}', chunksSummary);
 
-      const response = await this.llm.completeJSON<CompletenessResponse>({
+      const response = await completeJSON<CompletenessResponse>(this.llm, {
         prompt,
         systemPrompt: COMPLETENESS_SYSTEM_PROMPT,
         maxTokens: 500,
@@ -97,7 +98,7 @@ export class CompletenessChecker {
   /**
    * Heuristic-based completeness check (for instant mode)
    */
-  private heuristicCheck(query: string, chunks: KnowledgeChunk[]): CompletenessResult {
+  private heuristicCheck(query: string, chunks: MindChunk[]): CompletenessResult {
     if (chunks.length === 0) {
       return {
         complete: false,
@@ -144,7 +145,7 @@ export class CompletenessChecker {
   /**
    * Build a summary of chunks for LLM
    */
-  private buildChunksSummary(chunks: KnowledgeChunk[]): string {
+  private buildChunksSummary(chunks: MindChunk[]): string {
     const maxChunksForSummary = 10;
     const maxTextLength = 500;
 
@@ -162,7 +163,7 @@ export class CompletenessChecker {
   /**
    * Extract unique source types from chunks
    */
-  private extractSourceTypes(chunks: KnowledgeChunk[]): string[] {
+  private extractSourceTypes(chunks: MindChunk[]): string[] {
     const types = new Set<string>();
 
     for (const chunk of chunks) {

@@ -69,7 +69,7 @@ export class PlatformHistoryStoreAdapter implements QueryHistoryStore {
       resultChunkIds: record.resultChunkIds,
       topChunkIds: record.topChunkIds,
       queryVector: record.queryVector,
-      reasoningPlan: record.reasoningPlan,
+      reasoningPlan: record.reasoningPlan as ReasoningPlanMetadata | undefined,
     };
   }
 
@@ -84,4 +84,3 @@ export class PlatformHistoryStoreAdapter implements QueryHistoryStore {
       .substring(0, 16);
   }
 }
-

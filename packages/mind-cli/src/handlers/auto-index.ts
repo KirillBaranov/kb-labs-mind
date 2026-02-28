@@ -4,7 +4,7 @@
  */
 
 import type { PlatformServices } from '@kb-labs/sdk';
-import { runRagIndex } from '../application/rag';
+import { runRagIndex } from '../features/rag';
 
 interface AutoIndexInput {
   scopeId?: string;
@@ -32,7 +32,7 @@ interface AutoIndexContext {
  *
  * Runs Mind RAG indexing for specified scope (or all scopes if not specified).
  * This handler is invoked by the worker daemon based on the schedule defined
- * in manifest.v2.ts jobs section.
+ * in manifest.v3.ts jobs section.
  */
 export const run = async (input: AutoIndexInput, ctx: AutoIndexContext): Promise<AutoIndexOutput> => {
   const startTime = Date.now();

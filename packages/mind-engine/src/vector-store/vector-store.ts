@@ -3,10 +3,7 @@
  * Vector store interface for abstracting storage backends
  */
 
-import type {
-  EmbeddingVector,
-  SpanRange,
-} from '@kb-labs/sdk';
+import type { EmbeddingVector, SpanRange } from '../types/engine-contracts';
 
 // Re-export for convenience
 export type { EmbeddingVector };
@@ -99,6 +96,7 @@ export interface VectorStore {
     updateBatch(chunks: any[]): Promise<number>;
     checkExistence(chunkIds: string[]): Promise<Set<string>>;
     getChunksByHash(hashes: string[]): Promise<Map<string, string[]>>;
+    getChunkIdsByPaths(paths: string[]): Promise<Map<string, string[]>>;
     deleteBatch(chunkIds: string[]): Promise<number>;
   };
 
@@ -114,4 +112,3 @@ export interface VectorStore {
     paths: string[]
   ): Promise<Map<string, { mtime: number; size: number; hash: string }>>;
 }
-

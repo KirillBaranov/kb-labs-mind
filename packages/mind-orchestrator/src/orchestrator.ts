@@ -5,20 +5,17 @@
  * agent-optimized responses for RAG queries.
  */
 
-import { randomUUID as uuid } from 'crypto';
 import type {
-  ILLM,
-  KnowledgeChunk,
-  KnowledgeIntent,
   AgentResponse,
   AgentErrorResponse,
   AgentQueryMode,
   AgentMeta,
   AgentSourcesSummary,
-} from '@kb-labs/sdk';
-import { AGENT_RESPONSE_SCHEMA_VERSION, isAgentError } from '@kb-labs/sdk';
+} from './types';
+import type { ILLM } from '@kb-labs/sdk';
+import type { MindChunk } from '@kb-labs/mind-types';
+import { AGENT_RESPONSE_SCHEMA_VERSION } from './types';
 
-import { createLLMProvider, type LLMProvider } from './llm/llm-provider';
 import { QueryDecomposer } from './decomposer/query-decomposer';
 import { ChunkGatherer, type QueryFn } from './gatherer/chunk-gatherer';
 import { CompletenessChecker } from './checker/completeness-checker';
@@ -30,9 +27,10 @@ import {
   type OrchestratorConfig,
   type OrchestratorQueryOptions,
   type OrchestratorResult,
+  type RetrievalTelemetry,
   DEFAULT_ORCHESTRATOR_CONFIG,
 } from './types';
-import { classifyQuery, type QueryClassification } from '@kb-labs/mind-engine';
+import { classifyQuery } from '@kb-labs/mind-engine';
 
 /**
  * Generate UUID using crypto
@@ -65,7 +63,7 @@ export interface AgentQueryOrchestratorOptions {
  */
 export class AgentQueryOrchestrator {
   private readonly config: OrchestratorConfig;
-  private readonly llmProvider: LLMProvider | null;
+  private readonly llm: ILLM | null;
   private readonly decomposer: QueryDecomposer | null;
   private readonly gatherer: ChunkGatherer;
   private readonly checker: CompletenessChecker | null;
@@ -100,28 +98,25 @@ export class AgentQueryOrchestrator {
       },
     };
 
-    // Create LLM provider if LLM provided
-    this.llmProvider = options.llm
-      ? createLLMProvider(options.llm)
-      : null;
+    this.llm = options.llm ?? null;
 
     // Create components that require LLM
-    this.decomposer = this.llmProvider
-      ? new QueryDecomposer({ llm: this.llmProvider, config: this.config })
+    this.decomposer = this.llm
+      ? new QueryDecomposer({ llm: this.llm, config: this.config })
       : null;
 
     this.gatherer = new ChunkGatherer({ config: this.config });
 
-    this.checker = this.llmProvider
-      ? new CompletenessChecker({ llm: this.llmProvider, config: this.config })
+    this.checker = this.llm
+      ? new CompletenessChecker({ llm: this.llm, config: this.config })
       : null;
 
-    this.synthesizer = this.llmProvider
-      ? new ResponseSynthesizer({ llm: this.llmProvider, config: this.config })
+    this.synthesizer = this.llm
+      ? new ResponseSynthesizer({ llm: this.llm, config: this.config })
       : null;
 
     this.compressor = new ResponseCompressor({
-      llm: this.llmProvider ?? undefined,
+      llm: this.llm ?? undefined,
       config: this.config.compression,
     });
 
@@ -153,16 +148,24 @@ export class AgentQueryOrchestrator {
     queryFn: QueryFn,
   ): Promise<OrchestratorResult> {
     const requestId = generateRequestId();
+    const hasCacheContext =
+      typeof options.indexRevision === 'string' &&
+      options.indexRevision.length > 0 &&
+      typeof options.engineConfigHash === 'string' &&
+      options.engineConfigHash.length > 0;
 
     // Determine mode early for cache lookup
     let mode = options.mode ?? this.config.mode;
 
     // Check cache first (before analytics to avoid overhead)
-    if (!options.noCache) {
+    if (!options.noCache && hasCacheContext) {
       const cached = await this.queryCache.get(
         options.text,
         options.scopeId ?? 'default',
         mode,
+        options.indexRevision!,
+        options.engineConfigHash!,
+        options.sourcesDigest,
       );
 
       if (cached) {
@@ -206,7 +209,7 @@ export class AgentQueryOrchestrator {
 
         // Auto-fallback: if instant mode has low confidence, upgrade to auto mode
         const LOW_CONFIDENCE_THRESHOLD = 0.3;
-        if (result.confidence < LOW_CONFIDENCE_THRESHOLD && this.llmProvider) {
+        if (result.confidence < LOW_CONFIDENCE_THRESHOLD && this.llm) {
           // Log the fallback (confidence tracked in analytics automatically)
 
           // Upgrade to auto mode
@@ -230,23 +233,7 @@ export class AgentQueryOrchestrator {
       result.meta.timingMs = Date.now() - analyticsCtx.startTime;
       result.meta.mode = mode;
 
-      // Add LLM stats
-      if (this.llmProvider) {
-        const stats = this.llmProvider.getStats();
-        result.meta.llmCalls = stats.calls;
-        result.meta.tokensIn = stats.tokensIn;
-        result.meta.tokensOut = stats.tokensOut;
-
-        // Update analytics context with LLM stats
-        this.analytics.updateContext(analyticsCtx, {
-          llmCalls: stats.calls,
-          tokensIn: stats.tokensIn,
-          tokensOut: stats.tokensOut,
-          subqueries,
-        });
-
-        this.llmProvider.resetStats();
-      }
+      this.analytics.updateContext(analyticsCtx, { subqueries });
 
       // Compress if needed
       const compressed = await this.compressor.compress(result);
@@ -257,11 +244,14 @@ export class AgentQueryOrchestrator {
       }
 
       // Store in cache
-      if (!options.noCache) {
+      if (!options.noCache && hasCacheContext) {
         await this.queryCache.set(
           options.text,
           options.scopeId ?? 'default',
           mode,
+          options.indexRevision!,
+          options.engineConfigHash!,
+          options.sourcesDigest,
           compressed,
         );
       }
@@ -301,12 +291,15 @@ export class AgentQueryOrchestrator {
 
     // Gather chunks
     const gathered = await this.gatherer.gather(decomposed, 'auto', queryFn);
+    await this.enforceRetrievalContextConsistency(options, gathered.retrieval);
 
     // Track gather stage
     await this.analytics.trackStage('gather', analyticsCtx, {
       chunksFound: gathered.chunks.length,
       totalMatches: gathered.totalMatches,
+      retrieval: gathered.retrieval,
     });
+    this.analytics.updateContext(analyticsCtx, { retrieval: gathered.retrieval });
 
     // Check completeness (single iteration)
     if (this.checker) {
@@ -329,12 +322,14 @@ export class AgentQueryOrchestrator {
       options.debug,
       decomposed.subqueries,
       gathered.totalMatches,
+      gathered.retrieval,
     );
 
     // Track synthesize stage
     await this.analytics.trackStage('synthesize', analyticsCtx, {
       sourcesCount: result.sources.length,
       confidence: result.confidence,
+      retrieval: gathered.retrieval,
     });
 
     return { result, subqueries: decomposed.subqueries };
@@ -361,7 +356,8 @@ export class AgentQueryOrchestrator {
     });
 
     // Gather chunks
-    let gathered = await this.gatherer.gather(decomposed, 'thinking', queryFn);
+    const gathered = await this.gatherer.gather(decomposed, 'thinking', queryFn);
+    await this.enforceRetrievalContextConsistency(options, gathered.retrieval);
 
     // Early deduplication - reduce tokens for completeness check
     gathered.chunks = this.deduplicateChunks(gathered.chunks);
@@ -370,7 +366,9 @@ export class AgentQueryOrchestrator {
     await this.analytics.trackStage('gather', analyticsCtx, {
       chunksFound: gathered.chunks.length,
       totalMatches: gathered.totalMatches,
+      retrieval: gathered.retrieval,
     });
+    this.analytics.updateContext(analyticsCtx, { retrieval: gathered.retrieval });
 
     // Iterative completeness checking
     const maxIterations = this.config.modes.thinking.maxIterations;
@@ -426,6 +424,7 @@ export class AgentQueryOrchestrator {
       options.debug,
       decomposed.subqueries,
       gathered.totalMatches,
+      gathered.retrieval,
     );
 
     // Track synthesize stage
@@ -433,6 +432,7 @@ export class AgentQueryOrchestrator {
       sourcesCount: result.sources.length,
       confidence: result.confidence,
       iterations: iteration + 1,
+      retrieval: gathered.retrieval,
     });
 
     return { result, subqueries: decomposed.subqueries };
@@ -463,6 +463,8 @@ export class AgentQueryOrchestrator {
       vectorWeight: classification.weights.vector,
       keywordWeight: classification.weights.keyword,
     });
+    const retrieval = extractRetrievalTelemetry(result.metadata);
+    await this.enforceRetrievalContextConsistency(options, retrieval);
 
     // Build response
     return this.buildResponse(
@@ -471,7 +473,65 @@ export class AgentQueryOrchestrator {
       'instant',
       requestId,
       options.debug,
+      undefined,
+      result.chunks.length,
+      retrieval,
     );
+  }
+
+  private async enforceRetrievalContextConsistency(
+    options: OrchestratorQueryOptions,
+    retrieval?: RetrievalTelemetry,
+  ): Promise<void> {
+    const expectedIndexRevision = options.indexRevision;
+    const expectedEngineConfigHash = options.engineConfigHash;
+    const expectedSourcesDigest = options.sourcesDigest;
+
+    if (
+      typeof expectedIndexRevision !== 'string' ||
+      expectedIndexRevision.length === 0 ||
+      typeof expectedEngineConfigHash !== 'string' ||
+      expectedEngineConfigHash.length === 0
+    ) {
+      return;
+    }
+
+    if (!retrieval) {
+      await this.queryCache.invalidateScope(options.scopeId ?? 'default');
+      throw new Error('INDEX_CONTEXT_MISMATCH: missing retrieval telemetry for context validation');
+    }
+
+    const actualIndexRevision = retrieval.indexRevision;
+    const actualEngineConfigHash = retrieval.engineConfigHash;
+    const actualSourcesDigest = retrieval.sourcesDigest;
+
+    const indexRevisionMismatch =
+      typeof actualIndexRevision !== 'string' ||
+      actualIndexRevision.length === 0 ||
+      actualIndexRevision !== expectedIndexRevision;
+    const engineConfigMismatch =
+      typeof actualEngineConfigHash !== 'string' ||
+      actualEngineConfigHash.length === 0 ||
+      actualEngineConfigHash !== expectedEngineConfigHash;
+    const sourcesDigestMismatch =
+      typeof expectedSourcesDigest === 'string' && expectedSourcesDigest.length > 0 &&
+      (
+        typeof actualSourcesDigest !== 'string' ||
+        actualSourcesDigest.length === 0 ||
+        actualSourcesDigest !== expectedSourcesDigest
+      );
+
+    if (indexRevisionMismatch || engineConfigMismatch || sourcesDigestMismatch) {
+      await this.queryCache.invalidateScope(options.scopeId ?? 'default');
+      throw new Error(
+        [
+          'INDEX_CONTEXT_MISMATCH:',
+          `expected indexRevision=${expectedIndexRevision}, engineConfigHash=${expectedEngineConfigHash};`,
+          `actual indexRevision=${String(actualIndexRevision)}, engineConfigHash=${String(actualEngineConfigHash)};`,
+          `expected sourcesDigest=${String(expectedSourcesDigest)}, actual sourcesDigest=${String(actualSourcesDigest)}`,
+        ].join(' '),
+      );
+    }
   }
 
   /**
@@ -479,12 +539,13 @@ export class AgentQueryOrchestrator {
    */
   private async buildResponse(
     query: string,
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
     mode: AgentQueryMode,
     requestId: string,
     debug?: boolean,
     subqueries?: string[],
     totalMatches?: number,
+    retrieval?: RetrievalTelemetry,
   ): Promise<AgentResponse> {
     // Use synthesizer if available, otherwise build direct response
     const synthesis = this.synthesizer
@@ -501,6 +562,7 @@ export class AgentQueryOrchestrator {
       mode,
       timingMs: 0, // Will be updated by caller
       cached: false,
+      indexVersion: retrieval?.indexRevision ?? undefined,
     };
 
     const response: AgentResponse = {
@@ -530,7 +592,7 @@ export class AgentQueryOrchestrator {
   /**
    * Build direct response without LLM
    */
-  private buildDirectResponse(chunks: KnowledgeChunk[]) {
+  private buildDirectResponse(chunks: MindChunk[]) {
     if (chunks.length === 0) {
       return {
         answer: 'No relevant code found.',
@@ -596,12 +658,14 @@ export class AgentQueryOrchestrator {
   /**
    * Deduplicate chunks by ID
    */
-  private deduplicateChunks(chunks: KnowledgeChunk[]): KnowledgeChunk[] {
-    const seen = new Map<string, KnowledgeChunk>();
+  private deduplicateChunks(chunks: MindChunk[]): MindChunk[] {
+    const seen = new Map<string, MindChunk>();
     for (const chunk of chunks) {
-      const existing = seen.get(chunk.id);
-      if (!existing || chunk.score > existing.score) {
-        seen.set(chunk.id, chunk);
+      const chunkId = chunk.id ?? chunk.chunkId ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
+      const existing = seen.get(chunkId);
+      const chunkScore = chunk.score ?? 0;
+      if (!existing || chunkScore > (existing.score ?? 0)) {
+        seen.set(chunkId, chunk);
       }
     }
     return Array.from(seen.values()).sort((a, b) => b.score - a.score);
@@ -612,17 +676,16 @@ export class AgentQueryOrchestrator {
    * @param scopeIds - Optional array of scope IDs to invalidate. If not provided, clears entire cache.
    * @returns Number of cache entries invalidated
    */
-  invalidateCache(scopeIds?: string[]): number {
+  async invalidateCache(scopeIds?: string[]): Promise<number> {
     if (!scopeIds || scopeIds.length === 0) {
       // Clear entire cache
-      this.queryCache.clear();
-      return 0;
+      return this.queryCache.clear();
     }
 
     // Invalidate specific scopes
     let totalInvalidated = 0;
     for (const scopeId of scopeIds) {
-      totalInvalidated += this.queryCache.invalidateScope(scopeId);
+      totalInvalidated += await this.queryCache.invalidateScope(scopeId);
     }
     return totalInvalidated;
   }
@@ -651,6 +714,9 @@ export class AgentQueryOrchestrator {
     if (message.includes('timeout') || message.includes('TIMEOUT')) {
       code = 'TIMEOUT';
       recoverable = true;
+    } else if (message.includes('INDEX_CONTEXT_MISMATCH')) {
+      code = 'INDEX_NOT_FOUND';
+      recoverable = true;
     } else if (message.includes('LLM') || message.includes('OpenAI')) {
       code = 'LLM_ERROR';
       recoverable = true;
@@ -674,6 +740,20 @@ export class AgentQueryOrchestrator {
       },
     };
   }
+}
+
+function extractRetrievalTelemetry(metadata?: Record<string, unknown>): RetrievalTelemetry | undefined {
+  if (!metadata || typeof metadata !== 'object') {
+    return undefined;
+  }
+  const hasRequired =
+    typeof metadata.retrievalProfile === 'string' &&
+    typeof metadata.stalenessLevel === 'string' &&
+    typeof metadata.failClosed === 'boolean';
+  if (!hasRequired) {
+    return undefined;
+  }
+  return metadata as RetrievalTelemetry;
 }
 
 /**

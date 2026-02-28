@@ -4,7 +4,7 @@
  */
 
 import type { Chunk, ChunkingOptions, Chunker } from './chunker';
-import type { SpanRange } from '@kb-labs/sdk';
+import type { SpanRange } from '../types/engine-contracts';
 
 /**
  * Line-based chunker (fallback for unsupported file types)

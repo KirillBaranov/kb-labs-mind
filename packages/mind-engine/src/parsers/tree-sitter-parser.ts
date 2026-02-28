@@ -85,20 +85,17 @@ export class TreeSitterParser implements LanguageParser {
           return rust.default || rust;
 
         case 'java':
-          // @ts-expect-error - tree-sitter-java is an optional peer dependency
           const java = await import('tree-sitter-java');
           return java.default || java;
 
         case 'c':
         case 'cpp':
         case 'c++':
-          // @ts-expect-error - tree-sitter-c is an optional peer dependency
           const c = await import('tree-sitter-c');
           return c.default || c;
 
         case 'csharp':
         case 'cs':
-          // @ts-expect-error - tree-sitter-c-sharp is an optional peer dependency
           const cs = await import('tree-sitter-c-sharp');
           return cs.default || cs;
 
@@ -252,10 +249,10 @@ export class TreeSitterParser implements LanguageParser {
    * Map Tree-sitter node type to our boundary type
    */
   private mapNodeType(nodeType: string): StatementBoundary['type'] | null {
-    if (this.isFunctionNode(nodeType)) return 'function';
-    if (this.isClassNode(nodeType)) return 'class';
-    if (nodeType.includes('method')) return 'method';
-    if (nodeType.includes('block')) return 'block';
+    if (this.isFunctionNode(nodeType)) {return 'function';}
+    if (this.isClassNode(nodeType)) {return 'class';}
+    if (nodeType.includes('method')) {return 'method';}
+    if (nodeType.includes('block')) {return 'block';}
     return null;
   }
 
@@ -330,10 +327,10 @@ export class TreeSitterParser implements LanguageParser {
    * Infer export type from node type
    */
   private inferExportType(nodeType: string): CodeStructure['exports'][number]['type'] {
-    if (nodeType.includes('function')) return 'function';
-    if (nodeType.includes('class')) return 'class';
-    if (nodeType.includes('type') || nodeType.includes('interface')) return 'type';
-    if (nodeType.includes('default')) return 'default';
+    if (nodeType.includes('function')) {return 'function';}
+    if (nodeType.includes('class')) {return 'class';}
+    if (nodeType.includes('type') || nodeType.includes('interface')) {return 'type';}
+    if (nodeType.includes('default')) {return 'default';}
     return 'const';
   }
 }

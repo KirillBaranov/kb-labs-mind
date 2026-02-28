@@ -1,5 +1,5 @@
-import type { KnowledgeResult, KnowledgeChunk } from '@kb-labs/sdk';
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { KnowledgeResult, KnowledgeChunk } from '../types/engine-contracts';
+import type { ILLM } from '@kb-labs/sdk';
 
 export interface ResultSynthesizerOptions {
   /**
@@ -65,14 +65,14 @@ export class ResultSynthesizer {
   private readonly enabled: boolean;
   private readonly deduplication: boolean;
   private readonly maxTokens: number;
-  private readonly llmEngine: MindLLMEngine | null;
+  private readonly llmEngine: ILLM | null;
   private readonly model: string;
   private readonly temperature: number;
   private readonly progressiveRefinement: boolean;
 
   constructor(
     options: ResultSynthesizerOptions,
-    llmEngine: MindLLMEngine | null,
+    llmEngine: ILLM | null,
   ) {
     this.enabled = options.enabled ?? true;
     this.deduplication = options.deduplication ?? true;
@@ -99,7 +99,7 @@ export class ResultSynthesizer {
     const originalChunkCount = allChunks.length;
 
     // Deduplicate chunks
-    let deduplicatedChunks = this.deduplication
+    const deduplicatedChunks = this.deduplication
       ? this.deduplicateChunks(allChunks)
       : allChunks;
 
@@ -144,8 +144,9 @@ export class ResultSynthesizer {
     const deduplicated: KnowledgeChunk[] = [];
 
     for (const chunk of chunks) {
+      const chunkId = chunk.id ?? chunk.chunkId ?? `${chunk.path}:${chunk.span.startLine}-${chunk.span.endLine}`;
       // Check by chunkId first
-      if (seen.has(chunk.id)) {
+      if (seen.has(chunkId)) {
         continue;
       }
 
@@ -160,7 +161,7 @@ export class ResultSynthesizer {
       }
 
       if (!isDuplicate) {
-        seen.add(chunk.id);
+        seen.add(chunkId);
         deduplicated.push(chunk);
       }
     }
@@ -236,12 +237,12 @@ Synthesize these results into a clear, well-organized context that directly addr
 Respond with ONLY the synthesized context, no explanations or meta-commentary.`;
 
     try {
-      const result = await this.llmEngine.generate(prompt, {
+      const result = await this.llmEngine.complete(prompt, {
         temperature: this.temperature,
         maxTokens: this.maxTokens,
       });
 
-      return result.text.trim();
+      return result.content.trim();
     } catch (error) {
       // Fallback to simple concatenation if LLM fails
       return chunks
@@ -250,4 +251,3 @@ Respond with ONLY the synthesized context, no explanations or meta-commentary.`;
     }
   }
 }
-

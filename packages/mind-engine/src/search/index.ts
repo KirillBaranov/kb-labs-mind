@@ -12,11 +12,15 @@ export { keywordSearch, type KeywordSearchOptions } from './keyword';
 // Query classification
 export {
   classifyQuery,
+  classifyQueryWithLLMFallback,
   hasExactIdentifier,
   extractIdentifiers,
   detectLanguage,
   type QueryType,
+  type RetrievalProfile,
+  type RecallStrategy,
   type QueryClassification,
+  type QueryClassifierLLMOptions,
 } from './query-classifier';
 
 // Source categorization

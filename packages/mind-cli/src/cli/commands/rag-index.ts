@@ -1,9 +1,9 @@
 /**
- * Mind rag-index command - build Mind knowledge indexes (V3)
+ * Mind rag-index command - build Mind indexes (V3)
  */
 
 import { defineCommand, useConfig, usePlatform, useLoader, type PluginContextV3 } from '@kb-labs/sdk';
-import { runRagIndex } from '../../application/rag';
+import { runRagIndex } from '../../features/rag';
 
 interface RagIndexInput {
   argv: string[];
@@ -33,21 +33,15 @@ interface RagIndexResult {
 
 export default defineCommand({
   id: 'mind:rag-index',
-  description: 'Build Mind knowledge indexes',
+  description: 'Build Mind indexes',
 
   handler: {
     async execute(ctx: PluginContextV3, input: RagIndexInput): Promise<RagIndexResult> {
       const startTime = Date.now();
       const { flags } = input;
 
-      // DEBUG: Log input and context
-      console.log('[RAG-INDEX DEBUG] Input:', JSON.stringify(input, null, 2));
-      console.log('[RAG-INDEX DEBUG] Context cwd:', ctx.cwd);
-      console.log('[RAG-INDEX DEBUG] Flags:', JSON.stringify(flags, null, 2));
-
       // Get Mind config using useConfig() helper
       const mindConfig = await useConfig();
-      console.log('[RAG-INDEX DEBUG] Config loaded:', mindConfig ? 'yes' : 'no');
 
       const cwd = flags.cwd || ctx.cwd;
       const scopeId = flags.scope;
@@ -65,11 +59,6 @@ export default defineCommand({
       try {
         // Pass mindConfig from useConfig() - avoids reloading config in child process
         // IMPORTANT: Pass platform so Mind engine uses wrapped adapters with analytics tracking
-        console.log('[RAG-INDEX DEBUG] Calling runRagIndex with scopeId:', scopeId);
-        console.log('[RAG-INDEX DEBUG] CWD:', cwd);
-        console.log('[RAG-INDEX DEBUG] mindConfig keys:', mindConfig ? Object.keys(mindConfig) : 'null');
-        console.log('[RAG-INDEX DEBUG] mindConfig.sources count:', mindConfig?.sources?.length ?? 0);
-        console.log('[RAG-INDEX DEBUG] mindConfig.scopes count:', mindConfig?.scopes?.length ?? 0);
         const result = await runRagIndex({
           cwd,
           scopeId,
@@ -79,7 +68,6 @@ export default defineCommand({
           config: mindConfig,
           platform,
         });
-        console.log('[RAG-INDEX DEBUG] runRagIndex completed. Stats:', JSON.stringify(result.stats, null, 2));
 
         const timing = Date.now() - startTime;
         loader?.succeed(`Index built in ${(timing / 1000).toFixed(1)}s`);
@@ -87,6 +75,7 @@ export default defineCommand({
         // Track analytics if available (runs in parent process)
         platform?.analytics?.track?.('mind.rag-index', {
           scopeIds: result.scopeIds,
+          stats: result.stats,
         }).catch(() => {});
 
         if (flags.json) {
@@ -107,7 +96,7 @@ export default defineCommand({
             : '0.00';
 
           ctx.ui.success(
-            `Indexed ${stats.filesProcessed} files, ${stats.filesSkipped} skipped, ${stats.chunksStored} chunks`,
+            `Indexed ${stats.filesProcessed} files, ${stats.filesSkipped} skipped, ${stats.chunksStored} chunks, deleted ${stats.deletedFiles ?? 0} files/${stats.deletedChunks ?? 0} chunks`,
             {
               title: 'Mind RAG Index',
               sections: [
@@ -123,7 +112,23 @@ export default defineCommand({
                   header: 'Chunks',
                   items: [
                     `Stored: ${stats.chunksStored}`,
+                    `Updated: ${stats.chunksUpdated}`,
+                    `Skipped: ${stats.chunksSkipped}`,
                     `Rate:   ${chunksPerFile}/file`,
+                  ],
+                },
+                {
+                  header: 'Cleanup',
+                  items: [
+                    `Deleted files:  ${stats.deletedFiles ?? 0}`,
+                    `Deleted chunks: ${stats.deletedChunks ?? 0}`,
+                    `Invalid chunks: ${stats.invalidChunks ?? 0}`,
+                  ],
+                },
+                {
+                  header: 'Health',
+                  items: [
+                    `Errors: ${stats.errorCount}`,
                   ],
                 },
               ],
@@ -157,6 +162,7 @@ export default defineCommand({
         platform?.analytics?.track?.('mind.rag-index', {
           error: true,
           errorMessage: message,
+          timingMs: timing,
         }).catch(() => {});
 
         return { exitCode: 1, ok: false };

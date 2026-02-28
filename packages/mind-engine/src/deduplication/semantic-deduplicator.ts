@@ -7,7 +7,7 @@
  */
 
 import { cosineSimilarity } from '@kb-labs/mind-core';
-import type { VectorSearchMatch } from '@kb-labs/mind-vector-store';
+import type { VectorSearchMatch } from '../vector-store/vector-store';
 
 export interface DeduplicationOptions {
   /**
@@ -350,8 +350,8 @@ export class SemanticDeduplicator {
     const filesNeeded = this.options.minDifferentFiles - filesIncluded.size;
 
     for (const match of original) {
-      if (filesIncluded.has(match.chunk.path)) continue;
-      if (result.some(m => m.chunk.chunkId === match.chunk.chunkId)) continue;
+      if (filesIncluded.has(match.chunk.path)) {continue;}
+      if (result.some(m => m.chunk.chunkId === match.chunk.chunkId)) {continue;}
 
       result.push(match);
       filesIncluded.add(match.chunk.path);
@@ -405,7 +405,7 @@ export class SemanticDeduplicator {
     const intersection = new Set([...tokens1].filter(t => tokens2.has(t)));
     const union = new Set([...tokens1, ...tokens2]);
 
-    if (union.size === 0) return 0;
+    if (union.size === 0) {return 0;}
     return intersection.size / union.size;
   }
 

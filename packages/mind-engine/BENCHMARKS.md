@@ -1,56 +1,91 @@
 # Mind Engine Search Quality Benchmarks
 
-## Benchmark Suite v1.0
+## Benchmark Suite v4.1
 
-Стандартные запросы для оценки качества поиска Mind RAG.
+Основной benchmark для v4 итераций: golden-set + hit@1/hit@5 + latency/confidence.
 
 ### Запуск бенчмарков
 
 ```bash
-# Из корня kb-labs
+# Всегда из корня kb-labs
 cd /Users/kirillbaranov/Desktop/kb-labs
 
-# Очистить кеш перед тестом
-rm -rf .kb/cache/*
+# Очистить кеш (опционально)
+pnpm kb plugins clear-cache
 
-# Запустить индексацию (если нужно)
-pnpm kb mind rag-index --scope default
+# Актуализировать индекс
+pnpm kb mind rag-index
 
-# Запустить все бенчмарки
-./kb-labs-mind/packages/mind-engine/scripts/run-benchmarks.sh
+# Быстрый прогон (thinking)
+node ./kb-labs-mind/packages/mind-engine/scripts/run-quality-eval.mjs
+
+# Сравнение по режимам
+node ./kb-labs-mind/packages/mind-engine/scripts/run-quality-eval.mjs \
+  --modes instant,auto,thinking --runs 1
+
+# Повторяемый release-прогон
+node ./kb-labs-mind/packages/mind-engine/scripts/run-quality-eval.mjs \
+  --modes thinking --runs 5 --results /tmp/mind-quality-eval-runs5.csv
 ```
+
+Артефакты:
+- Golden set: `/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/packages/mind-engine/benchmarks/golden-set.v4.json`
+- Results CSV (default): `/tmp/mind-quality-eval.csv`
 
 ---
 
-## Benchmark Queries
+## Golden Set
 
-### 1. EASY - Lookup Query (точечный поиск)
-```
-What is VectorStore interface and what methods does it have?
-```
-**Тип:** lookup
-**Ожидаемый результат:** Найти `vector-store.ts` с определением интерфейса
-**Целевой confidence:** ≥0.6
+Golden set хранится в JSON и включает:
+- `exact_code`
+- `concept`
+- `freshness`
+- `conflict`
+- `reliability`
 
-### 2. MEDIUM - Concept Query (концептуальный)
-```
-How does hybrid search work in mind-engine? What algorithms does it use?
-```
-**Тип:** concept
-**Ожидаемый результат:** Найти `hybrid.ts`, `adaptive-hybrid.ts`, объяснить RRF
-**Целевой confidence:** ≥0.7
-
-### 3. HARD - Architecture Query (архитектурный)
-```
-Explain the anti-hallucination architecture in mind-engine. How does it verify answers and what strategies does it use to prevent hallucinations?
-```
-**Тип:** concept/architecture
-**Ожидаемый результат:** Найти `verification/`, объяснить source-verifier и field-checker
-**Целевой confidence:** ≥0.7
+Для каждого кейса задаются:
+- query
+- expectedAnyOf (пути файлов-источников)
+- optional modes override
 
 ---
+
+## Metrics
+
+Основные метрики:
+- `hit@1`: top source совпал с expectedAnyOf
+- `hit@5`: хотя бы один из top-5 sources совпал с expectedAnyOf
+- `avgConfidence`
+- `avgTimingMs`
+- breakdown по `mode` и `group`
 
 ## Historical Results
+
+### 2026-02-14 (v4 harness smoke)
+
+Пример контрольного прогона:
+- thinking control set hit-rate: ~75%
+- median latency: ~13.9s
+- main issue: нерелевантный top-1 в части code-centric запросов
+
+Используется как baseline для v4.1+ итераций.
+
+### 2026-02-14 (legacy script, runs=3)
+
+| Query | Type | Avg Confidence | Avg Time | Mode | Pass Rate | Status |
+|-------|------|----------------|----------|------|-----------|--------|
+| VectorStore interface | EASY | **0.0171** | 21.5s | auto | 0/3 | ❌ FAIL |
+| Hybrid search | MEDIUM | **0.6066** | 25.6s | auto | 2/3 | ⚠️ UNSTABLE |
+| Anti-hallucination | HARD | **0.0191** | 29.9s | thinking | 0/3 | ❌ FAIL |
+
+**Средний confidence:** 0.2142 (2.1/10)  
+**Pass rate:** 2/9  
+**Raw CSV:** `/tmp/mind-benchmark-results.csv`
+
+#### Что важно:
+- Скрипт `run-benchmarks.sh` исправлен: теперь всегда запускается из `/Users/kirillbaranov/Desktop/kb-labs`.
+- Парсинг результата переведён на JSON через `jq` (без ложных FAIL из-за логов).
+- Поиск остаётся нестабильным: MEDIUM частично проходит, EASY/HARD стабильно проваливаются.
 
 ### 2025-11-26 (После улучшений)
 
@@ -81,15 +116,14 @@ Explain the anti-hallucination architecture in mind-engine. How does it verify a
 
 ---
 
-## Quality Targets
+## Quality Targets (v4)
 
-| Complexity | Min Confidence | Target Confidence |
-|------------|----------------|-------------------|
-| EASY | 0.5 | ≥0.7 |
-| MEDIUM | 0.6 | ≥0.8 |
-| HARD | 0.6 | ≥0.8 |
-
-**Overall Target:** Average confidence ≥0.75 (7.5/10)
+| Metric | Target |
+|--------|--------|
+| exact/code hit@1 | ≥90% |
+| overall hit@1 | ≥85% |
+| freshness conflict correctness | ≥95% |
+| thinking p95 latency | ≤20s |
 
 ---
 
@@ -110,23 +144,13 @@ Explain the anti-hallucination architecture in mind-engine. How does it verify a
 
 ---
 
-## Adding New Benchmarks
+## Adding New Benchmark Cases
 
-При добавлении новых бенчмарков:
+При добавлении новых кейсов:
 
-1. Определить тип запроса (lookup/concept/code/debug)
-2. Указать ожидаемые файлы в результатах
-3. Установить целевой confidence
-4. Добавить в `scripts/run-benchmarks.sh`
-5. Запустить и зафиксировать baseline
+1. Добавить объект в `benchmarks/golden-set.v4.json`
+2. Указать `group` и `expectedAnyOf`
+3. Прогнать `run-quality-eval.mjs`
+4. Зафиксировать baseline метрики по mode/group
 
-### Пример нового бенчмарка:
-```markdown
-### 4. NEW - [Название]
-\`\`\`
-[Текст запроса]
-\`\`\`
-**Тип:** [lookup/concept/code/debug]
-**Ожидаемый результат:** [Какие файлы/информацию должен найти]
-**Целевой confidence:** ≥[0.X]
-```
+Legacy script `scripts/run-benchmarks.sh` оставлен для обратной проверки historical confidence-only сценариев.

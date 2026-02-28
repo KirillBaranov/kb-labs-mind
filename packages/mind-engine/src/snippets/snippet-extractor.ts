@@ -237,7 +237,7 @@ export class SnippetExtractor {
 
     while (current > Math.max(0, start - maxExpand)) {
       const line = lines[current - 1];
-      if (!line) break;
+      if (!line) {break;}
 
       const trimmed = line.trim();
 
@@ -280,7 +280,7 @@ export class SnippetExtractor {
 
     while (current < Math.min(lines.length, end + maxExpand)) {
       const line = lines[current];
-      if (!line) break;
+      if (!line) {break;}
 
       const trimmed = line.trim();
 

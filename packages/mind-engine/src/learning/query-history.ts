@@ -5,7 +5,6 @@
 
 import { createHash } from 'node:crypto';
 import { cosineSimilarity } from '@kb-labs/mind-core';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
 import type { RuntimeAdapter } from '../adapters/runtime-adapter';
 
 export interface QueryHistoryEntry {
@@ -85,7 +84,7 @@ export class MemoryQueryHistoryStore implements QueryHistoryStore {
     limit: number = 10,
   ): Promise<QueryHistoryEntry[]> {
     // Simple cosine similarity (can be optimized)
-    const scored = this.entries
+    return this.entries
       .filter(entry => entry.scopeId === scopeId && entry.queryVector)
       .map(entry => {
         const similarity = cosineSimilarity(queryVector, entry.queryVector!);
@@ -95,8 +94,6 @@ export class MemoryQueryHistoryStore implements QueryHistoryStore {
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit)
       .map(item => item.entry);
-
-    return scored;
   }
 
   async getPopularQueries(

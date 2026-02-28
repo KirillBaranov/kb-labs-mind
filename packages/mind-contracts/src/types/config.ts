@@ -1,5 +1,3 @@
-import type { KnowledgeConfigInput } from '@kb-labs/sdk';
-
 /**
  * Registry configuration for Mind sync
  */
@@ -41,10 +39,55 @@ export interface MindSyncConfig {
 }
 
 /**
- * Mind-specific configuration that extends KnowledgeConfigInput
- * This includes all knowledge base config plus Mind-specific features
+ * Mind source configuration
  */
-export interface MindConfig extends KnowledgeConfigInput {
+export interface MindSourceConfig {
+  id: string;
+  paths: string[];
+  exclude?: string[];
+}
+
+/**
+ * Mind engine configuration
+ */
+export interface MindEngineConfig {
+  id: string;
+  type: string;
+  options?: Record<string, unknown>;
+}
+
+/**
+ * Mind scope configuration
+ */
+export interface MindScopeConfig {
+  id: string;
+  sourceIds?: string[];
+  defaultEngine?: string;
+  include?: string[];
+  exclude?: string[];
+}
+
+/**
+ * Mind defaults configuration
+ */
+export interface MindDefaultsConfig {
+  fallbackEngineId?: string;
+}
+
+/**
+ * Canonical Mind configuration input
+ */
+export interface MindConfigInput {
+  sources: MindSourceConfig[];
+  scopes: MindScopeConfig[];
+  engines: MindEngineConfig[];
+  defaults?: MindDefaultsConfig;
+}
+
+/**
+ * Mind configuration with sync section
+ */
+export interface MindConfig extends MindConfigInput {
   /**
    * Synchronization settings for Mind
    */

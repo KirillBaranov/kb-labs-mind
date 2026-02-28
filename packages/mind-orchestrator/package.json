@@ -30,8 +30,9 @@
     "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
-    "@kb-labs/mind-engine": "link:../mind-engine"
+    "@kb-labs/sdk": "^1.0.0",
+    "@kb-labs/mind-engine": "link:../mind-engine",
+    "@kb-labs/mind-types": "link:../mind-types"
   },
   "devDependencies": {
     "@kb-labs/devkit": "link:../../../kb-labs-devkit",

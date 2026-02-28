@@ -18,7 +18,7 @@ import type {
  *
  * Executes stages sequentially:
  * 1. FileDiscoveryStage - Find files to index
- * 2. ChunkingStage - Convert files to chunks
+ * 2. ParallelChunkingStage - Convert files to chunks
  * 3. EmbeddingStage - Generate embeddings
  * 4. StorageStage - Store in vector DB
  */
@@ -231,10 +231,8 @@ export class IndexingPipeline {
 export function createDefaultPipeline(
   config: PipelineConfig = {}
 ): IndexingPipeline {
-  const pipeline = new IndexingPipeline(config);
-
   // Note: Stages are added by the caller
   // This factory just creates the pipeline infrastructure
 
-  return pipeline;
+  return new IndexingPipeline(config);
 }

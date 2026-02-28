@@ -4,8 +4,9 @@
  * Breaks complex queries into focused sub-queries for better search results.
  */
 
-import type { AgentQueryMode } from '@kb-labs/sdk';
-import type { LLMProvider } from '../llm/llm-provider';
+import type { ILLM } from '@kb-labs/sdk';
+import type { AgentQueryMode } from '../types';
+import { completeJSON } from '../llm/json';
 import type { DecomposedQuery, QueryComplexity, OrchestratorConfig } from '../types';
 import {
   DECOMPOSE_SYSTEM_PROMPT,
@@ -25,7 +26,7 @@ interface ComplexityResponse {
 }
 
 export interface QueryDecomposerOptions {
-  llm: LLMProvider;
+  llm: ILLM;
   config: OrchestratorConfig;
 }
 
@@ -33,7 +34,7 @@ export interface QueryDecomposerOptions {
  * Query Decomposer - breaks down complex queries
  */
 export class QueryDecomposer {
-  private readonly llm: LLMProvider;
+  private readonly llm: ILLM;
   private readonly config: OrchestratorConfig;
 
   constructor(options: QueryDecomposerOptions) {
@@ -47,6 +48,9 @@ export class QueryDecomposer {
   async detectComplexity(query: string): Promise<QueryComplexity> {
     // Quick heuristics first
     const heuristic = this.heuristicComplexity(query);
+    if (heuristic?.level === 'simple' && heuristic.suggestedMode === 'instant') {
+      return heuristic;
+    }
     if (heuristic && !this.config.autoDetectComplexity) {
       return heuristic;
     }
@@ -55,7 +59,7 @@ export class QueryDecomposer {
     if (this.config.autoDetectComplexity && this.config.mode === 'auto') {
       try {
         const prompt = COMPLEXITY_PROMPT_TEMPLATE.replace('{query}', query);
-        const response = await this.llm.completeJSON<ComplexityResponse>({
+        const response = await completeJSON<ComplexityResponse>(this.llm, {
           prompt,
           systemPrompt: COMPLEXITY_SYSTEM_PROMPT,
           maxTokens: 200,
@@ -111,7 +115,7 @@ export class QueryDecomposer {
 
     try {
       const prompt = DECOMPOSE_PROMPT_TEMPLATE.replace('{query}', query);
-      const response = await this.llm.completeJSON<DecomposeResponse>({
+      const response = await completeJSON<DecomposeResponse>(this.llm, {
         prompt,
         systemPrompt: DECOMPOSE_SYSTEM_PROMPT,
         maxTokens: 500,
@@ -119,15 +123,17 @@ export class QueryDecomposer {
       });
 
       // Limit and clean subqueries
-      const subqueries = response.subqueries
-        .slice(0, maxSubqueries)
+      const cleanedSubqueries = response.subqueries
         .map(q => q.trim())
         .filter(q => q.length > 0);
 
-      // Ensure at least the original query
-      if (subqueries.length === 0) {
-        subqueries.push(query);
-      }
+      // Always include original query to preserve exact identifiers/symbols.
+      // LLM decomposition can paraphrase technical tokens and hurt retrieval.
+      const subqueries = this.buildSubqueriesWithOriginal(
+        query,
+        cleanedSubqueries,
+        maxSubqueries,
+      );
 
       return {
         original: query,
@@ -150,11 +156,25 @@ export class QueryDecomposer {
   private heuristicComplexity(query: string): QueryComplexity | null {
     const lowerQuery = query.toLowerCase();
     const wordCount = query.split(/\s+/).length;
+    const hasIdentifier = /`[^`]+`/.test(query) || /\b[A-Z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/.test(query);
+    const technicalLookupLike = /\b(interface|method|methods|function|class|field|config|policy|option|parameter|stage)\b/i.test(query);
+    const debugLookupLike = /\b(error|exception|invalid|failed|failure|null|undefined)\b/i.test(query);
+
+    // Deterministic fast path for short technical/debug lookups:
+    // skip decomposition to preserve exact lexical evidence.
+    if (wordCount <= 12 && (hasIdentifier || technicalLookupLike || debugLookupLike)) {
+      return {
+        level: 'simple',
+        reason: 'Short technical lookup query',
+        suggestedMode: 'instant',
+      };
+    }
 
     // Simple patterns
     const simplePatterns = [
       /^где\s+(находится|лежит|расположен)/i,
       /^where\s+(is|are|can\s+i\s+find)/i,
+      /^what\s+is\s+(?:the\s+)?[A-Z][a-zA-Z0-9]+(?:\s+(?:interface|class|method|function|field|config|option|parameter|policy|methods?))?/i,
       /^what\s+is\s+the\s+(path|location|file)/i,
       /^найти?\s+(файл|класс|функцию)/i,
       /^find\s+(the\s+)?(file|class|function|method)/i,
@@ -215,6 +235,40 @@ export class QueryDecomposer {
       suggestedMode: 'auto',
     };
   }
+
+  private buildSubqueriesWithOriginal(
+    originalQuery: string,
+    generated: string[],
+    maxSubqueries: number,
+  ): string[] {
+    const deduped: string[] = [];
+    const normalizedOriginal = normalizeQueryForDedup(originalQuery);
+    const generatedWithoutOriginal: string[] = [];
+
+    for (const candidate of generated) {
+      const normalized = normalizeQueryForDedup(candidate);
+      if (!normalized || normalized === normalizedOriginal) {
+        continue;
+      }
+      if (!generatedWithoutOriginal.some(item => normalizeQueryForDedup(item) === normalized)) {
+        generatedWithoutOriginal.push(candidate);
+      }
+    }
+
+    deduped.push(originalQuery);
+    for (const candidate of generatedWithoutOriginal) {
+      if (deduped.length >= maxSubqueries) {
+        break;
+      }
+      deduped.push(candidate);
+    }
+
+    return deduped;
+  }
+}
+
+function normalizeQueryForDedup(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 export function createQueryDecomposer(options: QueryDecomposerOptions): QueryDecomposer {

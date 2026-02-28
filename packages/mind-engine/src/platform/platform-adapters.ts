@@ -7,7 +7,8 @@ import type {
   IStorage,
   IVectorStore,
 } from '@kb-labs/sdk';
-import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
+import type { EmbeddingProvider } from '../types/embedding-provider';
+import type { EmbeddingVector } from '../vector-store/vector-store';
 
 export interface MindPlatformBindings {
   vectorStore?: IVectorStore;
@@ -24,7 +25,7 @@ export class PlatformEmbeddingProvider implements EmbeddingProvider {
 
   constructor(private readonly embeddings: IEmbeddings) {}
 
-  async embed(texts: string[]): Promise<import('@kb-labs/sdk').EmbeddingVector[]> {
+  async embed(texts: string[]): Promise<EmbeddingVector[]> {
     const vectors = await this.embeddings.embedBatch(texts);
     const dim = this.embeddings.dimensions ?? (vectors[0]?.length ?? 0);
     return vectors.map(values => ({
@@ -33,4 +34,3 @@ export class PlatformEmbeddingProvider implements EmbeddingProvider {
     }));
   }
 }
-

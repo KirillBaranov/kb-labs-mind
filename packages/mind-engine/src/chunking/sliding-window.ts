@@ -98,7 +98,7 @@ export async function* slidingWindowStream(
         // Update lines processed - count newlines efficiently without split()
         let sliddenLines = 0;
         for (let i = 0; i < sliddenText.length; i++) {
-          if (sliddenText[i] === '\n') sliddenLines++;
+          if (sliddenText[i] === '\n') {sliddenLines++;}
         }
         linesProcessed += sliddenLines;
       }
@@ -128,7 +128,7 @@ export async function* slidingWindowStream(
 export function countLines(text: string): number {
   let count = 1;
   for (let i = 0; i < text.length; i++) {
-    if (text[i] === '\n') count++;
+    if (text[i] === '\n') {count++;}
   }
   return count;
 }

@@ -10,13 +10,12 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { EmbeddingProvider } from '@kb-labs/mind-embeddings';
-import type { VectorStore, StoredMindChunk, VectorSearchMatch } from '../vector-store/vector-store';
-import type { EmbeddingVector } from '@kb-labs/sdk';
+import type { EmbeddingProvider } from '../types/embedding-provider';
+import type { VectorStore } from '../vector-store/vector-store';
 import { GitDiffDetector, type ChangedFile } from './git-diff';
 import { MergedVectorStore, type MergedIndexStats } from './merged-store';
 import { IncrementalIndexBuilder, type OverlayBuildResult } from './incremental-builder';
-import { type IndexManifest, loadManifest, saveManifest, getManifestPath } from './manifest';
+import { type IndexManifest, loadManifest, saveManifest } from './manifest';
 
 /**
  * Overlay manager configuration
@@ -449,7 +448,7 @@ export class OverlayManager {
    * Save overlay state to disk
    */
   private async saveOverlayState(scopeId: string): Promise<void> {
-    if (!this.overlayState) return;
+    if (!this.overlayState) {return;}
 
     const statePath = this.getOverlayStatePath(scopeId);
     await fs.mkdir(path.dirname(statePath), { recursive: true });

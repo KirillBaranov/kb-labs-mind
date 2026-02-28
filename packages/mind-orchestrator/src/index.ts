@@ -28,8 +28,8 @@ export { CompletenessChecker, createCompletenessChecker } from './checker/index'
 export { ResponseSynthesizer, createResponseSynthesizer } from './synthesizer/index';
 export { ResponseCompressor, createResponseCompressor } from './compressor/index';
 
-// LLM
-export { createLLMProvider, type LLMProvider } from './llm/index';
+// LLM utilities
+export { completeJSON, type LLMJSONOptions } from './llm/index';
 
 // Analytics
 export {
@@ -105,7 +105,7 @@ export {
   type QueryCacheOptions,
 } from './cache/index';
 
-// Re-export agent response types from knowledge-contracts
+// Re-export agent response contracts from package-local types
 export {
   type AgentResponse,
   type AgentErrorResponse,
@@ -122,4 +122,4 @@ export {
   isAgentSuccess,
   AGENT_RESPONSE_SCHEMA_VERSION,
   CONFIDENCE_THRESHOLDS,
-} from '@kb-labs/sdk';
+} from './types';

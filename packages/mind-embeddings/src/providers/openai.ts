@@ -3,7 +3,7 @@
  * OpenAI Embedding Provider implementation
  */
 
-import type { EmbeddingVector } from '@kb-labs/sdk';
+import type { EmbeddingVector } from '../index';
 import type { EmbeddingProvider } from '../index';
 import type { EmbeddingRuntimeAdapter } from '../runtime-adapter-types';
 import { getGlobalEmbeddingCache, type EmbeddingCacheOptions } from '../cache';
@@ -89,7 +89,7 @@ export function createOpenAIEmbeddingProvider(
           if (cachedResults[i] === null) {
             textIndexMap.set(i, textsToEmbed.length);
             const text = texts[i];
-            if (text) textsToEmbed.push(text);
+            if (text) {textsToEmbed.push(text);}
           }
         }
 
@@ -229,7 +229,7 @@ async function embedBatch(
           signal: controller?.signal,
         });
 
-        if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutId) {clearTimeout(timeoutId);}
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => 'Unknown error');
@@ -285,7 +285,7 @@ async function embedBatch(
           values: item.embedding,
         }));
       } catch (error) {
-        if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutId) {clearTimeout(timeoutId);}
         
         if (error instanceof Error && error.name === 'AbortError') {
           throw new Error(`OpenAI API request timeout after ${timeout}ms`);
@@ -364,7 +364,7 @@ async function processBatchesInParallel<T, R>(
   for (let i = 0; i < items.length; i++) {
     const index = i;
     const item = items[index];
-    if (!item) continue;
+    if (!item) {continue;}
 
     const promise = (async () => {
       results[index] = await processor(item);

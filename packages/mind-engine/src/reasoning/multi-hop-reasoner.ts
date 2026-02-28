@@ -5,19 +5,19 @@
  * Cheap AI identifies missing context → fetch → repeat → final reasoning
  */
 
-import type { MindLLMEngine } from '@kb-labs/mind-llm';
+import type { ILLM } from '@kb-labs/sdk';
 import type { MindCandidate } from '@kb-labs/mind-types';
 
 export interface MultiHopOptions {
   /**
    * Cheap AI for context gathering (GPT-4o-mini)
    */
-  cheapAI: MindLLMEngine;
+  cheapAI: ILLM;
 
   /**
    * Expensive AI for final reasoning (Claude/GPT-o1)
    */
-  expensiveAI: MindLLMEngine;
+  expensiveAI: ILLM;
 
   /**
    * Maximum reasoning hops
@@ -148,13 +148,13 @@ export class MultiHopReasoner {
     const prompt = this.buildHopPrompt(hopNumber, query, context);
 
     const fullPrompt = `${HOP_SYSTEM_PROMPT}\n\n${prompt}`;
-    const response = await this.options.cheapAI.generate(fullPrompt, {
+    const response = await this.options.cheapAI.complete(fullPrompt, {
       temperature: 0.2,
       maxTokens: 1000,
     });
 
     // Parse response
-    const parsed = this.parseHopResponse(response.text);
+    const parsed = this.parseHopResponse(response.content);
 
     return {
       hopNumber,
@@ -282,7 +282,7 @@ Be specific and cite file names/line numbers.
 
     const systemPrompt = 'You are an expert code assistant. Provide clear, accurate answers based on the context provided.';
     const fullPrompt = `${systemPrompt}\n\n${prompt}`;
-    const response = await this.options.expensiveAI.generate(fullPrompt, {
+    const response = await this.options.expensiveAI.complete(fullPrompt, {
       temperature: 0.3,
       maxTokens: 2000,
     });
@@ -297,7 +297,7 @@ Be specific and cite file names/line numbers.
           explanation: `${c.context.type} ${c.context.name || ''} at lines ${c.snippet.lines[0]}-${c.snippet.lines[1]}`,
         })),
       },
-      answer: response.text,
+      answer: response.content,
       confidence: hops[hops.length - 1]?.confidence || 0.5,
     };
   }

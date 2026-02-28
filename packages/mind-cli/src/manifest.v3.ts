@@ -83,7 +83,7 @@ export const manifest = {
   display: {
     name: 'Mind',
     description: 'AI-powered code search and RAG system for semantic codebase understanding.',
-    tags: ['search', 'rag', 'ai', 'semantic', 'knowledge'],
+    tags: ['search', 'rag', 'ai', 'semantic', 'mind-index'],
   },
 
   // Configuration section in kb.config.json
@@ -119,7 +119,7 @@ export const manifest = {
       {
         id: 'mind:rag-index',
         group: 'mind',
-        describe: 'Build Mind knowledge indexes',
+        describe: 'Build Mind indexes',
         handler: './cli/commands/rag-index.js#default',
         handlerPath: './cli/commands/rag-index.js',
       },
@@ -166,112 +166,6 @@ export const manifest = {
         handler: './cli/commands/sync-status.js#default',
         handlerPath: './cli/commands/sync-status.js',
       },
-    ],
-  },
-
-  // REST API routes (inherit permissions from manifest)
-  rest: {
-    basePath: '/v1/plugins/mind',
-    routes: [
-    {
-      method: 'GET',
-      path: '/verify',
-      handler: './rest/handlers/verify-handler.js#handleVerify',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindVerifyCommandInputSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindVerifyResponseSchema',
-      },
-    },
-    {
-      method: 'POST',
-      path: '/sync/add',
-      handler: './rest/handlers/sync-handler.js#handleSyncAdd',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncAddRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncResponseSchema',
-      },
-    },
-    {
-      method: 'POST',
-      path: '/sync/update',
-      handler: './rest/handlers/sync-handler.js#handleSyncUpdate',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncUpdateRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncResponseSchema',
-      },
-    },
-    {
-      method: 'DELETE',
-      path: '/sync/delete',
-      handler: './rest/handlers/sync-handler.js#handleSyncDelete',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncDeleteRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncResponseSchema',
-      },
-    },
-    {
-      method: 'GET',
-      path: '/sync/list',
-      handler: './rest/handlers/sync-handler.js#handleSyncList',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncListRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncListResponseSchema',
-      },
-    },
-    {
-      method: 'POST',
-      path: '/sync/batch',
-      handler: './rest/handlers/sync-handler.js#handleSyncBatch',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncBatchRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncBatchResponseSchema',
-      },
-    },
-    {
-      method: 'GET',
-      path: '/sync/status',
-      handler: './rest/handlers/sync-handler.js#handleSyncStatus',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncStatusRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncStatusResponseSchema',
-      },
-    },
-    {
-      method: 'POST',
-      path: '/sync/restore',
-      handler: './rest/handlers/sync-handler.js#handleSyncRestore',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncRestoreRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncResponseSchema',
-      },
-    },
-    {
-      method: 'POST',
-      path: '/sync/cleanup',
-      handler: './rest/handlers/sync-handler.js#handleSyncCleanup',
-      input: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncCleanupRequestSchema',
-      },
-      output: {
-        zod: '@kb-labs/mind-contracts/schema#MindSyncCleanupResponseSchema',
-      },
-    },
     ],
   },
 

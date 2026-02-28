@@ -3,7 +3,6 @@
  * Metrics and monitoring for synchronization
  */
 
-import type { DocumentRecord } from './types';
 import type { SyncMetrics } from './types';
 import type { DocumentRegistry } from './registry/document-registry';
 

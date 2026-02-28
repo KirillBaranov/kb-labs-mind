@@ -3,7 +3,8 @@
  * Transport is delegated to platform analytics adapter (IAnalytics).
  */
 
-import type { IAnalytics, AgentResponse, AgentErrorResponse } from '@kb-labs/sdk';
+import type { IAnalytics } from '@kb-labs/sdk';
+import type { AgentResponse, AgentErrorResponse } from '../types';
 import type {
   MindAnalyticsContext,
   QueryStartedPayload,
@@ -33,7 +34,7 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
   const { enabled = true, detailed = false, llmModel = 'gpt-4o-mini', analyticsAdapter = null } = options;
 
   const safeEmit = async (type: string, payload: Record<string, unknown>) => {
-    if (!enabled || !analyticsAdapter?.track) return;
+    if (!enabled || !analyticsAdapter?.track) {return;}
     try {
       await analyticsAdapter.track(type, {
         source: MIND_SOURCE,
@@ -100,6 +101,12 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
         subqueriesCount: ctx.subqueries.length,
         iterationsCount: ctx.iterations,
         compressionApplied: ctx.compressionApplied,
+        retrievalProfile: ctx.retrieval?.retrievalProfile,
+        stalenessLevel: ctx.retrieval?.stalenessLevel,
+        failClosed: ctx.retrieval?.failClosed ?? false,
+        conflictsDetected: ctx.retrieval?.conflictsDetected ?? 0,
+        confidenceAdjustments: ctx.retrieval?.confidenceAdjustments,
+        indexRevision: ctx.retrieval?.indexRevision ?? result.meta.indexVersion,
       };
 
       await safeEmit('mind.query.completed', payload);
@@ -125,7 +132,7 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
       ctx: MindAnalyticsContext,
       data: Record<string, unknown> = {},
     ): Promise<void> {
-      if (!detailed) return;
+      if (!detailed) {return;}
 
       await safeEmit(`mind.${stage}.completed`, {
         queryId: ctx.queryId,
@@ -158,12 +165,13 @@ export function createMindAnalytics(options: MindAnalyticsOptions = {}) {
       ctx: MindAnalyticsContext,
       updates: Partial<Omit<MindAnalyticsContext, 'queryId' | 'scopeId' | 'mode' | 'startTime'>>,
     ): void {
-      if (updates.llmCalls !== undefined) ctx.llmCalls += updates.llmCalls;
-      if (updates.tokensIn !== undefined) ctx.tokensIn += updates.tokensIn;
-      if (updates.tokensOut !== undefined) ctx.tokensOut += updates.tokensOut;
-      if (updates.subqueries) ctx.subqueries.push(...updates.subqueries);
-      if (updates.iterations !== undefined) ctx.iterations = updates.iterations;
-      if (updates.compressionApplied !== undefined) ctx.compressionApplied = updates.compressionApplied;
+      if (updates.llmCalls !== undefined) {ctx.llmCalls += updates.llmCalls;}
+      if (updates.tokensIn !== undefined) {ctx.tokensIn += updates.tokensIn;}
+      if (updates.tokensOut !== undefined) {ctx.tokensOut += updates.tokensOut;}
+      if (updates.subqueries) {ctx.subqueries.push(...updates.subqueries);}
+      if (updates.iterations !== undefined) {ctx.iterations = updates.iterations;}
+      if (updates.compressionApplied !== undefined) {ctx.compressionApplied = updates.compressionApplied;}
+      if (updates.retrieval !== undefined) {ctx.retrieval = updates.retrieval;}
     },
   };
 }

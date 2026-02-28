@@ -11,9 +11,6 @@ import type {
 } from './vector-store';
 import {
   MindVectorStore,
-  type StoredMindChunk as MindStoredMindChunk,
-  type VectorSearchFilters as MindVectorSearchFilters,
-  type VectorSearchMatch as MindVectorSearchMatch,
 } from '@kb-labs/mind-vector-store';
 
 export interface LocalVectorStoreOptions {
@@ -33,9 +30,7 @@ export class LocalVectorStore implements VectorStore {
   }
 
   async replaceScope(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
-    // Convert StoredMindChunk to MindStoredMindChunk (they should be compatible)
-    const mindChunks: MindStoredMindChunk[] = chunks as unknown as MindStoredMindChunk[];
-    await this.store.replaceScope(scopeId, mindChunks);
+    await this.store.replaceScope(scopeId, chunks as any[]);
   }
 
   async search(
@@ -45,10 +40,9 @@ export class LocalVectorStore implements VectorStore {
     filters?: VectorSearchFilters,
   ): Promise<VectorSearchMatch[]> {
     // Convert filters if needed
-    const mindFilters: MindVectorSearchFilters | undefined = filters as unknown as MindVectorSearchFilters | undefined;
-    const mindMatches: MindVectorSearchMatch[] = await this.store.search(scopeId, vector, limit, mindFilters);
+    const mindMatches = await this.store.search(scopeId, vector as any, limit, filters as any);
     // Convert back to VectorSearchMatch
-    return mindMatches as unknown as VectorSearchMatch[];
+    return mindMatches as VectorSearchMatch[];
   }
 
   async getAllChunks(scopeId: string, filters?: VectorSearchFilters): Promise<StoredMindChunk[]> {
@@ -62,5 +56,165 @@ export class LocalVectorStore implements VectorStore {
     const matches = await this.search(scopeId, dummyVector, 100000, filters);
     return matches.map(match => match.chunk);
   }
-}
 
+  async upsertChunks(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
+    const existing = await this.getAllChunks(scopeId);
+    const byId = new Map(existing.map(chunk => [chunk.chunkId, chunk]));
+    for (const chunk of chunks) {
+      byId.set(chunk.chunkId, chunk);
+    }
+    await this.replaceScope(scopeId, Array.from(byId.values()));
+  }
+
+  async deleteScope(scopeId: string): Promise<void> {
+    await this.replaceScope(scopeId, []);
+  }
+
+  async scopeExists(scopeId: string): Promise<boolean> {
+    const chunks = await this.getAllChunks(scopeId);
+    return chunks.length > 0;
+  }
+
+  async getFilesMetadata(
+    scopeId: string,
+    paths: string[],
+  ): Promise<Map<string, { mtime: number; size: number; hash: string }>> {
+    if (paths.length === 0) {
+      return new Map();
+    }
+
+    const pathSet = new Set(paths.map(p => p.replace(/\\/g, '/')));
+    const allChunks = await this.getAllChunks(scopeId);
+    const metadataMap = new Map<string, { mtime: number; size: number; hash: string }>();
+
+    for (const chunk of allChunks) {
+      const normalizedPath = chunk.path.replace(/\\/g, '/');
+      if (!pathSet.has(normalizedPath) || metadataMap.has(normalizedPath)) {
+        continue;
+      }
+
+      const fileHash = (chunk.metadata?.fileHash as string | undefined) ?? '';
+      const fileMtime = Number(chunk.metadata?.fileMtime ?? 0);
+      metadataMap.set(normalizedPath, {
+        mtime: Number.isFinite(fileMtime) ? fileMtime : 0,
+        size: 0,
+        hash: fileHash,
+      });
+    }
+
+    return metadataMap;
+  }
+
+  createScopedAdapter(scopeId: string) {
+    return {
+      insertBatch: async (chunks: any[]) => this.insertBatch(scopeId, chunks),
+      updateBatch: async (chunks: any[]) => this.updateBatch(scopeId, chunks),
+      checkExistence: async (chunkIds: string[]) => this.checkExistence(scopeId, chunkIds),
+      getChunksByHash: async (hashes: string[]) => this.getChunksByHash(scopeId, hashes),
+      getChunkIdsByPaths: async (paths: string[]) => this.getChunkIdsByPaths(scopeId, paths),
+      deleteBatch: async (chunkIds: string[]) => this.deleteBatch(scopeId, chunkIds),
+    };
+  }
+
+  private async insertBatch(scopeId: string, chunks: any[]): Promise<number> {
+    if (chunks.length === 0) {
+      return 0;
+    }
+
+    const storedChunks: StoredMindChunk[] = chunks.map((chunk) => ({
+      chunkId: chunk.chunkId,
+      scopeId,
+      sourceId: chunk.sourceId,
+      path: chunk.path,
+      span: chunk.span,
+      text: chunk.text,
+      metadata: { ...chunk.metadata, fileHash: chunk.hash, fileMtime: chunk.mtime },
+      embedding: Array.isArray(chunk.embedding)
+        ? { values: chunk.embedding, dim: chunk.embedding.length }
+        : chunk.embedding,
+    }));
+
+    await this.upsertChunks(scopeId, storedChunks);
+    return storedChunks.length;
+  }
+
+  private async updateBatch(scopeId: string, chunks: any[]): Promise<number> {
+    return this.insertBatch(scopeId, chunks);
+  }
+
+  private async checkExistence(scopeId: string, chunkIds: string[]): Promise<Set<string>> {
+    if (chunkIds.length === 0) {
+      return new Set();
+    }
+
+    const idSet = new Set(chunkIds);
+    const existing = await this.getAllChunks(scopeId);
+    const found = new Set<string>();
+    for (const chunk of existing) {
+      if (idSet.has(chunk.chunkId)) {
+        found.add(chunk.chunkId);
+      }
+    }
+    return found;
+  }
+
+  private async getChunksByHash(scopeId: string, hashes: string[]): Promise<Map<string, string[]>> {
+    if (hashes.length === 0) {
+      return new Map();
+    }
+
+    const hashSet = new Set(hashes);
+    const map = new Map<string, string[]>();
+    const existing = await this.getAllChunks(scopeId);
+
+    for (const chunk of existing) {
+      const hash = (chunk.metadata?.fileHash as string | undefined) ?? '';
+      if (!hash || !hashSet.has(hash)) {
+        continue;
+      }
+      const ids = map.get(hash) ?? [];
+      ids.push(chunk.chunkId);
+      map.set(hash, ids);
+    }
+
+    return map;
+  }
+
+  private async getChunkIdsByPaths(scopeId: string, paths: string[]): Promise<Map<string, string[]>> {
+    if (paths.length === 0) {
+      return new Map();
+    }
+
+    const pathSet = new Set(paths.map(path => path.replace(/\\/g, '/')));
+    const existing = await this.getAllChunks(scopeId);
+    const pathToChunkIds = new Map<string, string[]>();
+
+    for (const chunk of existing) {
+      const normalizedPath = chunk.path.replace(/\\/g, '/');
+      if (!pathSet.has(normalizedPath)) {
+        continue;
+      }
+
+      const chunkIds = pathToChunkIds.get(normalizedPath) ?? [];
+      chunkIds.push(chunk.chunkId);
+      pathToChunkIds.set(normalizedPath, chunkIds);
+    }
+
+    return pathToChunkIds;
+  }
+
+  private async deleteBatch(scopeId: string, chunkIds: string[]): Promise<number> {
+    if (chunkIds.length === 0) {
+      return 0;
+    }
+
+    const toDelete = new Set(chunkIds);
+    const existing = await this.getAllChunks(scopeId);
+    const filtered = existing.filter(chunk => !toDelete.has(chunk.chunkId));
+    const deleted = existing.length - filtered.length;
+    if (deleted > 0) {
+      await this.replaceScope(scopeId, filtered);
+    }
+    return deleted;
+  }
+}

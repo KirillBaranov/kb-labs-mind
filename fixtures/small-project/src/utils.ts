@@ -32,7 +32,7 @@ export class MathUtils {
    * @returns The factorial of n
    */
   static factorial(n: number): number {
-    if (n <= 1) return 1;
+    if (n <= 1) {return 1;}
     return n * this.factorial(n - 1);
   }
 }

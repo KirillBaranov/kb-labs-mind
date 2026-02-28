@@ -111,14 +111,14 @@ export abstract class FileRotationStore<TRecord> {
     const results: TRecord[] = [];
 
     for (const file of files) {
-      if (limit && results.length >= limit) break;
+      if (limit && results.length >= limit) {break;}
 
       const buf = await this.storage.read(file);
-      if (!buf) continue;
+      if (!buf) {continue;}
 
       const lines = buf.toString('utf8').split('\n').filter(Boolean);
       for (const line of lines) {
-        if (limit && results.length >= limit) break;
+        if (limit && results.length >= limit) {break;}
 
         try {
           const parsed = JSON.parse(line) as { v: number; record: TRecord };
@@ -156,7 +156,7 @@ export abstract class FileRotationStore<TRecord> {
     const latest = files[files.length - 1]!;
     const buf = await this.storage.read(latest);
 
-    if (!buf) return latest;
+    if (!buf) {return latest;}
 
     const count = buf.toString('utf8').split('\n').filter(Boolean).length;
     if (count >= this.maxRecordsPerFile) {
@@ -201,7 +201,7 @@ export abstract class FileRotationStore<TRecord> {
    */
   protected async enforceRotation(): Promise<void> {
     const files = await this.getFilesSorted();
-    if (files.length <= this.maxFiles) return;
+    if (files.length <= this.maxFiles) {return;}
 
     const excess = files.length - this.maxFiles;
     const toDelete = files.slice(0, excess);

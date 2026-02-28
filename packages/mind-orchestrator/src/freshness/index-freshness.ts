@@ -5,7 +5,7 @@
  * current git revision. Generates warnings for outdated indexes.
  */
 
-import type { AgentWarning } from '@kb-labs/sdk';
+import type { AgentWarning } from '../types';
 
 export interface IndexFreshness {
   /** Index is up to date with repo */

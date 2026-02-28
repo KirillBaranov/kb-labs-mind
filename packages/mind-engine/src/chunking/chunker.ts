@@ -3,7 +3,7 @@
  * Chunker interface and registry for adaptive chunking strategy selection
  */
 
-import type { SpanRange } from '@kb-labs/sdk';
+import type { SpanRange } from '../types/engine-contracts';
 
 export interface Chunk {
   text: string;

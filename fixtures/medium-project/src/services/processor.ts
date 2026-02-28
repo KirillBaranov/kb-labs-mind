@@ -2,7 +2,7 @@
  * Data processor service
  */
 
-import { CoreService } from './core';
+import type { CoreService } from './core';
 
 export interface ProcessedData {
   id: string;

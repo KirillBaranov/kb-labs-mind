@@ -5,8 +5,8 @@
  * thinking → auto → instant → raw chunks
  */
 
-import type { AgentQueryMode, AgentWarning, AgentResponse, AgentErrorResponse } from '@kb-labs/sdk';
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { AgentQueryMode, AgentWarning, AgentResponse } from '../types';
+import type { MindChunk } from '@kb-labs/mind-types';
 
 export interface DegradationResult {
   /** Whether fallback was triggered */
@@ -205,7 +205,7 @@ export class GracefulDegradationHandler {
    * Create a raw chunks response (last resort)
    */
   static createRawResponse(
-    chunks: KnowledgeChunk[],
+    chunks: MindChunk[],
     requestId: string,
     originalMode: AgentQueryMode,
     timingMs: number,

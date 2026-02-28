@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
 import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory';
 import type { FileMetadata } from './discovery';
-import type { MindChunk } from './chunking';
+import type { MindChunk } from './types';
 import { createMemoryAwareQueue } from '../memory-aware-queue';
 
 export interface ParallelChunkingOptions {
@@ -89,15 +89,31 @@ export class ParallelChunkingStage implements PipelineStage {
     let processedCount = 0;
 
     // Prepare tasks
+    if (!context.workspaceRoot) {
+      throw new Error('workspaceRoot is required for ParallelChunkingStage');
+    }
+
     const tasks: ChunkFileTask[] = [];
+    const sourceById = new Map(context.sources.map(source => [source.id, source]));
+    const workspaceRoot = context.workspaceRoot;
     for (const relativePath of filePaths) {
       const metadata = this.fileMetadata?.get(relativePath);
-      const source = context.sources[0]; // TODO: map file to correct source
+      const source = metadata?.sourceId
+        ? sourceById.get(metadata.sourceId)
+        : context.sources[0];
+
+      if (!source) {
+        context.stats.errors.push({
+          file: relativePath,
+          error: 'No matching source found for file',
+        });
+        continue;
+      }
 
       tasks.push({
         source,
         relativePath,
-        fullPath: path.resolve(process.cwd(), relativePath),
+        fullPath: path.resolve(workspaceRoot, relativePath),
         size: metadata?.size ?? 0,
         ext: path.extname(relativePath).toLowerCase(),
         metadata,
@@ -230,6 +246,16 @@ export class ParallelChunkingStage implements PipelineStage {
       const fileChunks: MindChunk[] = [];
 
       for await (const sourceChunk of chunkerWithStream.chunkStream(fullPath, {})) {
+        const metadata = buildChunkMetadata({
+          source,
+          sourceChunkMetadata: sourceChunk.metadata ?? {},
+          normalizedPath,
+          hash,
+          mtime,
+          indexRevision: context.indexRevision,
+          indexedAt: context.indexedAt,
+        });
+
         // Create MindChunk
         const mindChunk: MindChunk = {
           chunkId: `${source.id}:${normalizedPath}:${sourceChunk.span.startLine}-${sourceChunk.span.endLine}`,
@@ -237,12 +263,7 @@ export class ParallelChunkingStage implements PipelineStage {
           path: normalizedPath,
           span: sourceChunk.span,
           text: sourceChunk.text,
-          metadata: {
-            kind: source.kind,
-            language: source.language,
-            chunkerId: chunker.id,
-            ...sourceChunk.metadata,
-          },
+          metadata,
           hash,
           mtime,
         };
@@ -295,4 +316,138 @@ export class ParallelChunkingStage implements PipelineStage {
       chunksGenerated: this.chunks.length,
     };
   }
+}
+
+function buildChunkMetadata(input: {
+  source: any;
+  sourceChunkMetadata: Record<string, unknown>;
+  normalizedPath: string;
+  hash: string;
+  mtime: number;
+  indexRevision?: string;
+  indexedAt?: number;
+}): Record<string, unknown> {
+  const sourceKind = normalizeSourceKind(input.source?.kind, input.normalizedPath);
+  const sourceTrust = resolveSourceTrust(sourceKind, input.sourceChunkMetadata.sourceTrust);
+  const metadata: Record<string, unknown> = {
+    ...input.sourceChunkMetadata,
+    kind: input.source?.kind,
+    language: input.source?.language,
+    sourceId: input.source?.id,
+    sourceKind,
+    sourceLanguage: input.source?.language,
+    path: input.normalizedPath,
+    indexRevision: input.indexRevision ?? 'unknown',
+    indexedAt: input.indexedAt ?? Date.now(),
+    fileHash: input.hash,
+    fileMtime: input.mtime,
+    gitCommitTs: resolveTimestampOrFallback(input.sourceChunkMetadata.gitCommitTs, input.mtime),
+    sourceTrust,
+  };
+
+  if (sourceKind === 'docs' || sourceKind === 'adr') {
+    const docId = coerceString(input.sourceChunkMetadata.docId)
+      ?? input.normalizedPath.replace(/\.[^/.]+$/, '').toLowerCase();
+    const docTitle = coerceString(input.sourceChunkMetadata.docTitle)
+      ?? deriveDocTitle(input.normalizedPath);
+    const docSectionPath = coerceString(input.sourceChunkMetadata.docSectionPath)
+      ?? '';
+    const topicKey = coerceString(input.sourceChunkMetadata.topicKey)
+      ?? normalizeTopicKey(input.normalizedPath);
+    const freshnessScore = resolveNumeric(
+      input.sourceChunkMetadata.freshnessScore,
+      calculateFreshnessFromMtime(input.mtime),
+    );
+
+    metadata.docId = docId;
+    metadata.docTitle = docTitle;
+    metadata.docSectionPath = docSectionPath;
+    metadata.topicKey = topicKey;
+    metadata.freshnessScore = freshnessScore;
+  }
+
+  return metadata;
+}
+
+function normalizeSourceKind(kind: unknown, filePath: string): string {
+  if (typeof kind === 'string' && kind.trim().length > 0) {
+    return kind.trim().toLowerCase();
+  }
+  const normalized = filePath.toLowerCase();
+  if (normalized.endsWith('.md') || normalized.includes('/docs/')) {return 'docs';}
+  if (normalized.includes('/adr/') || normalized.includes('/decisions/')) {return 'adr';}
+  if (normalized.includes('/test/') || normalized.includes('/__tests__/') || normalized.includes('.spec.')) {return 'test';}
+  if (normalized.includes('/config/') || normalized.endsWith('.json') || normalized.endsWith('.yaml') || normalized.endsWith('.yml')) {return 'config';}
+  return 'code';
+}
+
+function resolveSourceTrust(sourceKind: string, value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.min(1, value));
+  }
+  switch (sourceKind) {
+    case 'adr':
+      return 0.9;
+    case 'docs':
+      return 0.8;
+    case 'config':
+      return 0.75;
+    case 'code':
+      return 0.7;
+    case 'test':
+      return 0.65;
+    default:
+      return 0.6;
+  }
+}
+
+function resolveTimestampOrFallback(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return fallback;
+}
+
+function coerceString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function deriveDocTitle(filePath: string): string {
+  const filename = filePath.split('/').pop() ?? filePath;
+  const stem = filename.replace(/\.[^/.]+$/, '');
+  return stem.replace(/[-_]+/g, ' ').trim();
+}
+
+function normalizeTopicKey(filePath: string): string {
+  return filePath
+    .toLowerCase()
+    .replace(/\\/g, '/')
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[-_]?v?\d+(\.\d+)*/g, '')
+    .replace(/[0-9]{4}-[0-9]{2}-[0-9]{2}/g, '')
+    .replace(/\/+/g, '/')
+    .trim();
+}
+
+function calculateFreshnessFromMtime(mtime: number): number {
+  const ageDays = Math.max(0, (Date.now() - mtime) / (24 * 60 * 60 * 1000));
+  const score = 1 - Math.min(1, ageDays / 365);
+  return Number(score.toFixed(3));
+}
+
+function resolveNumeric(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  return fallback;
 }

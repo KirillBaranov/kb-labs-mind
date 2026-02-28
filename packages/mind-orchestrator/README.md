@@ -61,22 +61,14 @@ mind-orchestrator/
 ### Creating Orchestrator
 
 ```typescript
-import { AgentQueryOrchestrator, usePlatform, createKnowledgeService } from '@kb-labs/sdk';
+import { AgentQueryOrchestrator } from '@kb-labs/mind-orchestrator';
+import { usePlatform } from '@kb-labs/sdk';
 
-// Orchestrator automatically uses platform services
 const platform = usePlatform();
-const engine = createKnowledgeService({ type: 'mind' });
-
 const orchestrator = new AgentQueryOrchestrator({
-  engine,                              // Mind engine instance
-  llmProvider: platform.getLLM(),      // Platform LLM (auto-configured)
-  analyticsAdapter: platform.getAnalytics(), // Platform analytics (optional)
+  llm: platform?.llm,
+  analyticsAdapter: platform?.analytics,
 });
-
-// Platform services injected:
-// - LLM for decomposition, synthesis, completeness checking
-// - Analytics for tracking query performance
-// - Logger for debugging (useLogger())
 ```
 
 ### Query with Agent Modes
@@ -138,6 +130,12 @@ if (response.debug) {
 ### Mode Selection Guide
 
 | Mode | Use Case | Performance | LLM Calls | Tokens |
+
+## Breaking changes (no legacy compatibility)
+
+- `MindChunk`/`MindIntent` are canonical public types for orchestrator boundaries.
+- Legacy `Knowledge*`-named public contracts are removed from `mind-*` package surfaces.
+- Update integrations to consume `Mind` terminology and `profiles[].products.mind` config.
 |------|----------|-------------|-----------|--------|
 | **instant** | Simple lookups, known entities | ~30-40s | 1-2 | 500-1K |
 | **auto** | General queries, let system decide | ~60s | 3-4 | 3-4K |
@@ -158,7 +156,7 @@ if (response.debug) {
 **Example:**
 ```typescript
 const result = await orchestrator.query({
-  text: 'What is the MindKnowledgeEngine class?',
+  text: 'What is the MindEngine class?',
   mode: 'instant',
 });
 ```
@@ -275,7 +273,7 @@ Cache query results for performance:
 ```typescript
 const orchestrator = new AgentQueryOrchestrator({
   engine,
-  llmProvider,
+  llm,
   cacheOptions: {
     enabled: true,
     ttl: 3600, // 1 hour
@@ -292,7 +290,7 @@ const orchestrator = new AgentQueryOrchestrator({
 ```typescript
 interface OrchestratorOptions {
   engine: KnowledgeEngine;
-  llmProvider: LLMProvider;
+  llm: ILLM;
   analyticsAdapter?: IAnalytics;
   cacheOptions?: {
     enabled: boolean;
@@ -398,7 +396,6 @@ Key ADRs affecting Mind Orchestrator:
 ## Related Packages
 
 - **@kb-labs/mind-engine** - Core RAG engine (indexing, search, reasoning)
-- **@kb-labs/mind-llm** - LLM provider abstraction
 - **@kb-labs/mind-cli** - CLI commands with orchestrator integration
 
 ## Examples
@@ -408,17 +405,15 @@ Key ADRs affecting Mind Orchestrator:
 ```typescript
 import {
   AgentQueryOrchestrator,
-  createKnowledgeService,
-  createLLMProvider,
-} from '@kb-labs/sdk';
+} from '@kb-labs/mind-orchestrator';
+import { usePlatform } from '@kb-labs/sdk';
 
 // Setup
-const engine = createKnowledgeService({ type: 'mind' });
-const llmProvider = createLLMProvider({ type: 'openai' });
+const platform = usePlatform();
 
 const orchestrator = new AgentQueryOrchestrator({
-  engine,
-  llmProvider,
+  llm: platform?.llm,
+  analyticsAdapter: platform?.analytics,
   cacheOptions: { enabled: true, ttl: 3600 },
   tokenBudget: { maxContextTokens: 8000, maxResponseTokens: 2000 },
   verification: { enabled: true, strictMode: false },

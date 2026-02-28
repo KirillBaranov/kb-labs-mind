@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Mind Engine Search Quality Benchmarks
-# Run from kb-labs root directory
+# Always runs from /Users/kirillbaranov/Desktop/kb-labs
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -11,115 +11,152 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+REQUIRED_ROOT="/Users/kirillbaranov/Desktop/kb-labs"
+RUNS="${RUNS:-3}"
+RESULTS_CSV="${RESULTS_CSV:-/tmp/mind-benchmark-results.csv}"
+
 # Thresholds
 EASY_THRESHOLD=0.5
 MEDIUM_THRESHOLD=0.6
 HARD_THRESHOLD=0.6
 
+declare -a QUERIES=(
+  "EASY|${EASY_THRESHOLD}|What is VectorStore interface and what methods does it have?"
+  "MEDIUM|${MEDIUM_THRESHOLD}|How does hybrid search work in mind-engine? What algorithms does it use?"
+  "HARD|${HARD_THRESHOLD}|Explain the anti-hallucination architecture in mind-engine. How does it verify answers and what strategies does it use to prevent hallucinations?"
+)
+
+if [[ ! -d "$REQUIRED_ROOT" ]]; then
+  echo -e "${RED}Required workspace not found: $REQUIRED_ROOT${NC}"
+  exit 2
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo -e "${RED}jq is required but not installed.${NC}"
+  exit 2
+fi
+
+cd "$REQUIRED_ROOT"
+
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}           Mind Engine Search Quality Benchmarks               ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
-
-# Change to kb-labs root
-cd "$(dirname "$0")/../../../../.."
-echo -e "Working directory: $(pwd)"
+echo "Working directory: $(pwd)"
+echo "Runs: $RUNS"
+echo "Results CSV: $RESULTS_CSV"
 echo ""
 
-# Run benchmark and extract confidence
-run_benchmark() {
-    local name="$1"
-    local query="$2"
-    local threshold="$3"
+# Clear cache for cleaner baseline
+rm -rf .kb/cache/* 2>/dev/null || true
 
-    echo -e "${YELLOW}Running: $name${NC}"
-    echo -e "Query: $query"
-    echo ""
+# CSV header
+echo "run,label,threshold,confidence,mode,timingMs,tokensIn,tokensOut,complete,pass" > "$RESULTS_CSV"
 
-    # Run query and capture output
-    local start_time=$(date +%s)
-    local output=$(env NODE_OPTIONS="--max-old-space-size=4096 --expose-gc" pnpm kb mind rag-query --text "$query" --agent 2>&1)
-    local end_time=$(date +%s)
-    local duration=$((end_time - start_time))
+run_single_benchmark() {
+  local run_id="$1"
+  local label="$2"
+  local threshold="$3"
+  local query="$4"
 
-    # Extract confidence
-    local confidence=$(echo "$output" | grep -oE '"confidence":[0-9.]+' | head -1 | cut -d: -f2)
-    local mode=$(echo "$output" | grep -oE '"mode":"[^"]+"' | head -1 | cut -d: -f2 | tr -d '"')
+  echo -e "${YELLOW}Run $run_id | $label${NC}"
+  echo "Query: $query"
 
-    # Check if passed
-    local passed=$(echo "$confidence >= $threshold" | bc -l)
+  local raw
+  raw=$(env NODE_OPTIONS="--max-old-space-size=4096 --expose-gc" \
+    pnpm kb mind rag-query --text "$query" --agent --json 2>&1 || true)
 
-    if [ "$passed" -eq 1 ]; then
-        echo -e "${GREEN}✓ PASS${NC} - confidence: $confidence (threshold: $threshold)"
-    else
-        echo -e "${RED}✗ FAIL${NC} - confidence: $confidence (threshold: $threshold)"
-    fi
+  # Take last JSON line from mixed logs.
+  local json
+  json=$(printf "%s\n" "$raw" | awk '/^\{/{line=$0} END{print line}')
 
-    echo -e "  Mode: $mode | Time: ${duration}s"
-    echo ""
+  local confidence="0"
+  local mode="unknown"
+  local timing_ms="0"
+  local tokens_in="0"
+  local tokens_out="0"
+  local complete="false"
 
-    # Return values for summary
-    echo "$name|$confidence|$duration|$mode|$passed" >> /tmp/benchmark_results.txt
+  if [[ -n "$json" ]] && echo "$json" | jq -e . >/dev/null 2>&1; then
+    confidence=$(echo "$json" | jq -r '.confidence // 0')
+    mode=$(echo "$json" | jq -r '.meta.mode // "unknown"')
+    timing_ms=$(echo "$json" | jq -r '.meta.timingMs // 0')
+    tokens_in=$(echo "$json" | jq -r '.meta.tokensIn // 0')
+    tokens_out=$(echo "$json" | jq -r '.meta.tokensOut // 0')
+    complete=$(echo "$json" | jq -r '.complete // false')
+  else
+    echo -e "${RED}Could not parse JSON response for $label.${NC}"
+  fi
+
+  local pass
+  pass=$(awk -v c="$confidence" -v t="$threshold" 'BEGIN{print (c>=t)?1:0}')
+
+  if [[ "$pass" -eq 1 ]]; then
+    echo -e "${GREEN}✓ PASS${NC} confidence=$confidence threshold=$threshold mode=$mode timingMs=$timing_ms"
+  else
+    echo -e "${RED}✗ FAIL${NC} confidence=$confidence threshold=$threshold mode=$mode timingMs=$timing_ms"
+  fi
+
+  echo "$run_id,$label,$threshold,$confidence,$mode,$timing_ms,$tokens_in,$tokens_out,$complete,$pass" >> "$RESULTS_CSV"
+  echo ""
 }
-
-# Clear previous results
-rm -f /tmp/benchmark_results.txt
 
 echo -e "${BLUE}───────────────────────────────────────────────────────────────${NC}"
 echo -e "${BLUE}                    Running Benchmarks                         ${NC}"
 echo -e "${BLUE}───────────────────────────────────────────────────────────────${NC}"
 echo ""
 
-# Run benchmarks
-run_benchmark "EASY" "What is VectorStore interface and what methods does it have?" "$EASY_THRESHOLD"
-run_benchmark "MEDIUM" "How does hybrid search work in mind-engine? What algorithms does it use?" "$MEDIUM_THRESHOLD"
-run_benchmark "HARD" "Explain the anti-hallucination architecture in mind-engine. How does it verify answers and what strategies does it use to prevent hallucinations?" "$HARD_THRESHOLD"
+for ((run=1; run<=RUNS; run++)); do
+  for item in "${QUERIES[@]}"; do
+    IFS='|' read -r label threshold query <<< "$item"
+    run_single_benchmark "$run" "$label" "$threshold" "$query"
+  done
+done
 
-# Summary
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}                         Summary                               ${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo ""
 
-total_confidence=0
-total_tests=0
-passed_tests=0
+awk -F, '
+  NR==1 { next }
+  {
+    sum_conf += $4
+    sum_time += $6
+    pass += $10
+    total += 1
 
-printf "%-10s | %-12s | %-8s | %-10s | %-6s\n" "Test" "Confidence" "Time" "Mode" "Status"
-echo "-----------|--------------|----------|------------|--------"
+    label_conf[$2] += $4
+    label_count[$2] += 1
+    label_pass[$2] += $10
 
-while IFS='|' read -r name confidence duration mode passed; do
-    if [ "$passed" -eq 1 ]; then
-        status="${GREEN}PASS${NC}"
-        ((passed_tests++))
-    else
-        status="${RED}FAIL${NC}"
-    fi
+    run_conf[$1] += $4
+    run_count[$1] += 1
+    run_pass[$1] += $10
+  }
+  END {
+    if (total == 0) {
+      print "No benchmark data collected."
+      exit 1
+    }
 
-    printf "%-10s | %-12s | %-8s | %-10s | " "$name" "$confidence" "${duration}s" "$mode"
-    echo -e "$status"
+    printf("Overall avg confidence: %.4f\n", sum_conf / total)
+    printf("Pass rate: %d/%d\n", pass, total)
+    printf("Overall avg timing: %.0f ms\n", sum_time / total)
+    print ""
 
-    total_confidence=$(echo "$total_confidence + $confidence" | bc -l)
-    ((total_tests++))
-done < /tmp/benchmark_results.txt
+    print "By label:"
+    for (l in label_conf) {
+      printf("  %s -> avg_conf=%.4f pass=%d/%d\n", l, label_conf[l] / label_count[l], label_pass[l], label_count[l])
+    }
+    print ""
+
+    print "By run:"
+    for (r in run_conf) {
+      printf("  run %s -> avg_conf=%.4f pass=%d/%d\n", r, run_conf[r] / run_count[r], run_pass[r], run_count[r])
+    }
+  }
+' "$RESULTS_CSV"
 
 echo ""
-avg_confidence=$(echo "scale=2; $total_confidence / $total_tests" | bc -l)
-score=$(echo "scale=1; $avg_confidence * 10" | bc -l)
-
-echo -e "Average Confidence: ${YELLOW}$avg_confidence${NC}"
-echo -e "Quality Score: ${YELLOW}$score/10${NC}"
-echo -e "Tests Passed: ${passed_tests}/${total_tests}"
-echo ""
-
-# Cleanup
-rm -f /tmp/benchmark_results.txt
-
-# Exit code based on pass rate
-if [ "$passed_tests" -eq "$total_tests" ]; then
-    echo -e "${GREEN}All benchmarks passed!${NC}"
-    exit 0
-else
-    echo -e "${RED}Some benchmarks failed.${NC}"
-    exit 1
-fi
+echo "Saved raw results to: $RESULTS_CSV"

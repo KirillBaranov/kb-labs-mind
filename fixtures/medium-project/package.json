@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "dev": "tsc --watch",
     "lint": "eslint . --ignore-pattern 'dist/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"

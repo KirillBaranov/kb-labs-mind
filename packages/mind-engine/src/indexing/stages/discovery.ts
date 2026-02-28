@@ -19,6 +19,9 @@ export interface FileMetadata {
   size: number;
   mtime: number;
   extension: string;
+  sourceId: string;
+  sourceKind?: string;
+  sourceLanguage?: string;
 }
 
 /**
@@ -74,8 +77,10 @@ export class FileDiscoveryStage implements PipelineStage {
     // Normalize paths (handles both strings and objects)
     const paths = Array.isArray(source.paths) ? source.paths : [source.paths];
 
-    // Use workspaceRoot from context, fallback to process.cwd() for backwards compatibility
-    const cwd = context.workspaceRoot ?? process.cwd();
+    if (!context.workspaceRoot) {
+      throw new Error('workspaceRoot is required for FileDiscoveryStage');
+    }
+    const cwd = context.workspaceRoot;
 
     for (const pattern of paths) {
       const matches = await fg(pattern, {
@@ -103,6 +108,9 @@ export class FileDiscoveryStage implements PipelineStage {
             size: stats.size,
             mtime: stats.mtimeMs,
             extension,
+            sourceId: source.id,
+            sourceKind: source.kind,
+            sourceLanguage: source.language,
           });
         } catch (error) {
           // File might have been deleted between glob and stat

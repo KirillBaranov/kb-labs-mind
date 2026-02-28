@@ -9,7 +9,6 @@ import type {
   VectorSearchFilters,
   VectorSearchMatch,
 } from '../vector-store/vector-store';
-import { keywordSearch } from './keyword';
 import type { KeywordSearchOptions } from './keyword';
 
 export interface HybridSearchOptions {
@@ -164,7 +163,7 @@ export async function hybridSearch(
   }
 
   // Sort by final score and return top results
-  const finalMatches = combinedMatches
+  return combinedMatches
     .sort((a, b) => {
       // First sort by whether in both searches
       if (a.inBoth !== b.inBoth) {
@@ -178,7 +177,5 @@ export async function hybridSearch(
       chunk: item.match.chunk,
       score: item.score,
     }));
-
-  return finalMatches;
 }
 

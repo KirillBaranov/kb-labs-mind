@@ -3,34 +3,13 @@
  * Query pattern learning and matching
  */
 
-import type { QueryHistoryStore, QueryHistoryEntry } from './query-history';
+import type { QueryHistoryStore } from './query-history';
 import type { VectorSearchMatch } from '../vector-store/vector-store';
-
-export interface QueryPatternMatcher {
-  /**
-   * Find similar queries and return their successful chunks
-   */
-  findSimilarQueries(
-    queryText: string,
-    queryVector: number[],
-    scopeId: string,
-  ): Promise<Array<{ query: string; chunkIds: string[]; similarity: number }>>;
-  
-  /**
-   * Get recommended chunks based on query patterns
-   */
-  getRecommendedChunks(
-    queryText: string,
-    queryVector: number[],
-    scopeId: string,
-    limit?: number,
-  ): Promise<string[]>; // Returns chunkIds
-}
 
 /**
  * Query pattern matcher using query history
  */
-export class QueryPatternMatcher implements QueryPatternMatcher {
+export class QueryPatternMatcher {
   private readonly queryHistory: QueryHistoryStore;
   private readonly options: {
     similarityThreshold: number; // Minimum similarity to consider (default: 0.7)

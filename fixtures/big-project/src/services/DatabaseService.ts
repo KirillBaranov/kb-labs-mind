@@ -3,7 +3,7 @@
  */
 
 import { Logger } from '../utils/Logger';
-import { DatabaseConfig } from '../config/DatabaseConfig';
+import type { DatabaseConfig } from '../config/DatabaseConfig';
 
 export class DatabaseService {
   private config: DatabaseConfig;
@@ -20,7 +20,9 @@ export class DatabaseService {
       this.logger.info('Connecting to database...');
       
       // Simulate database connection
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => {
+        setTimeout(resolve, 100);
+      });
       
       this.connection = { connected: true };
       this.logger.info('Database connected successfully');

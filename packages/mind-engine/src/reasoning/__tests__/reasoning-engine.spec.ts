@@ -4,7 +4,8 @@ import { ComplexityDetector } from '../complexity-detector';
 import { QueryPlanner } from '../query-planner';
 import { ParallelExecutor } from '../parallel-executor';
 import { ResultSynthesizer } from '../synthesizer';
-import type { KnowledgeQuery, KnowledgeResult, KnowledgeExecutionContext } from '@kb-labs/sdk';
+import type { ILLM } from '@kb-labs/sdk';
+import type { KnowledgeQuery, KnowledgeExecutionContext } from '../../types/engine-contracts';
 
 describe('ReasoningEngine', () => {
   let complexityDetector: ComplexityDetector;
@@ -76,10 +77,14 @@ describe('ReasoningEngine', () => {
     } as unknown as ComplexityDetector;
     
     // Mock query planner to generate multiple sub-queries
-    const mockLLM = {
-      id: 'test',
-      complete: vi.fn().mockResolvedValue('["sub-query 1", "sub-query 2"]'),
-      generate: vi.fn(),
+    const mockLLM: ILLM = {
+      complete: vi.fn().mockResolvedValue({
+        content: '["sub-query 1", "sub-query 2"]',
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        model: 'test',
+        finishReason: 'stop',
+      }),
+      stream: vi.fn(async function* () {}),
     };
     queryPlanner = new QueryPlanner({ maxSubqueries: 5 }, mockLLM);
     
@@ -179,4 +184,3 @@ describe('ReasoningEngine', () => {
     ).resolves.toBeDefined();
   });
 });
-

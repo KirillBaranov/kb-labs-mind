@@ -58,7 +58,7 @@ export class EmbeddingCache {
    * Get embedding from cache
    */
   get(text: string, model: string): number[] | null {
-    if (!this.enabled) return null;
+    if (!this.enabled) {return null;}
 
     const key = this.getCacheKey(text, model);
     const entry = this.cache.get(key);
@@ -89,7 +89,7 @@ export class EmbeddingCache {
    * Set embedding in cache
    */
   set(text: string, model: string, embedding: number[]): void {
-    if (!this.enabled) return;
+    if (!this.enabled) {return;}
 
     const key = this.getCacheKey(text, model);
 

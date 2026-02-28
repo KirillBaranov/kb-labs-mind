@@ -3,7 +3,7 @@
  * LLM-based compression for reducing token usage while preserving meaning
  */
 
-import type { KnowledgeChunk } from '@kb-labs/sdk';
+import type { KnowledgeChunk } from '../types/engine-contracts';
 
 /**
  * Interface for LLM-based compression

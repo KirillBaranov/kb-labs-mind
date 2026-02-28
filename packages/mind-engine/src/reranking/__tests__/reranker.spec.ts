@@ -28,7 +28,7 @@ function createMockRuntime(apiKey: string = 'test-api-key'): RuntimeAdapter {
     fetch: vi.fn(),
     env: {
       get: vi.fn((key: string) => {
-        if (key === 'OPENAI_API_KEY') return apiKey;
+        if (key === 'OPENAI_API_KEY') {return apiKey;}
         return undefined;
       }),
     },

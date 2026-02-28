@@ -3,7 +3,7 @@
  */
 
 import { Logger } from '../utils/Logger';
-import { AuthConfig } from '../config/AuthConfig';
+import type { AuthConfig } from '../config/AuthConfig';
 import { User } from '../models/User';
 import { JWT } from '../utils/JWT';
 import { PasswordHash } from '../utils/PasswordHash';

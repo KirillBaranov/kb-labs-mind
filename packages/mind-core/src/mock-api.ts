@@ -19,7 +19,7 @@ export interface MockPackResult {
 
 export async function mockUpdateIndexes(options: any): Promise<MockUpdateResult> {
   // Simulate some processing time
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise<void>(resolve => { setTimeout(resolve, 100); });
   
   return {
     api: { added: 2, updated: 1, removed: 0 },
@@ -35,7 +35,7 @@ export async function mockUpdateIndexes(options: any): Promise<MockUpdateResult>
 
 export async function mockBuildPack(options: any): Promise<MockPackResult> {
   // Simulate some processing time
-  await new Promise(resolve => setTimeout(resolve, 150));
+  await new Promise<void>(resolve => { setTimeout(resolve, 150); });
   
   const intent = options.intent || 'test intent';
   const product = options.product || 'mind';
@@ -57,7 +57,7 @@ export async function mockBuildPack(options: any): Promise<MockPackResult> {
 
 export async function mockInitMindStructure(_options: any): Promise<string> {
   // Simulate some processing time
-  await new Promise(resolve => setTimeout(resolve, 50));
+  await new Promise<void>(resolve => { setTimeout(resolve, 50); });
   
   return '.kb/mind';
 }

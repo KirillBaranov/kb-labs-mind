@@ -3,14 +3,13 @@
  * Format Mind query results as structured JSON for external integrations
  */
 
-import type { KnowledgeResult } from '@kb-labs/sdk';
+import type { KnowledgeResult } from '../types/engine-contracts';
 import type {
   MindQueryResponse,
   MindCandidate,
   JsonOutputOptions,
   QueryMode,
 } from '@kb-labs/mind-types';
-import type { VectorSearchMatch } from '@kb-labs/mind-vector-store';
 import type { ReasoningResult } from '../reasoning/types';
 import { SnippetExtractor } from '../snippets/snippet-extractor';
 
@@ -169,13 +168,13 @@ function formatCandidate(
  * Infer code entity type from chunk metadata
  */
 function inferCodeType(chunk: any): MindCandidate['context']['type'] {
-  if (chunk.type) return chunk.type;
-  if (chunk.functionName) return 'function';
-  if (chunk.className) return 'class';
-  if (chunk.interfaceName) return 'interface';
-  if (chunk.typeName) return 'type';
-  if (chunk.file?.endsWith('.json') || chunk.file?.endsWith('.yaml')) return 'config';
-  if (chunk.file?.endsWith('.md')) return 'docs';
+  if (chunk.type) {return chunk.type;}
+  if (chunk.functionName) {return 'function';}
+  if (chunk.className) {return 'class';}
+  if (chunk.interfaceName) {return 'interface';}
+  if (chunk.typeName) {return 'type';}
+  if (chunk.file?.endsWith('.json') || chunk.file?.endsWith('.yaml')) {return 'config';}
+  if (chunk.file?.endsWith('.md')) {return 'docs';}
   return 'other';
 }
 
@@ -185,8 +184,8 @@ function inferCodeType(chunk: any): MindCandidate['context']['type'] {
 function buildSymbolPath(chunk: any): string | undefined {
   const parts: string[] = [];
 
-  if (chunk.className) parts.push(chunk.className);
-  if (chunk.functionName) parts.push(chunk.functionName);
+  if (chunk.className) {parts.push(chunk.className);}
+  if (chunk.functionName) {parts.push(chunk.functionName);}
   if (chunk.symbolName && !parts.includes(chunk.symbolName)) {
     parts.push(chunk.symbolName);
   }
@@ -201,8 +200,8 @@ function inferMatchType(chunk: any): 'semantic' | 'keyword' | 'hybrid' {
   const hasVector = chunk.vectorScore !== undefined || chunk.semanticScore !== undefined;
   const hasKeyword = chunk.keywordScore !== undefined || chunk.bm25Score !== undefined;
 
-  if (hasVector && hasKeyword) return 'hybrid';
-  if (hasKeyword) return 'keyword';
+  if (hasVector && hasKeyword) {return 'hybrid';}
+  if (hasKeyword) {return 'keyword';}
   return 'semantic';
 }
 
@@ -252,7 +251,7 @@ function calculateQuality(candidates: MindCandidate[]): MindQueryResponse['quali
  * Calculate variance of scores
  */
 function calculateVariance(values: number[]): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) {return 0;}
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   const squaredDiffs = values.map((v) => Math.pow(v - mean, 2));
   return squaredDiffs.reduce((a, b) => a + b, 0) / values.length;

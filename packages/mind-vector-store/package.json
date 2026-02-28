@@ -30,7 +30,6 @@
     "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
-    "@kb-labs/sdk": "link:../../../kb-labs-sdk/packages/sdk",
     "@kb-labs/mind-core": "link:../mind-core",
     "fs-extra": "^11.0.0"
   },

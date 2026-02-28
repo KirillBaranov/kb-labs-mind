@@ -32,9 +32,9 @@ export class User {
   }
 
   update(data: Partial<UserData>): void {
-    if (data.email !== undefined) this.email = data.email;
-    if (data.name !== undefined) this.name = data.name;
-    if (data.isActive !== undefined) this.isActive = data.isActive;
+    if (data.email !== undefined) {this.email = data.email;}
+    if (data.name !== undefined) {this.name = data.name;}
+    if (data.isActive !== undefined) {this.isActive = data.isActive;}
     this.updatedAt = new Date();
   }
 
