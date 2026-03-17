@@ -50,8 +50,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@kb-labs/plugin-contracts": "^1.0.0",
-    "@kb-labs/sdk": "^1.0.0",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
     "@kb-labs/mind-contracts": "link:../mind-contracts",
     "@kb-labs/mind-core": "link:../mind-core",
     "@kb-labs/mind-engine": "link:../mind-engine",
@@ -62,7 +62,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "link:../../../kb-labs-devkit",
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "@types/react": "^18.3.8",
     "rimraf": "^6.0.1",

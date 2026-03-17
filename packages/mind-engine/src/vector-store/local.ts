@@ -12,9 +12,13 @@ import type {
 import {
   MindVectorStore,
 } from '@kb-labs/mind-vector-store';
+import { withRetry } from './retry';
+import type { RetryOptions } from './retry';
 
 export interface LocalVectorStoreOptions {
   indexDir: string;
+  /** Retry configuration for transient search failures. Defaults to 4 attempts, 100 ms base delay. */
+  retry?: RetryOptions;
 }
 
 /**
@@ -22,11 +26,13 @@ export interface LocalVectorStoreOptions {
  */
 export class LocalVectorStore implements VectorStore {
   private readonly store: MindVectorStore;
+  private readonly retryOptions: RetryOptions;
 
   constructor(options: LocalVectorStoreOptions) {
     this.store = new MindVectorStore({
       indexDir: options.indexDir,
     });
+    this.retryOptions = options.retry ?? {};
   }
 
   async replaceScope(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
@@ -39,10 +45,10 @@ export class LocalVectorStore implements VectorStore {
     limit: number,
     filters?: VectorSearchFilters,
   ): Promise<VectorSearchMatch[]> {
-    // Convert filters if needed
-    const mindMatches = await this.store.search(scopeId, vector as any, limit, filters as any);
-    // Convert back to VectorSearchMatch
-    return mindMatches as VectorSearchMatch[];
+    return withRetry(
+      () => this.store.search(scopeId, vector as any, limit, filters as any),
+      this.retryOptions,
+    ) as Promise<VectorSearchMatch[]>;
   }
 
   async getAllChunks(scopeId: string, filters?: VectorSearchFilters): Promise<StoredMindChunk[]> {

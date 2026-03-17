@@ -1,609 +1,306 @@
-# KB Labs Mind (@kb-labs/mind)
+# Standard Configuration Templates
 
-> **Headless knowledge layer for KB Labs projects.** Provides semantic code search, intelligent indexing, and RAG-powered context generation for AI development workflows.
+This directory contains canonical configuration templates for all `@kb-labs` packages.
 
-**Mind v2** introduces vector-based semantic search with embeddings, self-learning capabilities, and advanced context optimization. The original **Mind v1** packages (delta indexing, context packs) remain available for backward compatibility.
+## 📋 Available Templates
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
+### Core Configs (All Packages)
 
-## 🧭 Start here
+| File | Purpose | Required | Customizable |
+|------|---------|----------|--------------|
+| **eslint.config.js** | Linting rules | ✅ Yes | ⚠️ Minimal |
+| **tsconfig.json** | TypeScript IDE config | ✅ Yes | ❌ No |
+| **tsconfig.build.json** | TypeScript build config | ✅ Yes | ❌ No |
 
-- Follow the [Getting Started guide](./docs/getting-started.md) after cloning the repo. It walks through DevKit sync, contract checks, and first CLI runs on the new layered structure.
-- Read the [Mind Contracts guide](./docs/dev/mind-contracts.md) before changing artefact IDs, schemas, or `contractsVersion`.
-- Use [Mind Extensibility](./docs/dev/mind-extensibility.md) when adding new indexers, pack sections, or queries.
+### Tsup Configs (Choose ONE based on package type)
 
-## 🎯 Vision
+| Template | Package Type | Use Cases |
+|----------|--------------|-----------|
+| **tsup.config.ts** | 📦 **Library** (default) | Most packages, importable libraries |
+| **tsup.config.bin.ts** | 🔧 **Binary** | Standalone executables, CLI bins |
+| **tsup.config.cli.ts** | ⌨️ **CLI** | CLI packages with commands |
+| **tsup.config.dual.ts** | 📦🔧 **Library + Binary** | Packages with both API and bin |
 
-KB Labs Mind is a headless knowledge layer for KB Labs projects that provides semantic code search, intelligent indexing, and RAG-powered context generation for AI-powered development workflows. It creates structured, searchable knowledge from your codebase, making it easier for AI tools like Cursor to understand your project's architecture, find relevant code, and generate accurate responses.
+### Package.json Examples
 
-**Mind v2** solves the problem of semantic code search by implementing:
-- **Vector-based semantic search** using embeddings (OpenAI, deterministic fallback)
-- **AST-based chunking** for TypeScript/JavaScript code
-- **Hybrid search** combining vector similarity with keyword matching (RRF)
-- **Self-learning system** that improves search relevance over time
-- **Context optimization** with deduplication, diversification, and token compression
-- **Incremental indexing** for fast updates
+| Template | Purpose |
+|----------|---------|
+| **package.json.lib** | Library package example |
+| **package.json.bin** | Binary package example |
 
-**Mind v1** (legacy) provides delta indexing and context pack generation for backward compatibility.
+## 🎯 Philosophy
 
-This project is part of the **@kb-labs** ecosystem and integrates seamlessly with all KB Labs products, providing them with intelligent knowledge retrieval capabilities for AI-powered workflows.
+**Convention over Configuration**
 
-## 🚀 Quick Start
+All `@kb-labs` packages MUST use these exact templates with minimal customization. This ensures:
 
-### Installation
+- ✅ Consistent build output across all packages
+- ✅ Predictable dependency resolution
+- ✅ Unified linting standards
+- ✅ Easy maintenance and upgrades
 
+## 📦 Usage
+
+### For New Packages
+
+#### Step 1: Choose Package Type
+
+**Library Package** (most common):
 ```bash
-# Install dependencies
-pnpm install
-
-# Build all packages
-pnpm build
-
-# Run tests
-pnpm test
+cp kb-labs-devkit/templates/configs/tsup.config.ts your-package/
+cp kb-labs-devkit/templates/configs/eslint.config.js your-package/
+cp kb-labs-devkit/templates/configs/tsconfig*.json your-package/
+cp kb-labs-devkit/templates/configs/package.json.lib your-package/package.json
 ```
 
-### Development
-
+**Binary Package** (standalone executables):
 ```bash
-# Start development mode
-pnpm dev
-
-# Build all packages
-pnpm build
-
-# Run tests
-pnpm test
-
-# Lint code
-pnpm lint
+cp kb-labs-devkit/templates/configs/tsup.config.bin.ts your-package/tsup.config.ts
+cp kb-labs-devkit/templates/configs/eslint.config.js your-package/
+cp kb-labs-devkit/templates/configs/tsconfig*.json your-package/
+cp kb-labs-devkit/templates/configs/package.json.bin your-package/package.json
 ```
 
-> **Note:** Packages like `@kb-labs/mind-cli` import generated typings from `@kb-labs/shared-cli-ui` and `@kb-labs/mind-gateway`. Run `pnpm --filter @kb-labs/shared-cli-ui build` and `pnpm --filter @kb-labs/mind-gateway build` (or simply `pnpm build`) after pulling changes or modifying those packages to keep their `dist/*.d.ts` files up to date.
-
-### Basic Usage (Mind v2 - RAG)
-
-All CLI calls use the shared KB Labs CLI (`pnpm kb …`) from the repository root.
-
+**CLI Package** (command handlers):
 ```bash
-# Build knowledge index
-pnpm kb mind:rag-index
-
-# Query with semantic search
-pnpm kb mind:rag-query --text "compression implementation" --intent search
+cp kb-labs-devkit/templates/configs/tsup.config.cli.ts your-package/tsup.config.ts
+cp kb-labs-devkit/templates/configs/eslint.config.js your-package/
+cp kb-labs-devkit/templates/configs/tsconfig*.json your-package/
+cp kb-labs-devkit/templates/configs/package.json.lib your-package/package.json
 ```
 
-**Programmatic API:**
+**Dual Package** (library + binary):
+```bash
+cp kb-labs-devkit/templates/configs/tsup.config.dual.ts your-package/tsup.config.ts
+cp kb-labs-devkit/templates/configs/eslint.config.js your-package/
+cp kb-labs-devkit/templates/configs/tsconfig*.json your-package/
+cp kb-labs-devkit/templates/configs/package.json.lib your-package/package.json
+# Then add "bin" field to package.json
+```
+
+#### Step 2: Customize Package Name
+```bash
+# Edit package.json and update name, description
+```
+
+### For Existing Packages
+
+```bash
+# Check for drift
+npx kb-devkit-check-configs
+
+# Auto-fix drift
+npx kb-devkit-check-configs --fix
+```
+
+## 🔧 Customization Rules
+
+### tsup.config.ts
+
+**Allowed customizations:**
 
 ```typescript
-import { createMindKnowledgeRuntime } from '@kb-labs/mind-cli/shared/knowledge';
+export default defineConfig({
+  ...nodePreset,
+  tsconfig: 'tsconfig.build.json', // ✅ Always required
 
-// Create knowledge runtime
-const runtime = await createMindKnowledgeRuntime({
-  cwd: '/path/to/project',
+  // ✅ OK: Multiple entry points
+  entry: ['src/index.ts', 'src/cli.ts'],
+
+  // ✅ OK: Extra external deps (if really needed)
+  external: ['special-native-module'],
+
+  dts: true, // ✅ Always required
 });
-
-// Build index
-await runtime.service.index({
-  scope: { id: 'default', label: 'Default Scope' },
-  sources: [
-    {
-      id: 'codebase',
-      kind: 'code',
-      language: 'typescript',
-      paths: ['src/**/*.ts'],
-    },
-  ],
-});
-
-// Query
-const result = await runtime.service.query({
-  text: 'compression implementation',
-  intent: 'search',
-  scope: 'default',
-});
-
-console.log(result.contextText);
 ```
 
-**Legacy API (Mind v1):**
+**NOT allowed:**
 
 ```typescript
-import { initMindStructure, updateIndexes } from '@kb-labs/mind-indexer';
-import { buildPack } from '@kb-labs/mind-pack';
-
-// Initialize mind structure
-await initMindStructure('/path/to/project');
-
-// Update indexes with recent changes
-const report = await updateIndexes({
-  cwd: '/path/to/project',
-  since: 'HEAD~1',
-  timeBudgetMs: 800
+// ❌ WRONG: Don't override preset settings
+export default defineConfig({
+  format: ['esm'],        // Already in preset!
+  target: 'es2022',       // Already in preset!
+  sourcemap: true,        // Already in preset!
+  // ...
 });
 
-// Build context pack
-const pack = await buildPack({
-  cwd: '/path/to/project',
-  intent: 'Implement new feature',
-  product: 'devlink',
-  budget: {
-    totalTokens: 9000,
-    caps: {
-      intent_summary: 300,
-      product_overview: 600,
-      project_meta: 500,
-      api_signatures: 2200,
-      recent_diffs: 1200,
-      docs_overview: 600,
-      impl_snippets: 3000,
-      configs_profiles: 700
-    },
-    truncation: 'middle'
+// ❌ WRONG: Don't disable types
+dts: false,
+
+// ❌ WRONG: Don't duplicate external deps
+external: [
+  '@kb-labs/core',  // Already in preset!
+  '@kb-labs/cli',   // Already in preset!
+],
+```
+
+### eslint.config.js
+
+**Allowed customizations:**
+
+```javascript
+export default [
+  ...nodePreset,
+  {
+    // ✅ OK: Project-specific ignores only
+    ignores: ['**/*.generated.ts']
   }
-});
-
-console.log(pack.markdown);
+];
 ```
 
-### CLI Commands
+**NOT allowed:**
 
-**Mind v2 (RAG):**
-
-```bash
-# Build knowledge index from codebase
-pnpm kb mind:rag-index
-
-# Query with semantic search
-pnpm kb mind:rag-query --text "your query" --intent search
-
-# Query with summary intent
-pnpm kb mind:rag-query --text "explain compression" --intent summary
-
-# Agent mode - structured JSON output for AI agents
-pnpm kb mind:rag-query --agent --text "how does rate limiting work"
+```javascript
+// ❌ WRONG: Don't duplicate preset ignores
+export default [
+  ...nodePreset,
+  {
+    ignores: [
+      '**/dist/**',        // Already in preset!
+      '**/node_modules/**', // Already in preset!
+    ]
+  }
+];
 ```
 
-**Mind v1 (Legacy):**
+### tsconfig.json & tsconfig.build.json
 
-```bash
-# Initialize mind workspace
-pnpm kb mind init
+**NOT customizable!**
 
-# Update indexes with delta tracking
-pnpm kb mind update
+These files MUST remain identical to templates. All TypeScript configuration is standardized in DevKit presets.
 
-# Execute queries (impact, scope, exports, externals, chain, meta, docs)
-pnpm kb mind query
-
-# Verify index consistency and detect hash mismatches
-pnpm kb mind verify
-
-# Generate context packs for AI tools
-pnpm kb mind pack
-
-# One-shot command: update indexes and build context pack
-pnpm kb mind feed
-```
-
-> **Tip:** If the KB CLI reports `Unknown command: mind`, clear discovery caches with `pnpm kb plugins:clear-cache`, rebuild `@kb-labs/mind-cli`, and run `pnpm kb plugins:list` again.
-
-## ✨ Features
-
-### Mind v2 (RAG)
-
-- **Semantic Search**: Vector-based search using embeddings (OpenAI, deterministic fallback)
-- **AST-Based Chunking**: Intelligent code chunking preserving semantic units
-- **Hybrid Search**: Combines vector similarity with keyword matching (Reciprocal Rank Fusion)
-- **Self-Learning**: Query history, feedback collection, popularity boost, adaptive weights
-- **Context Optimization**: Deduplication, diversification, token compression
-- **Incremental Indexing**: Only re-indexes changed files for fast updates
-- **Token Compression**: Smart truncation and metadata-only mode for low-relevance chunks
-- **Vector Store Abstraction**: Supports Qdrant and local file-based storage
-- **Runtime Adapter Pattern**: Portable across Node.js, sandboxes, and serverless
-- **Agent Query Orchestration**: LLM-powered query decomposition, multi-step retrieval, response synthesis
-- **Built-in Analytics**: Query metrics, LLM costs, timing data via `@kb-labs/analytics-sdk-node`
-
-### Mind v1 (Legacy)
-
-- **Delta Indexing**: Only processes changed files for fast updates
-- **Time Budget Enforcement**: Partial results when budget is exceeded
-- **Intelligent Caching**: Uses mtime/size checks for efficient cache invalidation
-- **API Extraction**: TypeScript/JavaScript API signature extraction
-- **Context Packing**: 6 structured sections with token budget management
-- **Git Integration**: Recent diff tracking, staged files detection, POSIX path normalization
-- **Fail-Open Philosophy**: Parse errors don't crash, missing files handled gracefully
-- **Token Budget Management**: Per-section caps with configurable truncation
-- **Security**: Skips large files (>1.5MB) and binary content
-
-## 📁 Repository Structure
-
-```
-kb-labs-mind/
-├── packages/                 # Core packages
-│   ├── mind-engine/          # Mind v2: Core knowledge engine
-│   ├── mind-orchestrator/    # Mind v2: Agent query orchestration + analytics
-│   ├── mind-embeddings/      # Mind v2: Embedding providers
-│   ├── mind-llm/             # Mind v2: LLM client abstraction
-│   ├── mind-vector-store/    # Mind v2: Vector store implementations
-│   ├── mind-cli/             # CLI commands (v1 + v2)
-│   ├── mind-core/            # Mind v1: Core types and utilities
-│   ├── mind-indexer/         # Mind v1: Delta indexing system
-│   ├── mind-pack/            # Mind v1: Context pack builder
-│   ├── mind-adapters/        # Mind v1: Git integration helpers
-│   ├── mind-query/           # Mind v1: Query system for indexes
-│   ├── mind-gateway/         # Gateway for external integrations
-│   ├── mind-types/           # Type definitions
-│   ├── mind-tests/           # Test utilities and helpers
-│   └── contracts/            # Public contracts
-├── docs/                     # Documentation
-│   ├── DOCUMENTATION.md      # Documentation standard
-│   ├── adr/                  # Architecture Decision Records
-│   ├── rag-*.md              # RAG documentation (Mind v2)
-│   └── change-tracking-design.md
-├── fixtures/                 # Test fixtures
-└── scripts/                  # Utility scripts
-```
-
-### Directory Descriptions
-
-- **`packages/`** - Individual packages with their own package.json, each serving a specific purpose in the Mind architecture
-- **`docs/`** - Comprehensive documentation including ADRs and guides
-- **`fixtures/`** - Test fixtures for integration testing
-- **`scripts/`** - Utility scripts for development and maintenance
-
-## 📦 Packages
-
-### Mind v2 (RAG)
-
-| Package | Description |
-|---------|-------------|
-| [@kb-labs/mind-engine](./packages/mind-engine/) | Core knowledge engine with vector search, chunking, and self-learning |
-| [@kb-labs/mind-orchestrator](./packages/mind-orchestrator/) | Agent-optimized RAG query orchestration with analytics |
-| [@kb-labs/mind-embeddings](./packages/mind-embeddings/) | Embedding providers (OpenAI, deterministic) |
-| LLM integration (`@kb-labs/sdk` `ILLM`) | Platform-provided LLM abstraction |
-| [@kb-labs/mind-vector-store](./packages/mind-vector-store/) | Vector store implementations (Qdrant, local) |
-| [@kb-labs/mind-cli](./packages/mind-cli/) | CLI commands for RAG operations |
-
-### Mind v1 (Legacy)
-
-| Package | Description |
-|---------|-------------|
-| [@kb-labs/mind-core](./packages/mind-core/) | Core types, utilities, and error handling |
-| [@kb-labs/mind-indexer](./packages/mind-indexer/) | Delta indexing for API, dependencies, and git changes |
-| [@kb-labs/mind-pack](./packages/mind-pack/) | Context pack builder with budget management |
-| [@kb-labs/mind-adapters](./packages/mind-adapters/) | Git integration helpers |
-| [@kb-labs/mind-query](./packages/mind-query/) | Query system for indexes |
-| [@kb-labs/mind-gateway](./packages/mind-gateway/) | Gateway for external integrations |
-| [@kb-labs/mind-types](./packages/mind-types/) | Shared TypeScript types |
-| [@kb-labs/mind-tests](./packages/mind-tests/) | Test utilities and helpers |
-
-## 🗺️ Surface Map
-
-The layered aliases exposed through `tsconfig.paths.json` resolve to the following entry points:
-
-| Alias | Path | Purpose |
-|-------|------|---------|
-| `@app/shared/*` | `packages/mind-cli/src/shared/*` | Shared utilities, types, logging |
-| `@app/domain/*` | `packages/mind-cli/src/domain/*` | Domain models and invariants |
-| `@app/application/*` | `packages/mind-cli/src/application/*` | Use-cases orchestrating domain + infra |
-| `@app/infra/*` | `packages/mind-cli/src/infra/*` | Gateways (git, analytics, runtime adapters) |
-| `@app/cli/*` | `packages/mind-cli/src/cli/*` | CLI command handlers, flag mapping |
-| `@app/rest/*` | `packages/mind-cli/src/rest/*` | REST handlers built on the same contracts |
-| `@app/studio/*` | `packages/mind-cli/src/studio/*` | Studio widgets and integration helpers |
-
-Regenerate these mappings after adding new surfaces with `pnpm --filter @kb-labs/mind devkit:paths`.
-
-### Package Details
-
-**@kb-labs/mind-core** provides core utilities and types:
-- Token estimation and truncation utilities
-- Hash utilities (SHA256)
-- Path normalization (POSIX)
-- Error handling (MindError)
-- Default budget configurations
-
-**@kb-labs/mind-indexer** implements delta indexing:
-- Initializes mind structure (`.kb/mind/`)
-- Updates indexes with only changed files
-- Time budget enforcement for partial results
-- Intelligent caching with mtime/size checks
-- API extraction from TypeScript/JavaScript files
-- Dependency graph building
-
-**@kb-labs/mind-pack** builds context packs:
-- 6 structured sections: intent, overview, API, diffs, snippets, configs
-- Token budget management with per-section caps
-- Deterministic output with sorted keys
-- Security: skips large files and binary content
-
-**@kb-labs/mind-adapters** provides Git integration:
-- Git diff since any revision
-- Staged files detection
-- POSIX path normalization
-- Workspace root detection
-
-**@kb-labs/mind-cli** provides CLI commands:
-- `init` - Initialize mind workspace
-- `update` - Update indexes with delta tracking
-- `query` - Execute queries on indexes
-- `verify` - Verify index consistency
-- `pack` - Generate context packs
-- `feed` - One-shot update and pack generation
-
-**@kb-labs/mind-query** provides query system:
-- Impact analysis queries
-- Scope queries
-- Export/external queries
-- Dependency chain queries
-- Metadata queries
-- Documentation queries
-
-**@kb-labs/mind-orchestrator** provides agent-optimized RAG orchestration:
-- Query decomposition into focused sub-queries
-- Multi-iteration chunk gathering with completeness checks
-- LLM-powered response synthesis and compression
-- Three query modes: `instant` (fast), `auto` (balanced), `thinking` (thorough)
-- Built-in analytics integration with `@kb-labs/analytics-sdk-node`
-- Cost tracking for LLM calls (tokens, pricing)
-
-## 🤖 Agent Mode
-
-The `--agent` flag enables structured JSON output optimized for AI agents:
-
-```bash
-pnpm kb mind:rag-query --agent --text "how does authentication work"
-```
-
-**Response format:**
 ```json
+// ❌ WRONG: Don't override extends
 {
-  "answer": "Authentication is implemented using...",
-  "sources": [
-    {
-      "file": "src/auth/middleware.ts",
-      "snippet": "export function authenticate(req, res, next) {...}",
-      "relevance": 0.95
-    }
-  ],
-  "confidence": 0.9,
-  "complete": true,
-  "meta": {
-    "schemaVersion": "agent-response-v1",
-    "mode": "auto",
-    "timingMs": 5500,
-    "llmCalls": 4,
-    "tokensIn": 2500,
-    "tokensOut": 800
+  "extends": "./my-custom-base.json"
+}
+
+// ❌ WRONG: Don't add compilerOptions
+{
+  "extends": "@kb-labs/devkit/tsconfig/node.json",
+  "compilerOptions": {
+    "strict": false  // Don't override preset!
   }
 }
 ```
 
-**Query modes:**
-- `instant` - Single-shot retrieval, fastest (~500ms target)
-- `auto` - Iterative with completeness checks (default)
-- `thinking` - Full decomposition and multi-iteration synthesis
+## 🔍 Drift Detection
 
-## 📈 Analytics Integration
+DevKit automatically detects configuration drift:
 
-Mind tracks query metrics via `@kb-labs/analytics-sdk-node`:
+```bash
+# Check all packages
+npx kb-devkit-check-configs
+
+# Check specific package
+npx kb-devkit-check-configs --package=@kb-labs/core
+
+# Auto-fix (creates backup)
+npx kb-devkit-check-configs --fix
+
+# CI mode (fail on drift)
+npx kb-devkit-check-configs --ci
+```
+
+### Drift Detection Rules
+
+| Issue | Severity | Auto-fix |
+|-------|----------|----------|
+| Missing `dts: true` | 🔴 Error | ✅ Yes |
+| Using `dts: false` | 🔴 Error | ✅ Yes |
+| Not using `nodePreset` | 🔴 Error | ⚠️ Manual |
+| Duplicate `external` | 🟡 Warning | ✅ Yes |
+| Duplicate `ignores` | 🟡 Warning | ✅ Yes |
+| Missing templates | 🔴 Error | ✅ Yes |
+| Modified templates | 🔴 Error | ⚠️ Manual |
+
+## 📚 Examples
+
+### ✅ Good Example (Minimal Package)
 
 ```typescript
-import { createAgentQueryOrchestrator } from '@kb-labs/mind-orchestrator';
+// tsup.config.ts
+import { defineConfig } from 'tsup';
+import nodePreset from '@kb-labs/devkit/tsup/node.js';
 
-const orchestrator = createAgentQueryOrchestrator({
-  queryEngine,
-  analytics: {
-    enabled: true,
-    detailed: true,      // Track per-stage metrics
-    llmModel: 'gpt-4o-mini'
-  }
+export default defineConfig({
+  ...nodePreset,
+  tsconfig: 'tsconfig.build.json',
+  entry: ['src/index.ts'],
+  dts: true,
 });
 ```
 
-**Tracked events:**
-| Event | Description |
-|-------|-------------|
-| `mind.query.started` | Query initiated with mode and query hash |
-| `mind.query.completed` | Success with timing, confidence, costs |
-| `mind.query.failed` | Failure with error details |
-
-**Metrics captured:**
-- Duration (total and per-stage)
-- Confidence and completeness scores
-- Source counts by type (code/docs/external)
-- LLM usage (calls, tokens in/out)
-- Cost calculation (configurable per model)
-
-Events are buffered to `.kb/analytics/buffer` for batch sync.
-
-## 🛠️ Available Scripts
-
-| Script | Description |
-|--------|-------------|
-| `pnpm dev` | Start development mode for all packages |
-| `pnpm build` | Build all packages |
-| `pnpm build:clean` | Clean and build all packages |
-| `pnpm test` | Run all tests |
-| `pnpm test:coverage` | Run tests with coverage reporting |
-| `pnpm test:watch` | Run tests in watch mode |
-| `pnpm test:fixtures` | Run fixture tests |
-| `pnpm test:cli-smoke` | Run CLI smoke tests |
-| `pnpm lint` | Lint all code |
-| `pnpm lint:fix` | Fix linting issues |
-| `pnpm format` | Format code with Prettier |
-| `pnpm type-check` | TypeScript type checking |
-| `pnpm check` | Run lint, type-check, and tests |
-| `pnpm ci` | Full CI pipeline (clean, build, check) |
-| `pnpm clean` | Clean build artifacts and mind cache |
-| `pnpm clean:cache` | Clean mind cache and coverage |
-| `pnpm clean:all` | Clean all node_modules and build artifacts |
-
-## 📋 Development Policies
-
-- **Code Style**: ESLint + Prettier, TypeScript strict mode
-- **Testing**: Vitest with comprehensive test coverage (90%+ required)
-- **Versioning**: SemVer with automated releases through Changesets
-- **Architecture**: Document decisions in ADRs (see `docs/adr/`)
-- **Performance**: Optimized for fast indexing and pack generation
-- **Fail-Open**: System handles errors gracefully without crashing
-
-## 🔧 Requirements
-
-- **Node.js**: >= 18.18.0
-- **pnpm**: >= 9.0.0
-
-## ⚙️ Configuration
-
-### Budget Management
+### ✅ Good Example (CLI Package with Multiple Entries)
 
 ```typescript
-const budget: ContextBudget = {
-  totalTokens: 9000,
-  caps: {
-    intent_summary: 300,
-    product_overview: 600,
-    project_meta: 500,
-    api_signatures: 2200,
-    recent_diffs: 1200,
-    docs_overview: 600,
-    impl_snippets: 3000,
-    configs_profiles: 700
-  },
-  truncation: 'middle'
-};
+// tsup.config.ts
+import { defineConfig } from 'tsup';
+import nodePreset from '@kb-labs/devkit/tsup/node.js';
+
+export default defineConfig({
+  ...nodePreset,
+  tsconfig: 'tsconfig.build.json',
+  entry: [
+    'src/index.ts',
+    'src/cli/index.ts',
+    'src/cli/commands/build.ts',
+    'src/cli/commands/test.ts',
+  ],
+  dts: true,
+});
 ```
 
-### Ignore Patterns
+### ❌ Bad Example (Over-configured)
 
-The system automatically ignores:
-- `node_modules/**`
-- `.git/**`
-- `.kb/**` (except `.kb/mind/**`)
-- `dist/**`, `coverage/**`, `.turbo/**`, `.vite/**`
-- `**/*.log`, `**/*.tmp`, `**/*.temp`
+```typescript
+// tsup.config.ts
+import { defineConfig } from 'tsup';
 
-### Output Structure
-
-The system creates artifacts in `.kb/mind/`:
-
-```
-.kb/mind/
-├── index.json          # Main index with hashes and metadata
-├── api-index.json      # API exports per file
-├── deps.json          # Dependency graph
-├── recent-diff.json   # Git changes since revision
-└── packs/
-    ├── last-pack.md   # Latest context pack (Markdown)
-    └── last-pack.json # Latest context pack (JSON)
+// ❌ Not using preset!
+export default defineConfig({
+  format: ['esm'],
+  target: 'es2022',
+  sourcemap: true,
+  clean: true,
+  dts: true,
+  entry: ['src/index.ts'],
+  external: [/^@kb-labs\/.*/],  // Manual external
+});
 ```
 
-## 📊 Performance
+## 🚀 Migration Guide
 
-- **API indexing**: <100ms per file (small files)
-- **Cache hits**: <5ms (unchanged files)
-- **Full update**: <800ms default budget
-- **Pack generation**: <200ms for typical project
+### From Custom Config to Standard Template
 
-## 🔒 Security
+1. **Backup your current config**
+   ```bash
+   cp tsup.config.ts tsup.config.ts.backup
+   ```
 
-- Files >1.5MB are skipped with warnings
-- Binary files are detected and excluded
-- Snippet length is limited to 60 lines
-- All paths are normalized to POSIX format
-- Runs fully offline — CLI manifest does not request network access
+2. **Copy standard template**
+   ```bash
+   cp kb-labs-devkit/templates/configs/tsup.config.ts .
+   ```
 
-## 🧪 Test Coverage
+3. **Migrate customizations** (only if needed)
+   - Compare your backup with template
+   - Extract only truly necessary customizations
+   - Add them with comments explaining why
 
-| Statements | Branches | Functions | Lines |
-|------------|----------|-----------|-------|
-| 90%        | 85%      | 90%       | 90%   |
+4. **Test build**
+   ```bash
+   pnpm run build
+   ```
 
-*Coverage thresholds enforced by DevKit*
+5. **Verify types**
+   ```bash
+   npx kb-devkit-check-types
+   ```
 
-## 📚 Documentation
+## 🔗 Related
 
-### Getting Started
-
-- [Getting Started](./docs/getting-started.md) - Step-by-step onboarding after cloning
-- [RAG Implementation Guide](./docs/rag-implementation-guide.md) - How to set up Mind v2 RAG
-- [RAG Configuration Examples](./docs/rag-configuration-examples.md) - Configuration examples
-- [RAG Optimal Strategy](./docs/rag-optimal-strategy.md) - Best practices for RAG
-
-### Architecture
-
-- [Architecture Decisions](./docs/adr/) - ADRs for this project
-  - [ADR-0015: Search Result Compression](./docs/adr/0015-search-result-compression.md)
-  - [ADR-0016: Vector Store Abstraction](./docs/adr/0016-vector-store-abstraction.md)
-  - [ADR-0017: Embedding Provider Abstraction](./docs/adr/0017-embedding-provider-abstraction.md)
-  - [ADR-0018: Hybrid Search with RRF](./docs/adr/0018-hybrid-search-rrf.md)
-  - [ADR-0019: Self-Learning System](./docs/adr/0019-self-learning-system.md)
-  - [ADR-0020: AST-Based Chunking](./docs/adr/0020-ast-based-chunking.md)
-  - [ADR-0021: Incremental Indexing](./docs/adr/0021-incremental-indexing.md)
-  - [ADR-0022: Context Optimization](./docs/adr/0022-context-optimization.md)
-  - [ADR-0023: Runtime Adapter Pattern](./docs/adr/0023-runtime-adapter-pattern.md)
-  - [ADR-0024: Deterministic Embeddings](./docs/adr/0024-deterministic-embeddings-fallback.md)
-  - [ADR-0025: Reranking Strategy](./docs/adr/0025-reranking-strategy.md)
-  - [ADR-0026: External Data Sync](./docs/adr/0026-external-data-sync.md)
-  - [ADR-0027: Provider-Agnostic Rate Limiting](./docs/adr/0027-provider-agnostic-rate-limiting.md)
-  - [ADR-0028: Memory-Aware Parallel Processing](./docs/adr/0028-memory-aware-parallel-processing.md)
-  - [ADR-0029: Agent Query Orchestration](./docs/adr/0029-agent-query-orchestration.md)
-  - [ADR-0030: Mind Analytics Integration](./docs/adr/0030-mind-analytics-integration.md)
-
-### Development
-
-- [Documentation Standard](./docs/DOCUMENTATION.md) - Full documentation guidelines
-- [Contributing Guide](./CONTRIBUTING.md) - How to contribute
-- [Mind Contracts Guide](./docs/dev/mind-contracts.md) - Public contracts package, SemVer rules, and integration checklist
-- [Mind Extensibility Guide](./docs/dev/mind-extensibility.md) - Add new indexers, pack sections, and queries
-
-### Reference
-
-- [RAG Configuration Spec](./docs/rag-configuration-spec.md) - Complete configuration reference
-- [RAG Cost Analysis](./docs/rag-cost-analysis.md) - Cost analysis and optimization
-- [Vector Store Comparison](./docs/rag-vector-store-comparison.md) - Comparison of vector stores
-
-## 🔗 Related Packages
-
-### Dependencies
-
-- [@kb-labs/core](https://github.com/KirillBaranov/kb-labs-core) - Core utilities
-
-### Used By
-
-- All KB Labs projects for context generation
-- AI tools (Cursor, etc.)
-- [@kb-labs/cli](https://github.com/KirillBaranov/kb-labs-cli) - CLI integration
-
-### Ecosystem
-
-- [KB Labs](https://github.com/KirillBaranov/kb-labs) - Main ecosystem repository
-
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.
-
-## 📄 License
-
-MIT © KB Labs
-
----
-
-**See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines and contribution process.**
-
-
-## License
-
-KB Public License v1.1 - see [LICENSE](LICENSE) for details.
-
-This is open source software with some restrictions on:
-- Offering as a hosted service (SaaS/PaaS)
-- Creating competing platform products
-
-For commercial licensing inquiries: contact@kblabs.dev
-
-**User Guides:**
-- [English Guide](../LICENSE-GUIDE.en.md)
-- [Русское руководство](../LICENSE-GUIDE.ru.md)
+- [DevKit README](../../README.md)
+- [DevKit Usage Guide](../../USAGE_GUIDE.md)
+- [ADR-0009: Unified Build Convention](../../docs/adr/0009-unified-build-convention.md)

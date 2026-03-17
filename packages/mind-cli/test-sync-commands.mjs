@@ -145,7 +145,7 @@ async function testCleanup() {
     });
     
     // Wait a bit to ensure deletedAt is set
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => { setTimeout(resolve, 100); });
     
     // Try cleanup with very short TTL (0 days = immediate cleanup)
     // Note: This might not work if TTL validation prevents 0 days

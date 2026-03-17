@@ -9,12 +9,6 @@
       "@kb-labs/mind-adapters/*": [
         "packages/mind-adapters/src/*"
       ],
-      "@kb-labs/mind-cli": [
-        "packages/mind-cli/src/index.ts"
-      ],
-      "@kb-labs/mind-cli/*": [
-        "packages/mind-cli/src/*"
-      ],
       "@kb-labs/mind-contracts": [
         "packages/mind-contracts/src/index.ts"
       ],

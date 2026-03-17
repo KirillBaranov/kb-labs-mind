@@ -17,9 +17,10 @@ export async function listStagedFiles(cwd: string): Promise<string[]> {
         if (code === 0) {resolve(code);}
         else {reject(new Error('Not in git repository'));}
       });
+      checkResult.on('error', reject);
     });
   } catch {
-    throw new MindError('MIND_NO_GIT', 'Not in a git repository', 'Initialize git repository or run from a git repository');
+    return [];
   }
 
   try {

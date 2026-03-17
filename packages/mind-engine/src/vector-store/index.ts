@@ -16,6 +16,10 @@ export type { EmbeddingVector } from './vector-store';
 export { LocalVectorStore } from './local';
 export type { LocalVectorStoreOptions } from './local';
 
+// Re-export retry primitives so callers can customise retry behaviour
+export { withRetry, isTransientError, calculateBackoffMs } from './retry';
+export type { RetryOptions } from './retry';
+
 import { LocalVectorStore } from './local';
 import type { VectorStore } from './vector-store';
 import { PlatformVectorStoreAdapter } from './platform-adapter';

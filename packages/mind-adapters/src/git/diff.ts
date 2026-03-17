@@ -18,9 +18,10 @@ export async function gitDiffSince(cwd: string, since: string): Promise<RecentDi
         if (code === 0) {resolve(code);}
         else {reject(new Error('Not in git repository'));}
       });
+      checkResult.on('error', reject);
     });
   } catch {
-    throw new MindError('MIND_NO_GIT', 'Not in a git repository', 'Initialize git repository or run from a git repository');
+    return { schemaVersion: '1.0', generator: 'kb-labs-mind@0.1.0', since, files: [] };
   }
 
   try {

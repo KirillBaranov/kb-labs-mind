@@ -30,12 +30,12 @@
     "test:watch": "vitest --passWithNoTests"
   },
   "dependencies": {
-    "@kb-labs/sdk": "^1.0.0",
+    "@kb-labs/sdk": "workspace:*",
     "@kb-labs/mind-engine": "link:../mind-engine",
     "@kb-labs/mind-types": "link:../mind-types"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "link:../../../kb-labs-devkit",
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",

@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { gitDiffSince, listStagedFiles } from '../index';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -28,7 +29,8 @@ describe('Git Adapters', () => {
     try {
       const diff = await gitDiffSince(fixturePath, 'HEAD~1');
       expect(diff).toBeDefined();
-      expect(Array.isArray(diff)).toBe(true);
+      expect(diff).toHaveProperty('files');
+      expect(Array.isArray(diff.files)).toBe(true);
     } catch (error) {
       // Git might not be available or fixture might not be a git repo
       expect(error).toBeDefined();
@@ -47,14 +49,15 @@ describe('Git Adapters', () => {
   });
 
   it('should handle non-git directories gracefully', async () => {
-    const tempDir = join(__dirname, '../../../../fixtures/temp-test');
-    
+    const tempDir = join(tmpdir(), `git-adapter-test-${Date.now()}`);
+
     try {
       await fsp.mkdir(tempDir, { recursive: true });
-      
+
       const diff = await gitDiffSince(tempDir, 'HEAD~1');
-      expect(diff).toEqual([]);
-      
+      expect(diff).toHaveProperty('files');
+      expect(diff.files).toEqual([]);
+
       const staged = await listStagedFiles(tempDir);
       expect(staged).toEqual([]);
     } finally {
@@ -69,8 +72,9 @@ describe('Git Adapters', () => {
 
   it('should handle nonexistent directories', async () => {
     const diff = await gitDiffSince('/nonexistent/path', 'HEAD~1');
-    expect(diff).toEqual([]);
-    
+    expect(diff).toHaveProperty('files');
+    expect(diff.files).toEqual([]);
+
     const staged = await listStagedFiles('/nonexistent/path');
     expect(staged).toEqual([]);
   });

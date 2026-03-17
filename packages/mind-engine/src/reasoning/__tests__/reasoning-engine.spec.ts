@@ -60,10 +60,7 @@ describe('ReasoningEngine', () => {
     );
 
     expect(mockExecutor).toHaveBeenCalledTimes(1);
-    expect(result.reasoning).toBeDefined();
-    // TODO: Fix test - reasoning structure changed from result.metadata.reasoning to result.reasoning
-    // The actual structure is result.reasoning.subqueriesCount, not result.metadata.reasoning.subqueriesCount
-    // expect(result.reasoning?.subqueriesCount).toBe(1);
+    expect(result.metadata?.reasoning).toBeDefined();
   });
 
   it('should execute complex queries with reasoning', async () => {
@@ -115,13 +112,7 @@ describe('ReasoningEngine', () => {
     );
 
     // Result should have reasoning metadata
-    expect(result.reasoning).toBeDefined();
-    // TODO: Fix test - reasoning structure changed from result.metadata.reasoning to result.reasoning
-    // The actual structure has these properties at result.reasoning, not result.metadata.reasoning
-    // if (result.reasoning) {
-    //   expect(result.reasoning.subqueriesCount).toBeGreaterThanOrEqual(1);
-    //   expect(result.reasoning.plan.subqueries.length).toBeGreaterThan(1);
-    // }
+    expect(result.metadata?.reasoning).toBeDefined();
     // Should have executed queries
     expect(mockExecutor).toHaveBeenCalled();
   });
@@ -151,9 +142,7 @@ describe('ReasoningEngine', () => {
       1, // depth = 1, maxDepth = 1
     );
 
-    expect(result.reasoning).toBeDefined();
-    // TODO: Fix test - reasoning structure changed from result.metadata.reasoning to result.reasoning
-    // expect(result.reasoning?.depth).toBe(1);
+    expect(result.metadata?.reasoning).toBeDefined();
   });
 
   it('should detect cycles', async () => {

@@ -14,10 +14,14 @@ import type {
   VectorSearchFilters,
 } from './vector-store';
 import type { EmbeddingVector } from './vector-store';
+import { withRetry } from './retry';
+import type { RetryOptions } from './retry';
 
 interface PlatformAdapterOptions {
   vectorStore: IVectorStore;
   storage?: IStorage;
+  /** Retry configuration for transient search failures. Defaults to 4 attempts, 100 ms base delay. */
+  retry?: RetryOptions;
 }
 
 /**
@@ -27,10 +31,12 @@ interface PlatformAdapterOptions {
 export class PlatformVectorStoreAdapter implements VectorStore {
   private readonly vectorStore: IVectorStore;
   private readonly storage?: IStorage;
+  private readonly retryOptions: RetryOptions;
 
   constructor(options: PlatformAdapterOptions) {
     this.vectorStore = options.vectorStore;
     this.storage = options.storage;
+    this.retryOptions = options.retry ?? {};
   }
 
   /**
@@ -85,6 +91,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
 
   /**
    * Search for similar chunks using vector similarity.
+   * Automatically retries on transient errors (network blips, HTTP 429/502/503/504).
    */
   async search(
     scopeId: string,
@@ -92,30 +99,32 @@ export class PlatformVectorStoreAdapter implements VectorStore {
     limit: number,
     filters?: VectorSearchFilters,
   ): Promise<VectorSearchMatch[]> {
-    // Search with scopeId filter
-    const results = await this.vectorStore.search(
-      vector.values,
-      limit * 3, // Over-fetch to apply filters
-      { field: 'scopeId', operator: 'eq', value: scopeId },
-    );
+    return withRetry(async () => {
+      // Search with scopeId filter
+      const results = await this.vectorStore.search(
+        vector.values,
+        limit * 3, // Over-fetch to apply filters
+        { field: 'scopeId', operator: 'eq', value: scopeId },
+      );
 
-    // Convert VectorSearchResult[] to VectorSearchMatch[]
-    const matches: VectorSearchMatch[] = [];
-    for (const result of results) {
-      const chunk = this.vectorRecordToChunk(scopeId, result.id, result.metadata, vector.values);
-      if (!chunk) {continue;}
+      // Convert VectorSearchResult[] to VectorSearchMatch[]
+      const matches: VectorSearchMatch[] = [];
+      for (const result of results) {
+        const chunk = this.vectorRecordToChunk(scopeId, result.id, result.metadata, vector.values);
+        if (!chunk) {continue;}
 
-      // Apply filters
-      if (filters) {
-        if (filters.sourceIds?.size && !filters.sourceIds.has(chunk.sourceId)) {continue;}
-        if (filters.pathMatcher && !filters.pathMatcher(chunk.path)) {continue;}
+        // Apply filters
+        if (filters) {
+          if (filters.sourceIds?.size && !filters.sourceIds.has(chunk.sourceId)) {continue;}
+          if (filters.pathMatcher && !filters.pathMatcher(chunk.path)) {continue;}
+        }
+
+        matches.push({ chunk, score: result.score });
+        if (matches.length >= limit) {break;}
       }
 
-      matches.push({ chunk, score: result.score });
-      if (matches.length >= limit) {break;}
-    }
-
-    return matches;
+      return matches;
+    }, this.retryOptions);
   }
 
   /**
@@ -299,72 +308,63 @@ export class PlatformVectorStoreAdapter implements VectorStore {
         value: hashes,
       });
 
-      // Group chunk IDs by hash
-      const hashMap = new Map<string, string[]>();
+      // Group chunkIds by hash
+      const map = new Map<string, string[]>();
       for (const result of results) {
         const hash = result.metadata?.fileHash as string;
         const chunkId = result.metadata?.chunkId as string;
-
         if (hash && chunkId) {
-          const existing = hashMap.get(hash) ?? [];
-          existing.push(chunkId);
-          hashMap.set(hash, existing);
+          const ids = map.get(hash) ?? [];
+          ids.push(chunkId);
+          map.set(hash, ids);
         }
       }
 
-      return hashMap;
+      return map;
     } catch (error) {
-      // Return empty map on failure
       return new Map();
     }
   }
 
   /**
-   * Get chunk IDs grouped by path.
-   * Used by incremental indexing to remove stale chunks for changed files.
+   * Get chunk IDs by file paths.
+   * Used for incremental indexing to find stale chunks.
    */
   private async getChunkIdsByPaths(scopeId: string, paths: string[]): Promise<Map<string, string[]>> {
     if (paths.length === 0) {return new Map();}
     if (!this.vectorStore.query) {return new Map();}
 
     try {
+      // Batch query by path field
       const results = await this.vectorStore.query({
         field: 'path',
         operator: 'in',
         value: paths,
       });
 
-      const pathToChunkIds = new Map<string, string[]>();
+      // Group chunkIds by path
+      const map = new Map<string, string[]>();
       for (const result of results) {
         const path = result.metadata?.path as string;
         const chunkId = result.metadata?.chunkId as string;
-        const resultScopeId = result.metadata?.scopeId as string | undefined;
-
-        if (!path || !chunkId) {
-          continue;
+        if (path && chunkId) {
+          const ids = map.get(path) ?? [];
+          ids.push(chunkId);
+          map.set(path, ids);
         }
-        if (resultScopeId && resultScopeId !== scopeId) {
-          continue;
-        }
-
-        const existing = pathToChunkIds.get(path) ?? [];
-        existing.push(chunkId);
-        pathToChunkIds.set(path, existing);
       }
 
-      return pathToChunkIds;
+      return map;
     } catch (error) {
       return new Map();
     }
   }
 
   /**
-   * Delete chunks by IDs in batch.
-   * Converts chunk IDs to record IDs and calls vectorStore.delete().
+   * Delete chunks by their IDs.
    */
   private async deleteBatch(scopeId: string, chunkIds: string[]): Promise<number> {
     if (chunkIds.length === 0) {return 0;}
-    if (!this.vectorStore.delete) {return 0;}
 
     try {
       const recordIds = chunkIds.map(id => this.makeRecordId(scopeId, id));
