@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { promises as fsp } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { initMindStructure } from '../api/init';
 import { updateIndexes } from '../api/update';
 
+const __dirname = resolve(fileURLToPath(import.meta.url), '..');
+
 describe('E2E Mind Indexer', () => {
-  const fixtureDir = '/Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/fixtures/small-project';
+  const fixtureDir = resolve(__dirname, '../../../../fixtures/small-project');
   const tempDir = join(process.cwd(), '../../temp-indexer-test');
 
   beforeAll(async () => {

@@ -628,6 +628,14 @@ async function resolveViaPaths(
       if (resolved) {
         return resolved;
       }
+      // Strip .js/.jsx/.mjs/.cjs extension and retry (TS uses .js imports for .ts files)
+      const strippedBase = candidateBase.replace(/\.(js|jsx|mjs|cjs)$/, '');
+      if (strippedBase !== candidateBase) {
+        const resolvedStripped = await resolveWithExtensions(strippedBase);
+        if (resolvedStripped) {
+          return resolvedStripped;
+        }
+      }
     }
   }
 
