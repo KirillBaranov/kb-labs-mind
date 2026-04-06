@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Knowledge management and code indexing for KB Labs Mind",
   "type": "module",
   "author": {
