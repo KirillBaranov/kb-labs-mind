@@ -1,6 +1,6 @@
 {
   "name": "@test/medium-project",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Medium complexity test project for Mind fixtures",
   "type": "module",
   "main": "src/index.ts",
@@ -18,5 +18,6 @@
   "devDependencies": {
     "@types/lodash": "^4.14.0",
     "vitest": "^1.0.0"
-  }
+  },
+  "private": true
 }
